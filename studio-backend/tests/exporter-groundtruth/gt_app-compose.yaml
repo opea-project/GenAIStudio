@@ -1,0 +1,217 @@
+# Copyright (C) 2024 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+
+services:
+  redis-vector-store-0:
+    image: redis/redis-stack:7.2.0-v9
+    container_name: redis-vector-store-0
+    ports:
+    - 6379:6379
+    - 8001:8001
+  tei-0:
+    image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.5
+    container_name: tei-0
+    ports:
+    - 2081:80
+    volumes:
+    - ./data:/data
+    shm_size: 1g
+    environment:
+      no_proxy: ${no_proxy}
+      http_proxy: ${http_proxy}
+      https_proxy: ${https_proxy}
+    command: --model-id BAAI/bge-large-en-v1.5 --auto-truncate
+  tgi-0:
+    image: ghcr.io/huggingface/text-generation-inference:sha-e4201f4-intel-cpu
+    container_name: tgi-0
+    ports:
+    - 3081:80
+    volumes:
+    - ./data:/data
+    shm_size: 1g
+    environment:
+      no_proxy: ${no_proxy}
+      http_proxy: ${http_proxy}
+      https_proxy: ${https_proxy}
+      HF_TOKEN: NA
+      HF_HUB_DISABLE_PROGRESS_BARS: 1
+      HF_HUB_ENABLE_HF_TRANSFER: 0
+    command: --model-id Intel/neural-chat-7b-v3-3 --cuda-graphs 0
+  tei-1:
+    image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.5
+    container_name: tei-1
+    ports:
+    - 2082:80
+    volumes:
+    - ./data:/data
+    shm_size: 1g
+    environment:
+      no_proxy: ${no_proxy}
+      http_proxy: ${http_proxy}
+      https_proxy: ${https_proxy}
+    command: --model-id BAAI/bge-reranker-base --auto-truncate
+  tei-2:
+    image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.5
+    container_name: tei-2
+    ports:
+    - 2083:80
+    volumes:
+    - ./data:/data
+    shm_size: 1g
+    environment:
+      no_proxy: ${no_proxy}
+      http_proxy: ${http_proxy}
+      https_proxy: ${https_proxy}
+    command: --model-id BAAI/bge-base-en-v1.5 --auto-truncate
+  embedding-tei-langchain-0:
+    image: opea/embedding-tei:latest
+    container_name: embedding-tei-langchain-0
+    depends_on:
+    - tei-0
+    ports:
+    - 6000:6000
+    ipc: host
+    environment:
+      no_proxy: ${no_proxy}
+      http_proxy: ${http_proxy}
+      https_proxy: ${https_proxy}
+      TEI_EMBEDDING_ENDPOINT: http://${public_host_ip}:2081
+    restart: unless-stopped
+  llm-tgi-0:
+    image: opea/llm-tgi:latest
+    container_name: llm-tgi-0
+    depends_on:
+    - tgi-0
+    ports:
+    - 9000:9000
+    ipc: host
+    environment:
+      no_proxy: ${no_proxy}
+      http_proxy: ${http_proxy}
+      https_proxy: ${https_proxy}
+      TGI_LLM_ENDPOINT: http://${public_host_ip}:3081
+      HUGGINGFACEHUB_API_TOKEN: NA
+      HF_HUB_DISABLE_PROGRESS_BARS: 1
+      HF_HUB_ENABLE_HF_TRANSFER: 0
+    restart: unless-stopped
+  prepare-doc-redis-prep-0:
+    image: opea/dataprep-redis:latest
+    container_name: prepare-doc-redis-prep-0
+    depends_on:
+    - redis-vector-store-0
+    - tei-0
+    ports:
+    - 6007:6007
+    environment:
+      no_proxy: ${no_proxy}
+      http_proxy: ${http_proxy}
+      https_proxy: ${https_proxy}
+      REDIS_URL: redis://${public_host_ip}:6379
+      REDIS_HOST: ${public_host_ip}
+      INDEX_NAME: rag-redis
+      TEI_ENDPOINT: http://${public_host_ip}:2081
+      HUGGINGFACEHUB_API_TOKEN: NA
+  reranking-tei-0:
+    image: opea/reranking-tei:latest
+    container_name: reranking-tei-0
+    depends_on:
+    - tei-1
+    ports:
+    - 8000:8000
+    ipc: host
+    environment:
+      no_proxy: ${no_proxy}
+      http_proxy: ${http_proxy}
+      https_proxy: ${https_proxy}
+      TEI_RERANKING_ENDPOINT: http://${public_host_ip}:2082
+      HUGGINGFACEHUB_API_TOKEN: NA
+      HF_HUB_DISABLE_PROGRESS_BARS: 1
+      HF_HUB_ENABLE_HF_TRANSFER: 0
+    restart: unless-stopped
+  retriever-redis-0:
+    image: opea/retriever-redis:latest
+    container_name: retriever-redis-0
+    depends_on:
+    - redis-vector-store-0
+    - tei-2
+    ports:
+    - 7000:7000
+    ipc: host
+    environment:
+      no_proxy: ${no_proxy}
+      http_proxy: ${http_proxy}
+      https_proxy: ${https_proxy}
+      REDIS_URL: redis://${public_host_ip}:6379
+      INDEX_NAME: rag-redis
+      TEI_EMBEDDING_ENDPOINT: http://${public_host_ip}:2083
+      HUGGINGFACEHUB_API_TOKEN: NA
+    restart: unless-stopped
+  app-backend:
+    image: opea/app-backend:latest
+    container_name: app-backend
+    volumes:
+    - ./project-info.json:/home/user/config/project-info.json
+    depends_on:
+    - redis-vector-store-0
+    - tei-0
+    - tgi-0
+    - tei-1
+    - tei-2
+    - embedding-tei-langchain-0
+    - llm-tgi-0
+    - prepare-doc-redis-prep-0
+    - reranking-tei-0
+    - retriever-redis-0
+    ports:
+    - 8888:8888
+    environment:
+    - no_proxy=${no_proxy}
+    - https_proxy=${https_proxy}
+    - http_proxy=${http_proxy}
+    - HOST_IP=${public_host_ip}
+    ipc: host
+    restart: always
+  app-frontend:
+    image: opea/app-frontend:latest
+    container_name: app-frontend
+    depends_on:
+    - app-backend
+    ports:
+    - 5175:80
+    environment:
+    - no_proxy=${no_proxy}
+    - https_proxy=${https_proxy}
+    - http_proxy=${http_proxy}
+    - APP_BACKEND_SERVICE_URL=/v1/app-backend
+    - APP_EMBEDDINGS_SERVICE_URL=/v1/embeddings
+    - APP_CHAT_COMPLETEION_SERVICE_URL=/v1/chat/completions
+    - APP_DATA_PREP_SERVICE_URL=/v1/dataprep
+    - APP_RERANKING_SERVICE_URL=/v1/reranking
+    - APP_RETRIEVAL_SERVICE_URL=/v1/retrieval
+    ipc: host
+    restart: always
+  app-nginx:
+    image: opea/nginx:latest
+    container_name: app-nginx
+    depends_on:
+    - app-frontend
+    - app-backend
+    ports:
+    - 8080:80
+    environment:
+    - no_proxy=${no_proxy}
+    - https_proxy=${https_proxy}
+    - http_proxy=${http_proxy}
+    - FRONTEND_SERVICE_IP=${public_host_ip}
+    - FRONTEND_SERVICE_PORT=5175
+    - BACKEND_SERVICE_NAME=app-backend
+    - BACKEND_SERVICE_IP=${public_host_ip}
+    - BACKEND_SERVICE_PORT=8888
+    - DATAPREP_SERVICE_IP=${public_host_ip}
+    - DATAPREP_SERVICE_PORT=6007
+    ipc: host
+    restart: always
+
+networks:
+  default:
+    driver: bridge

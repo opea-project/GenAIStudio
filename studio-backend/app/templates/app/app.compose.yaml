@@ -1,0 +1,52 @@
+app-backend:
+  image: __APP_BACKEND_IMAGE__
+  container_name: app-backend
+  volumes:
+  - ./project-info.json:/home/user/config/project-info.json
+  depends_on:
+  __BACKEND_ENDPOINTS_LIST_PLACEHOLDER__
+  ports:
+  - 8888:8888
+  environment:
+  - no_proxy=${no_proxy}
+  - https_proxy=${https_proxy}
+  - http_proxy=${http_proxy}
+  - HOST_IP=${public_host_ip}
+  ipc: host
+  restart: always
+app-frontend:
+  image: __APP_FRONTEND_IMAGE__
+  container_name: app-frontend
+  depends_on:
+  - app-backend
+  ports:
+    - 5175:80
+  environment:
+    - no_proxy=${no_proxy}
+    - https_proxy=${https_proxy}
+    - http_proxy=${http_proxy}
+    - APP_BACKEND_SERVICE_URL=/v1/app-backend
+    __UI_CONFIG_INFO_ENV_PLACEHOLDER__
+  ipc: host
+  restart: always
+app-nginx:
+  image: opea/nginx:latest
+  container_name: app-nginx
+  depends_on:
+    - app-frontend
+    - app-backend
+  ports:
+    - 8080:80
+  environment:
+    - no_proxy=${no_proxy}
+    - https_proxy=${https_proxy}
+    - http_proxy=${http_proxy}
+    - FRONTEND_SERVICE_IP=${public_host_ip}
+    - FRONTEND_SERVICE_PORT=5175
+    - BACKEND_SERVICE_NAME=app-backend
+    - BACKEND_SERVICE_IP=${public_host_ip}
+    - BACKEND_SERVICE_PORT=8888
+    - DATAPREP_SERVICE_IP=${public_host_ip}
+    - DATAPREP_SERVICE_PORT=6007
+  ipc: host
+  restart: always

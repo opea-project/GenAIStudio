@@ -1,0 +1,223 @@
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ecr-registry-secret
+data:
+  .dockerconfigjson: |
+    <aws ecr get-login-password --region xxxx | docker login --username AWS --password-stdin xxxx.amazonaws.com && cat /home/xxxx/.docker/config.json>
+type: kubernetes.io/dockerconfigjson
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-backend-config
+data:
+  project-info.json: |+
+    __BACKEND_PROJECT_INFO_JSON_PLACEHOLDER__
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: app-backend
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8888
+    targetPort: 8888
+    protocol: TCP
+    name: app-backend
+  selector:
+    app: app-backend
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-backend
+  labels:
+    app: app-backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app-backend
+  template:
+    metadata:
+      labels:
+        app: app-backend
+    spec:
+      securityContext: null
+      containers:
+      - name: app-backend
+        env:
+        - name: USE_NODE_ID_AS_IP
+          value: 'true'
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 1000
+          seccompProfile:
+            type: RuntimeDefault
+        image: ${REGISTRY:-opea}/app-backend:${TAG:-latest}
+        imagePullPolicy: IfNotPresent
+        volumeMounts:
+        - mountPath: /tmp
+          name: tmp
+        - mountPath: /home/user/config/project-info.json
+          name: project-info-volume
+          subPath: project-info.json
+        ports:
+        - name: app-backend
+          containerPort: 8888
+          protocol: TCP
+        resources: null
+      imagePullSecrets:
+      - name: ecr-registry-secret
+      volumes:
+      - name: tmp
+        emptyDir: {}
+      - name: project-info-volume
+        configMap:
+          name: app-backend-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: app-frontend
+spec:
+  type: ClusterIP
+  ports:
+  - port: 5175
+    targetPort: 80
+    protocol: TCP
+    name: app-frontend
+  selector:
+    app: app-frontend
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-frontend
+  labels:
+    app: app-frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app-frontend
+  template:
+    metadata:
+      labels:
+        app: app-frontend
+    spec:
+      securityContext: {}
+      containers:
+      - name: app-frontend
+        env:
+        - name: APP_BACKEND_SERVICE_URL
+          value: /v1/app-backend
+        __UI_CONFIG_INFO_ENV_PLACEHOLDER__
+        securityContext: {}
+        image: ${REGISTRY:-opea}/app-frontend:${TAG:-latest}
+        ports:
+        - name: ui
+          containerPort: 80
+          protocol: TCP
+        resources: {}
+        volumeMounts:
+        - mountPath: /tmp
+          name: tmp
+      imagePullSecrets:
+      - name: ecr-registry-secret
+      volumes:
+      - name: tmp
+        emptyDir: {}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-nginx-config
+data:
+  default.conf: |+
+    # Copyright (C) 2024 Intel Corporation
+    # SPDX-License-Identifier: Apache-2.0
+
+    server {
+        listen       80;
+        listen  [::]:80;
+
+        proxy_connect_timeout 600;
+        proxy_send_timeout 600;
+        proxy_read_timeout 600;
+        send_timeout 600;
+
+        client_max_body_size 10G;
+
+        location /home {
+            alias  /usr/share/nginx/html/index.html;
+        }
+
+        location / {
+            proxy_pass http://app-frontend:5175;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
+        location /v1/app-backend {
+            proxy_pass http://app-backend:8888;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
+        __UI_CONFIG_INFO_NGINX_PLACEHOLDER__
+    }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: app-nginx
+spec:
+  ports:
+  - port: 80
+    protocol: TCP
+    targetPort: 80
+  selector:
+    app: app-nginx
+  type: NodePort
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-nginx
+  labels:
+    app: app-nginx
+spec:
+  selector:
+    matchLabels:
+      app: app-nginx
+  template:
+    metadata:
+      labels:
+        app: app-nginx
+    spec:
+      containers:
+      - image: nginx:1.27.1
+        imagePullPolicy: IfNotPresent
+        name: nginx
+        volumeMounts:
+        - mountPath: /etc/nginx/conf.d
+          name: nginx-config-volume
+      securityContext: {}
+      volumes:
+      - configMap:
+          defaultMode: 420
+          name: app-nginx-config
+        name: nginx-config-volume

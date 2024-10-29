@@ -1,0 +1,8 @@
+- name: Install Requirments
+  import_playbook: playbooks/install-requirements.yml
+
+- name: Setup K8 cluster
+  import_playbook: playbooks/setup-k8-cluster.yml
+
+- name: Setup harbor container registry
+  import_playbook: playbooks/setup-harbor.yml
