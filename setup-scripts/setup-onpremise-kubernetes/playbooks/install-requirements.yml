@@ -1,0 +1,284 @@
+- hosts: all
+  gather_facts: yes
+  become: yes
+  become_method: sudo
+  become_user: root
+  vars_files:
+    - ../vars.yml
+
+  tasks:
+
+  - name: Configure APT proxy settings
+    block:
+      - file:
+          path: /etc/apt/apt.conf.d/
+          state: directory
+      - copy:
+          dest: /etc/apt/apt.conf.d/proxy.conf
+          content: |
+            Acquire::http::Proxy "{{ http_proxy }}";
+            Acquire::https::Proxy "{{ http_proxy }}";
+    
+  - name: Download Docker's official GPG key
+    get_url:
+      url: https://download.docker.com/linux/ubuntu/gpg
+      dest: /tmp/docker.gpg
+    environment:
+      http_proxy: "{{ http_proxy }}"
+      https_proxy: "{{ http_proxy }}"
+
+  - name: Add Docker's official GPG key
+    command: gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg /tmp/docker.gpg
+    args:
+      creates: /usr/share/keyrings/docker-archive-keyring.gpg
+    environment:
+      http_proxy: "{{ http_proxy }}"
+      https_proxy: "{{ http_proxy }}"
+
+  - name: Set up the Docker stable repository
+    lineinfile:
+      path: /etc/apt/sources.list.d/docker.list
+      line: "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+      create: yes
+
+  - name: Download Kubernetes GPG apt Key
+    get_url:
+      url: https://mirrors.aliyun.com/kubernetes/apt/doc/apt-key.gpg
+      dest: /tmp/kubernetes.gpg
+    environment:
+      http_proxy: "{{ http_proxy }}"
+      https_proxy: "{{ http_proxy }}"
+
+  - name: Add Kubernetes GPG apt Key
+    shell: gpg --no-default-keyring --keyring gnupg-ring:/etc/apt/trusted.gpg.d/kubernetes.gpg --import /tmp/kubernetes.gpg
+    args:
+      creates: /etc/apt/trusted.gpg.d/kubernetes.gpg
+    environment:
+      http_proxy: "{{ http_proxy }}"
+      https_proxy: "{{ http_proxy }}"
+
+  - name: Set permissions for kubernetes.gpg
+    ansible.builtin.file:
+      path: /etc/apt/trusted.gpg.d/kubernetes.gpg
+      mode: '0644'
+
+  - name: Add Kubernetes apt repository
+    apt_repository:
+      repo: deb https://mirrors.aliyun.com/kubernetes/apt/ kubernetes-xenial main
+      state: present
+    environment:
+      http_proxy: "{{ http_proxy }}"
+      https_proxy: "{{ http_proxy }}"
+
+  - name: Update apt package list
+    command: apt-get update
+    args:
+      warn: false
+    environment:
+      http_proxy: "{{ http_proxy }}"
+      https_proxy: "{{ http_proxy }}"
+    register: apt_update
+    failed_when: "'W:' in apt_update.stdout or 'W:' in apt_update.stderr"
+
+  - name: Install required packages
+    apt:
+      name:
+        - apt-transport-https
+        - ca-certificates
+        - curl
+        - gnupg
+        - lsb-release
+      state: present
+    environment:
+      http_proxy: "{{ http_proxy }}"
+      https_proxy: "{{ http_proxy }}"
+
+  - name: Install Docker and related packages
+    apt:
+      name:
+        - docker-ce
+        - docker-ce-cli
+        - containerd.io
+        - docker-buildx-plugin
+        - docker-compose-plugin
+      state: present
+    environment:
+      http_proxy: "{{ http_proxy }}"
+      https_proxy: "{{ http_proxy }}"
+  
+  - name: Restart Docker service
+    systemd:
+      name: docker
+      state: restarted
+      enabled: yes
+
+  - name: Ensure Docker service is enabled on boot
+    systemd:
+      name: docker
+      enabled: yes
+
+  - name: Ensure Docker service is running
+    systemd:
+      name: docker
+      state: started
+
+  - name: Add docker group
+    group:
+      name: docker
+      state: present
+
+  - name: Add current user to docker group
+    user:
+      name: "{{ ansible_user }}"
+      groups: docker
+      append: yes
+
+  - name: Adjust Docker socket permissions
+    file:
+      path: /var/run/docker.sock
+      owner: "{{ ansible_user }}"
+      group: docker
+      mode: '0660'
+
+  - name: Run a command as a member of the docker group
+    command: docker ps
+    become: yes
+    become_user: "{{ ansible_user }}"
+
+  - name: Configure Docker daemon
+    copy:
+      dest: /etc/docker/daemon.json
+      content: |
+        {
+          "exec-opts": ["native.cgroupdriver=systemd"],
+          "log-driver" : "json-file",
+          "log-opts": {
+            "max-size" : "100m"
+          },
+          "storage-driver": "overlay2"
+        }
+
+  - name: Set up proxy environment variables in .bashrc
+    lineinfile:
+      path: "/home/{{ ansible_user }}/.bashrc"
+      line: "{{ item }}"
+    loop:
+      - 'export http_proxy={{ http_proxy }}'
+      - 'export http_proxy={{ http_proxy }}'
+      - 'export no_proxy={{ no_proxy }}'
+  - name: Set up proxy environment variables for Docker service
+    block:
+      - file:
+          path: /etc/systemd/system/docker.service.d
+          state: directory
+      - copy:
+          dest: /etc/systemd/system/docker.service.d/http-proxy.conf
+          content: |
+            [Service]
+            Environment="HTTP_PROXY={{ http_proxy }}"
+            Environment="HTTPS_PROXY={{ http_proxy }}"
+            Environment="NO_PROXY={{ no_proxy }}"
+
+  - name: Set up proxy environment variables for containerd service
+    block:
+      - file:
+          path: /etc/systemd/system/containerd.service.d
+          state: directory
+      - copy:
+          dest: /etc/systemd/system/containerd.service.d/http-proxy.conf
+          content: |
+            [Service]
+            Environment="HTTP_PROXY={{ http_proxy }}"
+            Environment="HTTPS_PROXY={{ http_proxy }}"
+            Environment="NO_PROXY={{ no_proxy }}"
+  
+  - name: Reload systemd manager configuration
+    systemd:
+      daemon_reload: yes
+  
+  - name: Restart Docker service
+    systemd:
+      name: docker
+      state: restarted
+      enabled: yes
+  
+  - name: Ensure Docker service is running
+    systemd:
+      name: docker
+      state: started
+  
+  - name: Restart containerd
+    systemd:
+      name: containerd
+      state: restarted
+  
+  - name: Verify Docker installation
+    command: docker run hello-world
+    become: yes
+    become_user: "{{ ansible_user }}"
+
+  - name: Install Kubernetes packages
+    apt:
+      name: ['kubelet', 'kubeadm', 'kubectl']
+      state: present
+      update_cache: yes
+
+  - name: Hold Kubernetes packages
+    dpkg_selections:
+      name: "{{ item }}"
+      selection: hold
+    with_items:
+      - kubelet
+      - kubeadm
+      - kubectl
+
+  - name: Disable swap
+    shell: swapoff -a
+    args:
+      executable: /bin/bash
+
+  - name: Comment out swap partitions in fstab
+    lineinfile:
+      path: /etc/fstab
+      regexp: '^(.*\sswap\s.*)$'
+      line: '#\1'
+
+  - name: Load required containerd modules
+    block:
+      - copy:
+          dest: /etc/modules-load.d/containerd.conf
+          content: ''
+          force: no
+      - lineinfile:
+          path: /etc/modules-load.d/containerd.conf
+          line: '{{ item }}'
+        loop:
+          - overlay
+          - br_netfilter
+      - command: modprobe overlay
+      - command: modprobe br_netfilter
+
+  - name: Configure Kubernetes networking
+    block:
+      - copy:
+          dest: /etc/sysctl.d/kubernetes.conf
+          content: |
+            net.bridge.bridge-nf-call-ip6tables = 1
+            net.bridge.bridge-nf-call-iptables = 1
+            net.ipv4.ip_forward = 1
+          force: yes
+      - command: sysctl --system
+
+  - name: Configure kubelet
+    block:
+      - copy:
+          dest: /etc/default/kubelet
+          content: ''
+          force: no
+      - lineinfile:
+          path: /etc/default/kubelet
+          line: 'KUBELET_EXTRA_ARGS="--cgroup-driver=cgroupfs"'
+      - command: systemctl daemon-reload
+      - command: systemctl restart kubelet
+
+

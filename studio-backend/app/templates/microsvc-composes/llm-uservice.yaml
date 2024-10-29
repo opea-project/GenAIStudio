@@ -1,0 +1,17 @@
+"{{endpoint}}":
+  image: opea/llm-tgi:latest
+  container_name: "{{endpoint}}"
+  depends_on:
+    - "{{tgi_endpoint}}"
+  ports:
+    - 9000:9000
+  ipc: host
+  environment:
+    no_proxy: ${no_proxy}
+    http_proxy: ${http_proxy}
+    https_proxy: ${https_proxy}
+    TGI_LLM_ENDPOINT: "http://${public_host_ip}:{{tgi_port}}"
+    HUGGINGFACEHUB_API_TOKEN: "{{tgi_huggingFaceToken}}"
+    HF_HUB_DISABLE_PROGRESS_BARS: 1
+    HF_HUB_ENABLE_HF_TRANSFER: 0
+  restart: unless-stopped

@@ -1,0 +1,112 @@
+---
+# Source: data-prep/templates/configmap.yaml
+# Copyright (C) 2024 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-{endpoint}
+data:
+  TEI_ENDPOINT: "http://{tei_endpoint}"
+  EMBED_MODEL: ""
+  REDIS_URL: "redis://{redis_vector_store_endpoint}:{redis_vector_store_port}"
+  INDEX_NAME: "rag-redis"
+  KEY_INDEX_NAME: "file-keys"
+  SEARCH_BATCH_SIZE: "10"
+  HUGGINGFACEHUB_API_TOKEN: "{tei_huggingFaceToken}"
+  HF_HOME: "/tmp/.cache/huggingface"
+  http_proxy: ""
+  https_proxy: ""
+  no_proxy: ""
+  LOGFLAG: ""
+---
+# Source: data-prep/templates/service.yaml
+# Copyright (C) 2024 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: "{endpoint}"
+spec:
+  type: ClusterIP
+  ports:
+    - port: 6007
+      targetPort: 6007
+      protocol: TCP
+      name: "{endpoint}"
+  selector:
+    app: "{endpoint}"
+---
+# Source: data-prep/templates/deployment.yaml
+# Copyright (C) 2024 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: "{endpoint}"
+  labels:
+    app: "{endpoint}"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: "{endpoint}"
+  template:
+    metadata:
+      labels:
+        app: "{endpoint}"
+    spec:
+      securityContext:
+        {}
+      containers:
+        - name: data-prep
+          envFrom:
+            - configMapRef:
+                name: config-{endpoint}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+              - ALL
+            readOnlyRootFilesystem: false
+            runAsNonRoot: true
+            runAsUser: 1000
+            seccompProfile:
+              type: RuntimeDefault
+          image: "opea/dataprep-redis:latest"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: data-prep
+              containerPort: 6007
+              protocol: TCP
+          volumeMounts:
+            - mountPath: /tmp
+              name: tmp
+          livenessProbe:
+            failureThreshold: 24
+            httpGet:
+              path: v1/health_check
+              port: data-prep
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: v1/health_check
+              port: data-prep
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          startupProbe:
+            failureThreshold: 120
+            httpGet:
+              path: v1/health_check
+              port: data-prep
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            {}
+      volumes:
+        - name: tmp
+          emptyDir: {}

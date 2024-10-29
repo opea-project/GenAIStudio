@@ -1,0 +1,128 @@
+---
+# Source: tgi/templates/configmap.yaml
+# Copyright (C) 2024 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-{endpoint}
+data:
+  MODEL_ID: "{modelName}"
+  PORT: "{port}"
+  HF_TOKEN: "{huggingFaceToken}"
+  http_proxy: ""
+  https_proxy: ""
+  no_proxy: ""
+  HABANA_LOGS: "/tmp/habana_logs"
+  NUMBA_CACHE_DIR: "/tmp"
+  HF_HOME: "/tmp/.cache/huggingface"
+  CUDA_GRAPHS: "0"
+---
+# Source: tgi/templates/service.yaml
+# Copyright (C) 2024 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: "{endpoint}"
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: "{port}"
+      protocol: TCP
+      name: "{endpoint}"
+  selector:
+    app: "{endpoint}"
+---
+# Source: tgi/templates/deployment.yaml
+# Copyright (C) 2024 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: "{endpoint}"
+  labels:
+    app: "{endpoint}"
+spec:
+  selector:
+    matchLabels:
+      app: "{endpoint}"
+  template:
+    metadata:
+      labels:
+        app: "{endpoint}"
+    spec:
+      securityContext:
+        {}
+      containers:
+        - name: tgi
+          envFrom:
+            - configMapRef:
+                name: config-{endpoint}
+          securityContext:
+            {}
+          image: "ghcr.io/huggingface/text-generation-inference:sha-e4201f4-intel-cpu"
+          imagePullPolicy: IfNotPresent
+          volumeMounts:
+            - mountPath: /data
+              name: model-volume
+            - mountPath: /dev/shm
+              name: shm
+            - mountPath: /tmp
+              name: tmp
+          ports:
+            - name: http
+              containerPort: "{port}"
+              protocol: TCP
+          livenessProbe:
+            failureThreshold: 24
+            initialDelaySeconds: 8
+            periodSeconds: 8
+            timeoutSeconds: 4
+            tcpSocket:
+              port: http
+          readinessProbe:
+            initialDelaySeconds: 16
+            periodSeconds: 8
+            timeoutSeconds: 4
+            tcpSocket:
+              port: http
+          startupProbe:
+            failureThreshold: 180
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 2
+            tcpSocket:
+              port: http
+          resources:
+            {}
+      volumes:
+        - name: model-volume
+          hostPath:
+            path: /mnt/opea-models
+            type: Directory
+        - name: shm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 1Gi
+        - name: tmp
+          emptyDir: {}
+      # extra time to finish processing buffered requests before pod is forcibly terminated
+      terminationGracePeriodSeconds: 120
+---
+# Source: tgi/templates/horizontalPorAutoscaler.yaml
+# Copyright (C) 2024 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+---
+# Source: tgi/templates/servicemonitor.yaml
+# Copyright (C) 2024 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+#
+# Dashboard for the exposed TGI metrics:
+# - https://grafana.com/grafana/dashboards/19831-text-generation-inference-dashboard/
+# Metric descriptions:
+# - https://github.com/huggingface/text-generation-inference/discussions/1127#discussioncomment-7240527

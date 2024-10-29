@@ -1,0 +1,17 @@
+"{{endpoint}}":
+  image: opea/dataprep-redis:latest
+  container_name: "{{endpoint}}"
+  depends_on:
+    - "{{redis_vector_store_endpoint}}"
+    - "{{tei_endpoint}}"
+  ports:
+    - 6007:6007
+  environment:
+    no_proxy: ${no_proxy}
+    http_proxy: ${http_proxy}
+    https_proxy: ${https_proxy}
+    REDIS_URL: "redis://${public_host_ip}:{{redis_vector_store_port}}"
+    REDIS_HOST: "${public_host_ip}"
+    INDEX_NAME: "rag-redis"
+    TEI_ENDPOINT: "http://${public_host_ip}:{{tei_port}}"
+    HUGGINGFACEHUB_API_TOKEN: "{{tei_huggingFaceToken}}"

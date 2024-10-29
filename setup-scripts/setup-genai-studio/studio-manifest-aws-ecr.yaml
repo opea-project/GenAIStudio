@@ -1,0 +1,363 @@
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ecr-registry-secret
+  namespace: studio
+data:
+  .dockerconfigjson: |
+    <aws ecr get-login-password --region xxxx | docker login --username AWS --password-stdin xxxx.amazonaws.com && cat /home/xxxx/.docker/config.json>
+type: kubernetes.io/dockerconfigjson
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: studio-nginx-config
+  namespace: studio
+data:
+  default.conf: |+
+    # Copyright (C) 2024 Intel Corporation
+    # SPDX-License-Identifier: Apache-2.0
+
+    upstream grafana {
+        server localhost:3000;
+    }
+
+    server {
+        listen 80;
+        listen [::]:80;
+
+        proxy_connect_timeout 600;
+        proxy_send_timeout 600;
+        proxy_read_timeout 600;
+        send_timeout 600;
+
+        client_max_body_size 10G;
+
+        resolver kube-dns.kube-system.svc.cluster.local valid=300s;
+        resolver_timeout 5s;
+
+        location /home {
+            root /usr/share/nginx/html;  # Use root to serve files from a directory
+            index index.html;
+        }
+
+        # Location block for studio-appbuilder and app-frontend
+        location / {
+            # Initialize the default variable for namespace
+            set $namespace "";
+    
+            # Check if the Referer contains '?ns=' and extract the ns argument
+            if ($http_referer ~* "([&?]ns=([^&]+))") {
+                set $namespace $2;  # Capture the value of 'ns'
+            }
+    
+            # If 'ns' is not in the Referer, fallback to 'arg_ns'
+            if ($namespace = "") {
+                set $namespace $arg_ns;  # Use the value from the 'arg_ns'
+            }
+    
+            # Initialize the target host
+            set $target_host http://studio-frontend.studio.svc.cluster.local:3000;
+            if ($namespace != "") {
+                set $target_host http://app-frontend.$namespace.svc.cluster.local:5175;
+            }
+    
+            # Rewrite the request to include the namespace
+            rewrite ^/(.*)$ /$1?ns=$namespace break;
+
+            # Proxy to the desired service using the namespace
+            proxy_pass $target_host;
+    
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
+        # Location block for app-backend
+        location /v1/app-backend {
+            # Initialize the variable for namespace
+            if ($http_referer ~* "([&?]ns=([^&]+))") {
+                set $namespace $2;  # Capture the value of 'ns'
+            }
+    
+            # Rewrite the request to include the namespace
+            rewrite ^/(.*)$ /$1?ns=$namespace break;
+
+            # Proxy to the desired service using the namespace
+            proxy_pass http://app-backend.$namespace.svc.cluster.local:8888;
+    
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+
+            # Disable buffering for SSE
+            proxy_buffering off;
+            proxy_cache off;
+            proxy_http_version 1.1;
+            proxy_set_header Connection '';
+            chunked_transfer_encoding off;
+        }
+
+        # Location block for opea_service@prepare_doc_redis_prep
+        location /v1/dataprep {
+            # Initialize the variable for namespace
+            if ($http_referer ~* "([&?]ns=([^&]+))") {
+                set $namespace $2;  # Capture the value of 'ns'
+            }
+    
+            # Rewrite the request to include the namespace
+            rewrite ^/(.*)$ /$1?ns=$namespace break;
+
+            # Proxy to the desired service using the namespace
+            proxy_pass http://prepare-doc-redis-prep-0.$namespace.svc.cluster.local:6007;
+    
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+            
+        # Additional location block for Grafana static assets
+        location /grafana {
+            proxy_pass http://kube-prometheus-stack-grafana.monitoring.svc.cluster.local;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
+        # Proxy Grafana Live WebSocket connections
+        location /grafana/api/live/ {
+            proxy_pass http://kube-prometheus-stack-grafana.monitoring.svc.cluster.local;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            
+            # Ensure WebSocket upgrade headers
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection "upgrade";
+        }
+
+        location /studio-backend {
+            proxy_pass http://studio-backend.studio.svc.cluster.local:5000;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
+        location /studio-backend/ws {
+            proxy_pass http://studio-backend.studio.svc.cluster.local:5000/studio-backend/ws;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            
+            # Ensure WebSocket upgrade headers
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection "upgrade";
+        }
+    }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: studio-nginx
+  namespace: studio
+spec:
+  selector:
+    app: studio-nginx
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+      nodePort: 30007
+  type: NodePort
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: studio-nginx
+  namespace: studio
+  labels:
+    app: studio-nginx
+spec:
+  selector:
+    matchLabels:
+      app: studio-nginx
+  template:
+    metadata:
+      labels:
+        app: studio-nginx
+    spec:
+      containers:
+      - image: nginx:1.27.1
+        imagePullPolicy: IfNotPresent
+        name: nginx
+        volumeMounts:
+        - mountPath: /etc/nginx/conf.d
+          name: nginx-config-volume
+      securityContext: {}
+      volumes:
+      - configMap:
+          defaultMode: 420
+          name: studio-nginx-config
+        name: nginx-config-volume
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: studio-backend
+  namespace: studio
+spec:
+  type: ClusterIP
+  ports:
+    - protocol: TCP
+      port: 5000
+      targetPort: 5000
+  selector:
+    app: studio-backend
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: studio-backend-sa
+  namespace: studio
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: namespace-manager
+rules:
+- apiGroups: [""] 
+  resources: ["namespaces"] 
+  verbs: ["get", "create", "delete"]
+- apiGroups: [""] 
+  resources: ["services"] 
+  verbs: ["get", "create", "list"]
+- apiGroups: [""] 
+  resources: ["configmaps"] 
+  verbs: ["get", "create"]
+- apiGroups: [""] 
+  resources: ["secrets"] 
+  verbs: ["get", "create"]
+- apiGroups: ["apps"] 
+  resources: ["deployments"] 
+  verbs: ["get", "create", "list"]
+- apiGroups: [""] 
+  resources: ["pods"] 
+  verbs: ["list", "get"]
+- apiGroups: [""] 
+  resources: ["nodes"] 
+  verbs: ["list", "get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: namespace-manager-binding
+subjects:
+- kind: ServiceAccount
+  name: studio-backend-sa
+  namespace: studio
+roleRef:
+  kind: ClusterRole
+  name: namespace-manager
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: studio-backend
+  namespace: studio
+  labels:
+    app: studio-backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: studio-backend
+  template:
+    metadata:
+      labels:
+        app: studio-backend
+    spec:
+      containers:
+      - name: studio-backend
+        image: ${REGISTRY:-opea}/studio-backend:${TAG:-latest}
+        ports:
+        - containerPort: 5000
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "1"
+          limits:
+            memory: "2Gi"
+            cpu: "2"
+        livenessProbe:
+          httpGet:
+            path: /studio-backend/health
+            port: 5000
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+      imagePullSecrets:
+      - name: ecr-registry-secret
+      serviceAccountName: studio-backend-sa
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: studio-frontend
+  namespace: studio
+spec:
+  type: ClusterIP
+  ports:
+  - port: 3000
+    targetPort: 3000
+    protocol: TCP
+    name: studio-frontend
+  selector:
+    app: studio-frontend
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: studio-frontend
+  namespace: studio
+  labels:
+    app: studio-frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: studio-frontend
+  template:
+    metadata:
+      labels:
+        app: studio-frontend
+    spec:
+      securityContext: {}
+      containers:
+      - name: studio-frontend
+        securityContext: {}
+        image: ${REGISTRY:-opea}/studio-frontend:${TAG:-latest}
+        ports:
+        - name: studio-frontend
+          containerPort: 8080
+          protocol: TCP
+        resources: {}
+        volumeMounts:
+        - mountPath: /tmp
+          name: tmp
+      imagePullSecrets:
+        - name: ecr-registry-secret
+      volumes:
+      - name: tmp
+        emptyDir: {}

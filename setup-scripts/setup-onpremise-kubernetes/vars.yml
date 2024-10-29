@@ -1,0 +1,6 @@
+# ## cluster configuration
+# ## if proxy not needed, replace parameter values to empty strings
+ansible_user: 'some_user'
+ansible_become_password: 'some_password'
+http_proxy: ''
+no_proxy: ''

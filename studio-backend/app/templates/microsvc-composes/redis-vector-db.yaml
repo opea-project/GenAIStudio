@@ -1,0 +1,6 @@
+"{{endpoint}}":
+  image: redis/redis-stack:7.2.0-v9
+  container_name: "{{endpoint}}"
+  ports:
+    - "{{port}}:{{port}}"
+    - "{{port_insight}}:{{port_insight}}"

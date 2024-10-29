@@ -1,0 +1,338 @@
+---
+- hosts: all
+  gather_facts: yes
+  become: yes
+  become_method: sudo
+  become_user: root
+  vars_files:
+    - ../vars.yml
+
+  tasks:
+
+  - name: Stop kubelet
+    systemd:
+      name: kubelet
+      state: stopped
+
+  - name: Remove CNI network configurations
+    file:
+      path: "{{ item }}"
+      state: absent
+    loop:
+      - /etc/cni/net.d/
+      - /var/lib/cni/networks/
+      - /opt/cni/bin/
+    # ignore_errors: yes
+  
+  - name: Delete the cni0 interface
+    command: ip link delete cni0
+    ignore_errors: yes
+
+  - name: Create CNI directory
+    file:
+      path: /opt/cni/bin/
+      state: directory
+  
+  - name: Download CNI plugins
+    get_url:
+      url: https://github.com/containernetworking/plugins/releases/download/v0.9.1/cni-plugins-linux-amd64-v0.9.1.tgz
+      dest: /tmp/cni-plugins-linux-amd64-v0.9.1.tgz
+      mode: '0755'
+    environment:
+      http_proxy: "{{ http_proxy }}"
+      https_proxy: "{{ http_proxy }}"
+
+  - name: Extract CNI plugins
+    unarchive:
+      src: /tmp/cni-plugins-linux-amd64-v0.9.1.tgz
+      dest: /opt/cni/bin/
+      remote_src: yes
+
+  - name: Remove downloaded CNI plugins archive
+    file:
+      path: /tmp/cni-plugins-linux-amd64-v0.9.1.tgz
+      state: absent
+
+  - name: Restart kubelet
+    systemd:
+      name: kubelet
+      state: restarted
+
+- hosts: k8_worker
+  gather_facts: yes
+  become: yes
+  become_method: sudo
+  become_user: root
+  vars_files:
+    - ../vars.yml
+
+  tasks:
+
+  - name: Check the current date/time
+    command: date '+%Y-%m-%d %H:%M:%S'
+    register: current_date
+    delegate_to: localhost
+
+  - name: Display the current date/time
+    debug:
+      var: current_date.stdout_lines
+
+  - name: Set the date/time
+    command: "date -s '{{ current_date.stdout }}'"
+
+  - name: Set hardware clock
+    command: hwclock --systohc
+
+- hosts: k8_master
+  gather_facts: yes
+  become: yes
+  become_method: sudo
+  become_user: root
+  vars_files:
+    - ../vars.yml
+
+  tasks:
+
+  - name: Configure kubeadm
+    lineinfile:
+      path: /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
+      line: 'Environment="KUBELET_EXTRA_ARGS=--fail-swap-on=false"'
+
+  - name: Create cgroup directory
+    file:
+      path: /sys/fs/cgroup/systemd
+      state: directory
+
+  - name: Mount cgroup
+    mount:
+      path: /sys/fs/cgroup/systemd
+      src: cgroup
+      fstype: cgroup
+      opts: none,name=systemd
+      state: mounted
+
+  - name: Remove /etc/containerd/config.toml
+    file:
+      path: /etc/containerd/config.toml
+      state: absent
+
+  - name: Reload system services
+    command: systemctl daemon-reload
+
+  - name: Restart kubelet
+    command: systemctl restart kubelet
+
+  - name: Stop and disable apparmor service
+    service:
+      name: apparmor
+      state: stopped
+      enabled: no
+
+  - name: Restart containerd service
+    service:
+      name: containerd
+      state: restarted
+
+  - name: Reset kubeadm
+    shell: kubeadm reset --force
+    args:
+      executable: /bin/bash
+    become: yes
+    become_user: root
+    ignore_errors: yes
+
+  - name: Initialize Kubernetes Master
+    shell: kubeadm init --control-plane-endpoint={{ ansible_default_ipv4.address }} --upload-certs --pod-network-cidr=10.244.0.0/16
+    args:
+      executable: /bin/bash
+    register: kubeadm_init_output
+    environment:
+      http_proxy: "{{ http_proxy }}"
+      https_proxy: "{{ http_proxy }}"
+
+  - name: Extract token and cert hash
+    set_fact:
+      ip_port: "{{ kubeadm_init_output.stdout.split('kubeadm join ')[1].split(' ')[0] }}"
+      token: "{{ kubeadm_init_output.stdout.split('--token ')[1].split(' ')[0] }}"
+      cert_hash: "{{ kubeadm_init_output.stdout.split('--discovery-token-ca-cert-hash ')[1].split(' ')[0] }}"
+
+  - name: Print token and cert hash
+    debug:
+      msg: "IP/Port: {{ ip_port }}, Token: {{ token }}, Cert Hash: {{ cert_hash }}"
+
+  - name: Ensure .kube directory exists
+    ansible.builtin.file:
+      path: /home/{{ ansible_user }}/.kube
+      state: directory
+      mode: '0755'
+
+  - name: Copy kube admin config to user directory
+    copy:
+      src: /etc/kubernetes/admin.conf
+      dest: "/home/{{ ansible_user }}/.kube/config"
+      remote_src: yes
+      owner: "{{ ansible_user }}"
+      group: "{{ ansible_user }}"
+      mode: 0600
+
+  - name: Get current kube-proxy config
+    shell: kubectl get configmap kube-proxy -n kube-system -o yaml > kube-proxy-config.yaml
+    register: kube_proxy_config
+    environment:
+      KUBECONFIG: "/home/{{ ansible_user }}/.kube/config"
+      http_proxy: "{{ http_proxy }}"
+      https_proxy: "{{ http_proxy }}"
+
+  - name: Update strictARP field
+    replace:
+      path: kube-proxy-config.yaml
+      regexp: 'strictARP: false'
+      replace: 'strictARP: true'
+    when: kube_proxy_config is changed
+
+  - name: Apply new kube-proxy config
+    shell: kubectl apply -f kube-proxy-config.yaml
+    when: kube_proxy_config is changed
+    environment:
+      KUBECONFIG: "/home/{{ ansible_user }}/.kube/config"
+      http_proxy: "{{ http_proxy }}"
+      https_proxy: "{{ http_proxy }}"
+
+  - name: Get cluster info
+    become: yes
+    become_user: "{{ ansible_user }}"
+    shell: kubectl cluster-info
+    register: cluster_info
+    environment:
+      KUBECONFIG: "/home/{{ ansible_user }}/.kube/config"
+      http_proxy: "{{ http_proxy }}"
+      https_proxy: "{{ http_proxy }}"
+
+  - name: Display the cluster-info
+    debug:
+      var: cluster_info.stdout_lines
+
+  - name: Use kubectl to install Flannel
+    get_url:
+      url: https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
+      dest: /tmp/kube-flannel.yml
+    environment:
+      http_proxy: "{{ http_proxy }}"
+      https_proxy: "{{ http_proxy }}"
+  
+  - name: Replace pod network cidr in Flannel manifest
+    replace:
+      path: /tmp/kube-flannel.yml
+      regexp: '10\.244\.0\.0/16'
+      replace: '10.244.0.0/16'
+
+  - name: Use kubectl to install Flannel
+    become: yes
+    become_user: "{{ ansible_user }}"
+    shell: kubectl apply -f /tmp/kube-flannel.yml
+    environment:
+      KUBECONFIG: "/home/{{ ansible_user }}/.kube/config"
+      http_proxy: "{{ http_proxy }}"
+      https_proxy: "{{ http_proxy }}"
+
+  - name: Taint master node for scheduling apps
+    become: yes
+    become_user: "{{ ansible_user }}"
+    shell: kubectl proxy & kubectl taint nodes --all node-role.kubernetes.io/control-plane-
+    environment:
+      KUBECONFIG: "/home/{{ ansible_user }}/.kube/config"
+      http_proxy: "{{ http_proxy }}"
+      https_proxy: "{{ http_proxy }}"
+
+- hosts: k8_worker
+  gather_facts: yes
+  become: yes
+  become_method: sudo
+  become_user: root
+  vars_files:
+    - ../vars.yml
+    
+  tasks:
+  - name: Configure kubeadm
+    lineinfile:
+      path: /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
+      line: 'Environment="KUBELET_EXTRA_ARGS=--fail-swap-on=false"'
+
+  - name: Create cgroup directory
+    file:
+      path: /sys/fs/cgroup/systemd
+      state: directory
+
+  - name: Mount cgroup
+    mount:
+      path: /sys/fs/cgroup/systemd
+      src: cgroup
+      fstype: cgroup
+      opts: none,name=systemd
+      state: mounted
+
+  - name: Remove /etc/containerd/config.toml
+    file:
+      path: /etc/containerd/config.toml
+      state: absent
+
+  - name: Reload system services
+    command: systemctl daemon-reload
+
+  - name: Restart kubelet
+    command: systemctl restart kubelet
+
+  - name: Stop and disable apparmor service
+    service:
+      name: apparmor
+      state: stopped
+      enabled: no
+
+  - name: Restart containerd service
+    service:
+      name: containerd
+      state: restarted
+
+  - name: Reset kubeadm
+    shell: yes | kubeadm reset
+    async: 30
+    poll: 0
+    register: reset_output
+
+  - name: Remove /etc/kubernetes/
+    file:
+      path: /etc/kubernetes/
+      state: absent
+
+  - name: Wait for kubeadm reset to propagate
+    pause:
+      seconds: 10
+    when: reset_output.changed
+
+  - name: Join node to Kubernetes Master
+    shell: kubeadm join {{ hostvars[groups['k8_master'][0]]['ip_port'] }} --token {{ hostvars[groups['k8_master'][0]]['token'] }} --discovery-token-ca-cert-hash {{ hostvars[groups['k8_master'][0]]['cert_hash'] }}
+    args:
+      executable: /bin/bash
+    environment:
+      http_proxy: "{{ http_proxy }}"
+      https_proxy: "{{ http_proxy }}"
+
+
+- hosts: k8_master
+  gather_facts: yes
+  vars_files:
+    - ../vars.yml
+
+  tasks:
+
+  - name: Get cluster node
+    command: kubectl get nodes
+    register: cluster_nodes_info
+    environment:
+      KUBECONFIG: "/home/{{ ansible_user }}/.kube/config"
+      http_proxy: "{{ http_proxy }}"
+      https_proxy: "{{ http_proxy }}"
+
+  - name: Display the cluster-info
+    debug:
+      var: cluster_nodes_info.stdout_lines

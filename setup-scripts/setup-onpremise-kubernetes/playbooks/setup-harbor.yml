@@ -1,0 +1,294 @@
+- hosts: k8_master
+  gather_facts: yes
+  become: yes
+  become_method: sudo
+  become_user: root
+  vars_files:
+    - ../vars.yml
+  vars:
+    harbor_http_port: 8080
+    harbor_https_port: 8443
+    harbor_version: "v2.10.0"
+    harbor_installer: "harbor-offline-installer-{{ harbor_version }}.tgz"
+    harbor_url: "https://github.com/goharbor/harbor/releases/download/{{ harbor_version }}/{{ harbor_installer }}"
+    harbor_install_dir: "/tmp"
+    cert_path: "/data/cert"
+    docker_certs_path: "/etc/docker/certs.d/{{ groups['k8_master'][0] }}"
+  
+  tasks:
+    - name: Overwrite http-proxy.conf with new proxy settings
+      copy:
+        dest: /etc/systemd/system/docker.service.d/http-proxy.conf
+        content: |
+          [Service]
+          Environment="HTTP_PROXY={{ http_proxy }}"
+          Environment="HTTPS_PROXY={{ http_proxy }}"
+          Environment="NO_PROXY={{ no_proxy }},{{ groups['k8_master'][0] }}"
+        owner: root
+        group: root
+        mode: '0644'
+        backup: yes
+
+    - name: Reload systemd daemon
+      systemd:
+        daemon_reload: yes
+
+    - name: Ensure cert_path exists
+      file:
+        path: "{{ cert_path }}"
+        state: directory
+
+    - name: Generate CA private key using command
+      command:
+        cmd: "openssl genrsa -out {{ cert_path }}/ca.key 4096"
+      args:
+        creates: "{{ cert_path }}/ca.key"
+
+    - name: Generate CA certificate using command
+      command:
+        cmd: "openssl req -x509 -new -nodes -key {{ cert_path }}/ca.key -sha256 -days 3650 -out {{ cert_path }}/ca.crt -subj '/CN={{ groups['k8_master'][0] }}'"
+      args:
+        creates: "{{ cert_path }}/ca.crt"
+
+    - name: Generate private key for host using command
+      command:
+        cmd: "openssl genrsa -out {{ cert_path }}/{{ groups['k8_master'][0] }}.key 4096"
+      args:
+        creates: "{{ cert_path }}/{{ groups['k8_master'][0] }}.key"
+
+    - name: Generate CSR for host using command
+      command:
+        cmd: "openssl req -new -key {{ cert_path }}/{{ groups['k8_master'][0] }}.key -out {{ cert_path }}/{{ groups['k8_master'][0] }}.csr -subj '/CN={{ groups['k8_master'][0] }}'"
+      args:
+        creates: "{{ cert_path }}/{{ groups['k8_master'][0] }}.csr"
+
+    - name: Create v3 extension file
+      copy:
+        dest: "{{ cert_path }}/v3.ext"
+        content: |
+          authorityKeyIdentifier=keyid,issuer
+          basicConstraints=CA:FALSE
+          keyUsage = digitalSignature, nonRepudiation, keyEncipherment, dataEncipherment
+          extendedKeyUsage = serverAuth
+          subjectAltName = @alt_names
+
+          [alt_names]
+          IP.1={{ groups['k8_master'][0] }}
+
+    - name: Generate certificate for host using CSR with command
+      command:
+        cmd: "openssl x509 -req -sha512 -days 3650 -in {{ cert_path }}/{{ groups['k8_master'][0] }}.csr -CA {{ cert_path }}/ca.crt -CAkey {{ cert_path }}/ca.key -CAcreateserial -out {{ cert_path }}/{{ groups['k8_master'][0] }}.crt -extfile {{ cert_path }}/v3.ext"
+      args:
+        creates: "{{ cert_path }}/{{ groups['k8_master'][0] }}.crt"
+
+    - name: Convert certificate from PEM to CERT format
+      command:
+        cmd: "openssl x509 -inform PEM -in {{ cert_path }}/{{ groups['k8_master'][0] }}.crt -out {{ cert_path }}/{{ groups['k8_master'][0] }}.cert"
+      args:
+        creates: "{{ cert_path }}/{{ groups['k8_master'][0] }}.cert"
+
+    - name: Change ownership of /data/cert directory to lab01 user
+      file:
+        path: "{{ cert_path }}"
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        recurse: yes
+
+    - name: Ensure docker_certs_path exists
+      file:
+        path: "{{ docker_certs_path }}"
+        state: directory
+
+    - name: Copy CA certificate to Docker certs directory
+      copy:
+        src: "{{ cert_path }}/ca.crt"
+        dest: "{{ docker_certs_path }}/ca.crt"
+        remote_src: yes
+
+    - name: Restart Docker service
+      systemd:
+        name: docker
+        state: restarted
+
+    - name: Download Harbor offline installer
+      get_url:
+        url: "{{ harbor_url }}"
+        dest: "/tmp/{{ harbor_installer }}"
+        timeout: 60
+        force: no
+      environment:
+        http_proxy: "{{ http_proxy }}"
+        https_proxy: "{{ http_proxy }}"
+    
+    - name: Extract Harbor offline installer
+      unarchive:
+        src: "/tmp/{{ harbor_installer }}"
+        dest: "{{ harbor_install_dir }}"
+        remote_src: yes
+        creates: "{{ harbor_install_dir }}/harbor"
+
+    - name: Copy harbor.yml template to harbor.yml
+      copy:
+        src: "{{ harbor_install_dir }}/harbor/harbor.yml.tmpl"
+        dest: "{{ harbor_install_dir }}/harbor/harbor.yml"
+        remote_src: yes
+
+    - name: Update hostname in harbor.yml
+      lineinfile:
+        path: "{{ harbor_install_dir }}/harbor/harbor.yml"
+        regexp: '^hostname: reg.mydomain.com'
+        line: "hostname: {{ groups['k8_master'][0] }}"
+
+    - name: Update http port in harbor.yml
+      lineinfile:
+        path: "{{ harbor_install_dir }}/harbor/harbor.yml"
+        regexp: '^  port: 80'
+        line: "  port: {{ harbor_http_port }}"
+
+    - name: Update https port in harbor.yml
+      lineinfile:
+        path: "{{ harbor_install_dir }}/harbor/harbor.yml"
+        regexp: '^  port: 443'
+        line: "  port: {{ harbor_https_port }}"
+
+    - name: Set correct certificate path in harbor.yml
+      lineinfile:
+        path: "{{ harbor_install_dir }}/harbor/harbor.yml"
+        regexp: '^\s{2}certificate: /your/certificate/path'
+        line: "  certificate: {{ cert_path }}/{{ groups['k8_master'][0] }}.cert"
+        state: present
+
+    - name: Set correct private key path in harbor.yml
+      lineinfile:
+        path: "{{ harbor_install_dir }}/harbor/harbor.yml"
+        regexp: '^\s{2}private_key: /your/private/key/path'
+        line: "  private_key: {{ cert_path }}/{{ groups['k8_master'][0] }}.key"
+        state: present
+
+    - name: Run prepare script
+      shell: ./prepare
+      args:
+        chdir: "{{ harbor_install_dir }}/harbor"
+
+    - name: Run install.sh script
+      shell: ./install.sh
+      args:
+        chdir: "{{ harbor_install_dir }}/harbor"
+
+    - name: Copy CA certificate to the trusted store
+      copy:
+        src: "{{ cert_path }}/ca.crt"
+        dest: "/usr/local/share/ca-certificates/ca.crt"
+        remote_src: yes
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Update the list of trusted certificates
+      become: yes
+      command: update-ca-certificates
+
+    - name: Restart Containerd service
+      systemd:
+        name: containerd
+        state: restarted
+
+    - name: Get container_registry_port
+      set_fact:
+        container_registry_port: "{{ ':' + harbor_https_port|string if harbor_https_port|string != '443' else '' }}"
+    
+    - name: Create project in Harbor
+      uri:
+        url: "https://{{ groups['k8_master'][0] }}{{ container_registry_port }}/api/v2.0/projects"
+        method: POST
+        url_username: "admin"
+        url_password: "Harbor12345"
+        force_basic_auth: yes
+        body: 
+          project_name: "k8s"
+          public: true
+        body_format: json
+        headers:
+          Content-Type: "application/json"
+          accept: "application/json"
+        status_code: 200,201
+        validate_certs: yes
+        client_cert: "{{ cert_path }}/{{ groups['k8_master'][0] }}.cert"
+        client_key: "{{ cert_path }}/{{ groups['k8_master'][0] }}.key"
+      ignore_errors: yes
+    
+    - name: Fetch ca.crt
+      fetch:
+        src: "{{ cert_path }}/ca.crt"
+        dest: "/tmp/{{ groups['k8_master'][0] }}-ca.crt"
+        flat: yes
+
+    - name: Log in to Harbor registry
+      become: yes
+      become_user: "{{ ansible_user }}"
+      shell: echo "Harbor12345" | docker login {{ groups['k8_master'][0] }}{{ container_registry_port }} -u admin --password-stdin
+
+- hosts: k8_worker
+  gather_facts: yes
+  become: yes
+  become_method: sudo
+  become_user: root
+  vars_files:
+    - ../vars.yml
+  vars:
+    cert_path: "/data/cert"
+    docker_certs_path: "/etc/docker/certs.d/{{ groups['k8_master'][0] }}"
+
+  tasks:
+
+    - name: Ensure docker_certs_path exists
+      file:
+        path: "{{ docker_certs_path }}"
+        state: directory
+
+    - name: Copy CA certificate to Docker certs directory on worker hosts
+      copy:
+        src: "/tmp/{{ groups['k8_master'][0] }}-ca.crt"
+        dest: "{{ docker_certs_path }}/ca.crt"
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Copy CA certificate to trusted store on worker hosts
+      copy:
+        src: "/tmp/{{ groups['k8_master'][0] }}-ca.crt"
+        dest: "/usr/local/share/ca-certificates/ca.crt"
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Update the list of trusted certificates
+      become: yes
+      command: update-ca-certificates
+
+    - name: Restart Containerd service
+      systemd:
+        name: containerd
+        state: restarted
+
+    - name: Overwrite http-proxy.conf with new proxy settings
+      copy:
+        dest: /etc/systemd/system/docker.service.d/http-proxy.conf
+        content: |
+          [Service]
+          Environment="HTTP_PROXY={{ http_proxy }}"
+          Environment="HTTPS_PROXY={{ http_proxy }}"
+          Environment="NO_PROXY={{ no_proxy }}"
+        owner: root
+        group: root
+        mode: '0644'
+        backup: yes
+
+    - name: Reload systemd daemon
+      systemd:
+        daemon_reload: yes
+
+    - name: Restart Docker service
+      systemd:
+        name: docker
+        state: restarted
