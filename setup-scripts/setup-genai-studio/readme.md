@@ -1,6 +1,6 @@
 ### Overview
 
-The genai-studio-playbook script will:
+The genai-studio playbook script will:
 
 1. Deploy a persistent volume for prometheus and a customized monitoring stack based on prometheus-community/kube-prometheus-stack (which contains both Prometheus and Grafana) in the monitoring namespace.
 
@@ -10,6 +10,7 @@ The genai-studio-playbook script will:
 ### Pre-requisite
 
 - Existing kubernetes cluster available. If not, refer to setup-onpremise-kubernetes/readme.md
+- Update var.yml accordingly
 
 ### Installation steps:
 
