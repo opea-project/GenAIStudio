@@ -1,0 +1,41 @@
+---
+- name: Build and push Docker images
+  hosts: localhost
+  vars_files:
+    - vars.yml
+  tasks:
+    - name: Build Docker image
+      command: docker build -t "{{ item.image_name }}:latest" .
+      args:
+        chdir: "{{ item.directory }}"
+      loop:
+        - { directory: '../../studio-frontend/', image_name: 'studio-frontend' }
+        - { directory: '../../studio-backend/', image_name: 'studio-backend' }
+        - { directory: '../../app-frontend/', image_name: 'app-frontend' }
+        - { directory: '../../app-backend/', image_name: 'app-backend' }
+      register: build_results
+
+    - name: Tag Docker image
+      command: docker tag "{{ item.image_name }}:latest" "{{ container_registry }}/{{ item.image_name }}:{{ container_tag }}"
+      loop:
+        - { image_name: 'studio-frontend' }
+        - { image_name: 'studio-backend' }
+        - { image_name: 'app-frontend' }
+        - { image_name: 'app-backend' }
+
+    - name: Push Docker image
+      command: docker push "{{ container_registry }}/{{ item.image_name }}:{{ container_tag }}"
+      loop:
+        - { image_name: 'studio-frontend' }
+        - { image_name: 'studio-backend' }
+        - { image_name: 'app-frontend' }
+        - { image_name: 'app-backend' }
+
+    - name: Display pushed Docker images
+      debug:
+        msg: "{{ container_registry }}/{{ item.image_name }}:{{ container_tag }}"
+      loop:
+        - { image_name: 'studio-frontend' }
+        - { image_name: 'studio-backend' }
+        - { image_name: 'app-frontend' }
+        - { image_name: 'app-backend' }

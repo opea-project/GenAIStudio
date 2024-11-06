@@ -33,6 +33,11 @@
       systemd:
         daemon_reload: yes
 
+    - name: Restart Docker service
+      systemd:
+        name: docker
+        state: restarted
+
     - name: Ensure cert_path exists
       file:
         path: "{{ cert_path }}"
@@ -188,6 +193,15 @@
       become: yes
       command: update-ca-certificates
 
+    - name: Reload systemd daemon
+      systemd:
+        daemon_reload: yes
+
+    - name: Restart Docker service
+      systemd:
+        name: docker
+        state: restarted
+    
     - name: Restart Containerd service
       systemd:
         name: containerd

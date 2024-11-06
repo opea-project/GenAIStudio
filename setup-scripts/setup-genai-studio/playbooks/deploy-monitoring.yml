@@ -1,4 +1,4 @@
-- name: Setup Prometheus on Kubernetes
+- name: Deploy prometheus and grafana
   hosts: localhost
   tasks:
     - name: Create directory for Prometheus data
@@ -24,23 +24,11 @@
     # Installing the CRDs needed
     - name: Helm install kube-prometheus-stack
       command: helm install kube-prometheus-stack prometheus-community/kube-prometheus-stack -n monitoring
+      ignore_errors: yes
     
     - name: Delete kube-prometheus-stack
       command: helm delete kube-prometheus-stack -n monitoring
+      ignore_errors: yes
     
     - name: Apply customized kube-prometheus-stack
-      command: kubectl apply -f monitoring-manifest.yaml
-
-    - name: Create directory for OPEA models
-      file:
-      path: /mnt/opea-models
-      state: directory
-      mode: '0777'
-      become: yes
-
-    - name: Create studio namespace
-      command: kubectl create namespace studio
-      ignore_errors: yes
-
-    - name: Apply customized studio manifest
-      command: kubectl apply -f studio-manifest.yaml
+      command: kubectl apply -f ../manifests/monitoring-manifest.yaml

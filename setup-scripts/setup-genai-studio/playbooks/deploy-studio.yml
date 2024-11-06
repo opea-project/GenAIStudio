@@ -1,0 +1,21 @@
+- name: Setup GenAI Studio
+  hosts: localhost
+  vars_files:
+    - ../vars.yml
+  tasks:
+    - name: Create directory for OPEA models
+      file:
+        path: /mnt/opea-models
+        state: directory
+        mode: '0777'
+      become: yes
+
+    - name: Create studio namespace
+      command: kubectl create namespace studio
+      ignore_errors: yes
+
+    - name: Apply customized studio manifest
+      shell: "envsubst '${REGISTRY} ${TAG}' < ../manifests/studio-manifest.yaml | kubectl apply -f -"
+      environment:
+        REGISTRY: "{{ container_registry }}"
+        TAG: "{{ container_tag }}"
