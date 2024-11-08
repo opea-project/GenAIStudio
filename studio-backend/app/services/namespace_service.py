@@ -97,7 +97,7 @@ def delete_namespace(core_v1_api, proj_id):
         print(f"Exception when deleting namespace: {e}")
         return {"status": "Error", "msg": f"Exception when deleting namespace: {e}"}
 
-async def check_ns_status(namespace_id, status_type, core_v1_api, apps_v1_api):
+def check_ns_status(namespace_id, status_type, core_v1_api, apps_v1_api):
 
     namespace_name = f"sandbox-{namespace_id}"
 

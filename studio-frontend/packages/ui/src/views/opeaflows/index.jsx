@@ -207,7 +207,7 @@ const Opeaflows = () => {
                                     alt='WorkflowEmptySVG'
                                 />
                             </Box>
-                            <div>No Opeaflows Yet</div>
+                            <div>No Workflows Yet</div>
                         </Stack>
                     )}
                 </Stack>

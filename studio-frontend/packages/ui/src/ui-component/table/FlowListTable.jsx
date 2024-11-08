@@ -29,8 +29,8 @@ import {
     OpenInNew,
     StopCircleOutlined,
     Analytics,
-    BuildCircleOutlined,
     PlayCircleOutline,
+    UnarchiveOutlined
 } from '@mui/icons-material' 
 
 import BuildDeploymentPackageDialog from '../dialog/BuildDeploymentPackageDialog'
@@ -369,23 +369,29 @@ export const FlowListTable = ({ data, images, isLoading, filterFunction, updateF
                                                     <Stack direction="row" alignItems="center" spacing={0.1}>
                                                         <Box flexBasis="40%" justifyContent="center" alignItems="center" display="flex">
                                                             {row.sandboxStatus === "Ready" || row.sandboxStatus === "Getting Ready"? (
-                                                                <Button
-                                                                    color='primary'
-                                                                    startIcon={<StopCircleOutlined />}
-                                                                    onClick={() => {
-                                                                        handleStopSandbox(row.id);
-                                                                    }}
-                                                                >
-                                                                </Button>
-                                                            ) : <Button
-                                                                color='primary'
-                                                                startIcon={<PlayCircleOutline />}
-                                                                onClick={() => {
-                                                                    handleRunSandbox(row.id);
-                                                                }}
-                                                                disabled={row.sandboxStatus==='Stopping'}
-                                                            >
-                                                            </Button>}
+                                                                <Tooltip title="Stop Sandbox">
+                                                                    <Button
+                                                                        color='primary'
+                                                                        startIcon={<StopCircleOutlined />}
+                                                                        onClick={() => {
+                                                                            handleStopSandbox(row.id);
+                                                                        }}
+                                                                    >
+                                                                    </Button>
+                                                                </Tooltip>
+                                                            ) : (
+                                                                <Tooltip title="Run Sandbox">
+                                                                        <Button
+                                                                        color='primary'
+                                                                        startIcon={<PlayCircleOutline />}
+                                                                        onClick={() => {
+                                                                            handleRunSandbox(row.id);
+                                                                        }}
+                                                                        disabled={row.sandboxStatus==='Stopping'}
+                                                                    >
+                                                                    </Button>
+                                                                </Tooltip>
+                                                            )}
                                                         </Box>
                                                         <Box flexBasis="30%">
                                                             <Tooltip title={row.sandboxStatus === 'Ready' ? "Click to open Application UI" : "Sandbox is not running"}>
@@ -431,7 +437,7 @@ export const FlowListTable = ({ data, images, isLoading, filterFunction, updateF
                                             <Tooltip title={"Generate Deployment Package"}>
                                                 <span>
                                                     <Button
-                                                        startIcon={<BuildCircleOutlined />}
+                                                        startIcon={<UnarchiveOutlined />}
                                                         onClick={() => {
                                                             // console.log('Button clicked for', row.name || row.id);
                                                             handleBuildDeploymentPackage(row.id);
