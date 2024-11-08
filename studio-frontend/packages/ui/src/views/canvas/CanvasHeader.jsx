@@ -60,7 +60,7 @@ const CanvasHeader = ({ chatflow, isAgentCanvas, isOpeaCanvas, handleSaveFlow, h
     const enqueueSnackbar = (...args) => dispatch(enqueueSnackbarAction(...args))
     const closeSnackbar = (...args) => dispatch(closeSnackbarAction(...args))
 
-    const title = isAgentCanvas ? 'Agents' : isOpeaCanvas ? 'OpeaFlow' : 'Chatflow'
+    const title = isAgentCanvas ? 'Agents' : isOpeaCanvas ? 'Workflow' : 'Chatflow'
 
     const updateChatflowApi = useApi(chatflowsApi.updateChatflow)
     const canvas = useSelector((state) => state.canvas)

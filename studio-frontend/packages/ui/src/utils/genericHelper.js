@@ -408,7 +408,7 @@ export const generateExportFlowData = (flowData) => {
             const nodeDataInputs = {}
             for (const input in node.data.inputs) {
                 const inputParam = node.data.inputParams.find((inp) => inp.name === input)
-                if (inputParam && inputParam.type === 'password') continue
+                if (inputParam && inputParam.type === 'password') nodeDataInputs[input] = ''
                 if (inputParam && inputParam.type === 'file') continue
                 if (inputParam && inputParam.type === 'folder') continue
                 nodeDataInputs[input] = node.data.inputs[input]

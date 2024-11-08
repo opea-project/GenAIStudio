@@ -9,7 +9,7 @@ The genai-studio playbook script will:
 
 ### Pre-requisite
 
-- Existing kubernetes cluster available. If not, refer to setup-onpremise-kubernetes/readme.md
+- Existing kubernetes cluster available. If not, please install by following the [Kubernetes official setup guide](https://kubernetes.io/docs/setup/). Alternatively, you can try out our [setup onpremise kubernetes script](../setup-onpremise-kubernetes/readme.md).
 - Update var.yml accordingly
 
 ### Installation steps:

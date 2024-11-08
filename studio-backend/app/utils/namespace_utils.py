@@ -6,12 +6,19 @@ def wait_for_pod(namespace, pod_name, core_v1_api, timeout=300):
     while time.time() - start_time < timeout:
         try:
             pod = core_v1_api.read_namespaced_pod(name=pod_name, namespace=namespace)
-            if pod.status.phase == "Running" and all(container.ready for container in pod.status.container_statuses):
-                print(f"Pod {pod_name} is ready")
-                return True
-            elif pod.status.phase in ["Failed", "Unknown", "Error", "CrashLoopBackOff", "ErrImagePull", "ImagePullBackOff"]:
-                print(f"Pod {pod_name} is in a failed state: {pod.status.phase}")
-                return False
+            if pod.status.phase == "Running":
+                if all(container.ready for container in pod.status.container_statuses):
+                    print(f"Pod {pod_name} is ready")
+                    return True
+                else:
+                    for container_status in pod.status.container_statuses:
+                        if container_status.state.waiting and container_status.state.waiting.reason in [
+                            "CrashLoopBackOff", "ErrImagePull", "ImagePullBackOff"]:
+                            print(f"Pod {pod_name} is in a failed state: {container_status.state.waiting.reason}")
+                            return False
+            else:
+                print(f"Pod {pod_name} is not Running. status: {pod.status.phase}")
+            
         except ApiException as e:
             print(f"Exception when reading pod {pod_name}: {e}")
             return False

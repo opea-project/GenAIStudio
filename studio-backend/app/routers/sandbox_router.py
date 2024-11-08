@@ -1,4 +1,5 @@
-from fastapi import APIRouter, HTTPException, WebSocket
+from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi.concurrency import run_in_threadpool
 from kubernetes import client
 import json
 
@@ -39,8 +40,13 @@ async def check_sandbox_status(websocket: WebSocket):
     await websocket.accept()
     core_v1_api = client.CoreV1Api()
     apps_v1_api = client.AppsV1Api()
-    data = await websocket.receive_json()
-    print("Received data: ", data)
-    response = await check_ns_status(data["id"], data["status"], core_v1_api, apps_v1_api)
-    await websocket.send_json(response)
-    await websocket.close()
+    try:
+        data = await websocket.receive_json()
+        print("Received data: ", data)
+        response = await run_in_threadpool(check_ns_status, data["id"], data["status"], core_v1_api, apps_v1_api)
+        await websocket.send_json(response)
+    except WebSocketDisconnect:
+        print("Client disconnected")
+    finally:
+        await websocket.close()
+        

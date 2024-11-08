@@ -1,14 +1,10 @@
-
-
-# Copyright (C) 2024 Intel Corporation
-# SPDX-License-Identifier: Apache-2.0
-
 FROM python:3.11-slim
 
 RUN apt-get update -y && apt-get install -y --no-install-recommends --fix-missing \
-    libgl1-mesa-glx \
-    libjemalloc-dev \
-    git
+    libgl1-mesa-glx=22.3.6-1+deb12u1 \
+    libjemalloc-dev=5.3.0-1 \
+    git=1:2.39.5-0+deb12u1 && \
+    rm -rf /var/lib/apt/lists/*
 
 RUN useradd -m -s /bin/bash user && \
     mkdir -p /home/user && \
@@ -18,7 +14,7 @@ WORKDIR /home/user/
 RUN git clone https://github.com/opea-project/GenAIComps.git
 
 WORKDIR /home/user/GenAIComps
-RUN pip install --no-cache-dir --upgrade pip && \
+RUN pip install --no-cache-dir --upgrade pip==24.3.1 setuptools==75.3.0 && \
     pip install --no-cache-dir -r /home/user/GenAIComps/requirements.txt
 
 COPY ./app_gateway.py /home/user/app_gateway.py
