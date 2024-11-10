@@ -1,0 +1,29 @@
+# Copyright (C) 2024 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+
+name: Build GenAIStudio Images
+on:
+  workflow_dispatch:
+    inputs:
+      nodes:
+        default: "gaudi"
+        description: "Hardware to run test"
+        required: true
+        type: string
+      tag:
+        default: "latest"
+        description: "Tag to apply to images"
+        required: true
+        type: string
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-on-manual-dispatch
+  cancel-in-progress: true
+
+jobs:
+  image-build:
+    uses: ./.github/workflows/_build-image-to-registry.yml
+    with:
+      node: ${{ inputs.nodes }}
+      tag: ${{ inputs.tag }}
+    secrets: inherit
