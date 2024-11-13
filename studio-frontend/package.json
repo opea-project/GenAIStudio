@@ -68,7 +68,15 @@
         "@qdrant/openapi-typescript-fetch": "1.2.6",
         "@google/generative-ai": "^0.15.0",
         "openai": "4.51.0",
-        "@langchain/core": "0.2.18"
+        "@langchain/core": "0.2.18",
+        "axios": "1.7.4",
+        "lunary": "0.7.13",
+        "nth-check": "2.0.1",
+        "pdfjs-dist": "4.2.67",
+        "prismjs": "1.27.0",
+        "semver": "7.5.2",
+        "ws": "8.17.1",
+        "@esbuild/linux-x64": "0.21.5"
     },
     "eslintIgnore": [
         "**/dist",

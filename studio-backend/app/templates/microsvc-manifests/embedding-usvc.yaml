@@ -69,7 +69,7 @@ spec:
             runAsUser: 1000
             seccompProfile:
               type: RuntimeDefault
-          image: "opea/embedding-tei:latest"
+          image: "${REGISTRY}/embedding-tei:${TAG}"
           imagePullPolicy: IfNotPresent
           ports:
             - name: embedding-usvc

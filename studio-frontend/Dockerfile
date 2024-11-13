@@ -19,7 +19,10 @@ WORKDIR /usr/src
 COPY . .
 
 # Install dependencies and build the app
-RUN pnpm install && pnpm build
+RUN pnpm config set store-dir .pnpm-store && \
+    pnpm install && \
+    rm -rf .pnpm-store && \
+    pnpm build
 
 EXPOSE 3000
 

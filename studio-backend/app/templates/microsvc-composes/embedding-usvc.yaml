@@ -1,5 +1,5 @@
 "{{endpoint}}":
-  image: opea/embedding-tei:latest
+  image: ${REGISTRY}/embedding-tei:${TAG}
   container_name: "{{endpoint}}"
   depends_on:
     - "{{tei_endpoint}}"

@@ -7,7 +7,7 @@ FROM node:20.11.1 AS vite-app
 COPY react /usr/app/react
 WORKDIR /usr/app/react
 
-RUN npm install && npm run build
+RUN npm install --legacy-peer-deps && npm run build
 
 FROM nginx:alpine
 

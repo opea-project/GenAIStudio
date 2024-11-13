@@ -24,7 +24,7 @@ def convert_proj_info_to_manifest(proj_info_json, output_file=None):
         output_manifest.extend((doc, service_name) for doc in service_manifest)
 
     manifest_string = ""
-    for index, (doc, service_name) in enumerate(output_manifest):
+    for _, (doc, service_name) in enumerate(output_manifest):
         # Skip if the document is None
         if doc is None:
             continue
