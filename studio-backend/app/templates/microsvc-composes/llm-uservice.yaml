@@ -1,5 +1,5 @@
 "{{endpoint}}":
-  image: opea/llm-tgi:latest
+  image: ${REGISTRY}/llm-tgi:${TAG}
   container_name: "{{endpoint}}"
   depends_on:
     - "{{tgi_endpoint}}"

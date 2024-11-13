@@ -14,15 +14,13 @@ module.exports = defineConfig({
   testDir: './',
   fullyParallel: false, // Disable fully parallel tests
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 0,
+  retries: 0,
   workers: 1, // Set the number of workers to 1
-  reporter: 'html',
+  reporter: [['html', { outputFolder: 'playwright-report' }]],
   use: {
     /* Update Base URL to use in actions like `await page.goto('/')`. */
     baseURL: 'http://<baseURL>',
 
-    /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
-    trace: 'on-first-retry',
     video: 'retain-on-failure',
     screenshot: 'only-on-failure'
   },

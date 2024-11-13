@@ -1,5 +1,5 @@
 "{{endpoint}}":
-  image: opea/dataprep-redis:latest
+  image: ${REGISTRY}/dataprep-redis:${TAG}
   container_name: "{{endpoint}}"
   depends_on:
     - "{{redis_vector_store_endpoint}}"

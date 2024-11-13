@@ -285,6 +285,10 @@ spec:
           value: ${REGISTRY}/app-frontend:${TAG}
         - name: APP_BACKEND_IMAGE
           value: ${REGISTRY}/app-backend:${TAG}
+        - name: REGISTRY
+          value: opea
+        - name: TAG
+          value: latest
         ports:
         - containerPort: 5000
         resources:

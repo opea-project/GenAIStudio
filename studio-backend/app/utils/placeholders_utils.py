@@ -41,6 +41,9 @@ def replace_manifest_placeholders(obj, variables):
             if key == "default.conf" or key == "project-info.json":
                 continue
             if isinstance(value, str):
+                # Replace ${REGISTRY} and ${TAG} with the value from environment variables
+                value = value.replace("${REGISTRY}", os.getenv("REGISTRY", "opea"))
+                value = value.replace("${TAG}", os.getenv("TAG", "latest"))
                 # Attempt to replace placeholders in the string
                 formatted_value = value.format(**variables)
                 # If the key is a port-related field and the formatted value is a digit, convert to int
@@ -118,7 +121,10 @@ def replace_compose_placeholders(obj, variables):
         return [replace_compose_placeholders(value, variables) for value in obj]
     elif isinstance(obj, str):
         # Replace {{}} placeholders in strings
-        return re.sub(r'\{\{(.*?)\}\}', lambda m: str(variables.get(m.group(1), m.group(0))), obj)
+        value = re.sub(r'\{\{(.*?)\}\}', lambda m: str(variables.get(m.group(1), m.group(0))), obj)
+        value = value.replace("${REGISTRY}", os.getenv("REGISTRY", "opea"))
+        value = value.replace("${TAG}", os.getenv("TAG", "latest"))
+        return value
     return obj
 
 def replace_dynamic_compose_placeholder(value_str, service_info):

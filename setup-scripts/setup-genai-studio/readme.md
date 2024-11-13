@@ -18,7 +18,7 @@ Run below commands:
 ```sh
 sudo apt install ansible
 ansible-galaxy collection install kubernetes.core
-ansible-playbook genai-studio-playbook.yml
+ansible-playbook genai-studio.yml
 ```
 
 ### Quick health test

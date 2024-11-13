@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { waitForStatusText } from '../utils';
 import path from 'path';
 
 const sampleWorkflow = path.resolve(__dirname, '../../../sample-workflows/sample_workflow_chatqna.json');
@@ -37,7 +38,6 @@ test('002_test_sandbox_chatqna', async ({ page, baseURL }) => {
     let apiResponse = { value: '' };
   
     const IDC_URL = baseURL || ""
-    const statusChangeTimeout = 300000; // 5 minutes
     await page.goto(IDC_URL);
     await page.getByRole('button', { name: 'Create New Workflow' }).click();
     await page.getByRole('button', { name: 'Settings' }).click();
@@ -47,21 +47,12 @@ test('002_test_sandbox_chatqna', async ({ page, baseURL }) => {
     await fileChooser.setFiles(sampleWorkflow);
     await page.getByRole('button', { name: 'Save Workflow' }).click();
     await page.getByPlaceholder('My New Chatflow').click();
-    await page.getByPlaceholder('My New Chatflow').fill('Wf1');
+    await page.getByPlaceholder('My New Chatflow').fill('test_002');
     await page.getByRole('button', { name: 'Save' }).click();
     await page.goto(IDC_URL);
     await expect(page.locator('td.MuiTableCell-root div.MuiStack-root p.MuiTypography-root').first()).toHaveText('Not Running', { timeout: 60000 });
     await page.getByLabel('a dense table').locator('button').first().click();
-    // Verify that the status has changed to "Ready"
-    for (let i = 0; i < 2; i++) {
-        await page.reload();
-        try {
-            await expect(page.locator('td.MuiTableCell-root div.MuiStack-root p.MuiTypography-root').first()).toHaveText('Ready', { timeout: statusChangeTimeout });
-            break;
-        } catch (error) {
-            console.log(`Attempt ${i + 1} failed: ${error}`);
-        }
-    }
+    await waitForStatusText(page, 'td.MuiTableCell-root div.MuiStack-root p.MuiTypography-root', 'Ready', 5, 60000);
     await page.waitForTimeout(8000);
 
     // Open APP-UI
@@ -160,14 +151,15 @@ test('002_test_sandbox_chatqna', async ({ page, baseURL }) => {
     }
 
     // Delete 1 document + Check data sources successfully deduct 1 or not
+    await page2.waitForTimeout(5000);
     await page2.getByRole('button').nth(3).click();
     await page2.getByRole('row', { name: 'tennis_tutorial.pdf' }).getByRole('button').click();
-    await expect(page2.getByRole('cell', { name: 'tennis_tutorial.pdf' })).toBeHidden();
+    await expect(page2.getByRole('cell', { name: 'tennis_tutorial.pdf' })).toBeHidden( { timeout: 60000 } );
 
     // Stop & Delete Sandbox
     await page.bringToFront();
     await page.locator('button:has([data-testid="StopCircleOutlinedIcon"])').first().click();
-    await expect(page.locator('td.MuiTableCell-root div.MuiStack-root p.MuiTypography-root').first()).toHaveText('Not Running', { timeout: statusChangeTimeout });
+    await waitForStatusText(page, 'td.MuiTableCell-root div.MuiStack-root p.MuiTypography-root', 'Not Running', 5, 60000);
     await page.locator('#demo-customized-button').first().click();
     await page.getByRole('menuitem', { name: 'Delete' }).click();
     await page.getByRole('button', { name: 'Delete' }).click();

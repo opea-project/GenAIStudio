@@ -1,6 +1,7 @@
 FROM python:3.11-slim
 
 RUN apt-get update -y && apt-get install -y --no-install-recommends --fix-missing \
+    libsqlite3-0=3.40.1-2+deb12u1 \
     libgl1-mesa-glx=22.3.6-1+deb12u1 \
     libjemalloc-dev=5.3.0-1 \
     git=1:2.39.5-0+deb12u1 && \

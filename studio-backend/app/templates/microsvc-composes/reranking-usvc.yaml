@@ -1,5 +1,5 @@
 "{{endpoint}}":
-  image: opea/reranking-tei:latest
+  image: ${REGISTRY}/reranking-tei:${TAG}
   container_name: "{{endpoint}}"
   depends_on:
     - "{{tei_endpoint}}"
