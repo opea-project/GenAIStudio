@@ -1,7 +1,7 @@
 # Copyright (C) 2024 Intel Corporation
 # SPDX-License-Identifier: Apache-2.0
 
-name: Code Scan
+name: PR - Code Scan (Bandit and Hadolint)
 
 on:
   pull_request:
@@ -24,7 +24,7 @@ env:
   CONTAINER_NAME: "code-scan"
 
 jobs:
-  code-scan:
+  pr-code-scan:
     runs-on: ubuntu-latest
     strategy:
       matrix:
