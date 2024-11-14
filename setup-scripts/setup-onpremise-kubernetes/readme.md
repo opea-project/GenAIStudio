@@ -9,11 +9,12 @@ The ansible scripts used here are using kubeadm method of installing an onpremis
 
 ### Installation steps:
 
+_Note: This script has only been validated on a fresh installed Ubuntu 22.04 machines._
+
 Run below commands:
 ```sh
-sudo apt install ansible
-ansible-galaxy collection install kubernetes.core
-ansible-playbook -i inventory.ini kubernetes-cluster.yml
+sudo apt install ansible -y
+ansible-playbook -i inventory.ini onpremise-kubernetes.yml
 ```
 
 To push your local docker images into the harbor container registry, run below:

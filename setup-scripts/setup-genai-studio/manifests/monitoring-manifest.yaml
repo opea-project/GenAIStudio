@@ -285,6 +285,7 @@ spec:
   resources:
     requests:
       storage: "5Gi"
+  storageClassName: local-path
 ---
 # Source: kube-prometheus-stack/charts/grafana/templates/clusterrole.yaml
 kind: ClusterRole
@@ -1664,6 +1665,7 @@ spec:
   storage:
     volumeClaimTemplate:
       spec:
+        storageClassName: local-path
         accessModes: ["ReadWriteOnce"]
         resources:
           requests:

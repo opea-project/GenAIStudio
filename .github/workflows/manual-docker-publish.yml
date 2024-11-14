@@ -10,6 +10,26 @@ on:
         description: "Hardware to run test"
         required: true
         type: string
+      studio_frontend:
+        description: "Publish studio-frontend image?"
+        required: true
+        type: boolean
+        default: true
+      studio_backend:
+        description: "Publish studio-backend image?"
+        required: true
+        type: boolean
+        default: true
+      app_frontend:
+        description: "Publish app-frontend image?"
+        required: true
+        type: boolean
+        default: true
+      app_backend:
+        description: "Publish app-backend image?"
+        required: true
+        type: boolean
+        default: true
       tag:
         default: "rc"
         description: "Tag to publish, like [1.0rc]"
@@ -17,7 +37,7 @@ on:
         type: string
       publish_tags:
         default: "latest,1.x"
-        description: "Tag list apply to publish images, like [latest,1.0]"
+        description: "Comma-separated tag list to apply to published images, like [latest,1.0]"
         required: false
         type: string
 
@@ -26,8 +46,8 @@ jobs:
   publish:
     strategy:
       matrix:
-        image: ["studio-frontend", "studio-backend", "app-frontend", "app-backend"]
-      max-parallel: 2
+        image: ${{ fromJson('[ "studio-frontend", "studio-backend", "app-frontend", "app-backend" ]') }}
+      fail-fast: false
     runs-on: "docker-build-${{ inputs.node }}"
     steps:
       - uses: docker/login-action@v3.2.0
@@ -35,7 +55,12 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USER }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+      - name: Check if image should be published
+        if: ${{ github.event.inputs[ matrix.image ] == 'true' }}
+        run: echo "Publishing ${{ matrix.image }} image"
+
       - name: Image Publish
+        if: ${{ github.event.inputs[ matrix.image ] == 'true' }}
         uses: opea-project/validation/actions/image-publish@main
         with:
           local_image_ref: ${OPEA_IMAGE_REPO}opea/${{ matrix.image }}:${{ inputs.tag }}

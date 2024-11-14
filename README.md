@@ -5,8 +5,8 @@
 
  ## Reduce Barrier of Adoption with Low-Code: End-to-End GenAI App Development for Productivity
  
-  **🌟Key Highlights**
- - 🛠️ Build & configure GenAI applications rapidly with low-code with no setup hassle
+  **🌟Key Capabilities**
+ - 🛠️ Build & configure GenAI applications rapidly with low-code and no setup hassle
  - 🔍 Instant evaluation with sandbox on Kubernetes Namespace
  - 📊 Dynamic performance measurement & benchmarking with Grafana dashboarding via Prometheus
  - ⚙️ One-click deployment package generation for instant application setup
@@ -76,7 +76,7 @@ _Note: This setup has been validated on a system running Ubuntu 22.04 on an Inte
 GenAIStudio requires an on-premise Kubernetes cluster. If your server does not have Kubernetes set up, please install by following the [Kubernetes official setup guide](https://kubernetes.io/docs/setup/). Alternatively, you can try out our [setup onpremise kubernetes script](./setup-scripts/setup-onpremise-kubernetes/readme.md).
 
 ### Installation
-The installation is done using genai-studio-playbook script. The script will
+The installation is done using genai-studio playbook script. The script will
 - Deploy a persistent volume for prometheus and a customized monitoring stack based on prometheus-community/kube-prometheus-stack (which contains both Prometheus and Grafana) in the monitoring namespace.
 - Deploy the studio-backend, studio-frontend and also a studio-nginx in the studio namespace.
 
@@ -89,12 +89,11 @@ The installation can be done with the following steps:
 	```
 2. **Run the commands below**
 	```sh
-	sudo apt install ansible
-	ansible-galaxy collection install kubernetes.core #install dependencies for k8s
+	sudo apt install ansible -y
 	cd setup-scripts/setup-genai-studio
-	ansible-playbook genai-studio-playbook.yml
+	ansible-playbook genai-studio.yml
 	```
-	_Note: you can review the deployment configurations in [genai-studio-playbook.yml](https://github.com/opea-project/GenAIStudio/blob/main/setup-scripts/setup-genai-studio/genai-studio-playbook.yml)_
+	_Note: you can review the deployment configurations in [genai-studio.yml](./setup-scripts/setup-genai-studio/genai-studio.yml)_
 	
 
 ## Getting Started with GenAIStudio 

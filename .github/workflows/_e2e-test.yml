@@ -52,15 +52,22 @@ jobs:
             kubectl wait --for=delete pod --all --namespace=monitoring --timeout=300s
           fi
           sleep 5
+          sudo apt install ansible -y
           ansible-playbook genai-studio.yml -e "container_registry=${OPEA_IMAGE_REPO}opea" -e "container_tag=${{ inputs.tag }}"
           sleep 5
           kubectl wait --for=condition=ready pod --all --namespace=studio --timeout=300s --field-selector=status.phase!=Succeeded
           kubectl wait --for=condition=ready pod --all --namespace=monitoring --timeout=300s --field-selector=status.phase!=Succeeded
         working-directory: ${{ github.workspace }}/setup-scripts/setup-genai-studio/
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '20.18.0'
+      
       - name: Install Dependencies
         run: |
           npm install
+          npx playwright install
           npx playwright install-deps
         working-directory: ${{ github.workspace }}/tests/playwright
 
@@ -80,4 +87,11 @@ jobs:
         with:
           name: playwright-test-results
           path: ${{ github.workspace }}/tests/playwright/playwright-report
+      
+      - name: Cleanup sandbox namespaces
+        if: always()
+        run: |
+          for ns in $(kubectl get namespaces -o jsonpath='{.items[*].metadata.name}' | tr ' ' '\n' | grep '^sandbox-'); do
+            kubectl delete namespace $ns || true
+          done
 

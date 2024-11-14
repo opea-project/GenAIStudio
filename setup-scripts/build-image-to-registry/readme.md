@@ -11,6 +11,6 @@ The ansible scripts used here are building, tag and push to the specified contai
 
 Run below commands:
 ```sh
-sudo apt install ansible
+sudo apt install ansible -y
 ansible-playbook build-image-to-registry.yml
 ```

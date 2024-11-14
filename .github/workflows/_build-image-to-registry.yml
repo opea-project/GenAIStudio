@@ -38,5 +38,6 @@ jobs:
 
       - name: Build Image and Push Image
         run: |
+          sudo apt install ansible -y
           ansible-playbook build-image-to-registry.yml -e "container_registry=${OPEA_IMAGE_REPO}opea" -e "container_tag=${{ inputs.tag }}"
         working-directory: ${{ github.workspace }}/setup-scripts/build-image-to-registry/
