@@ -2,9 +2,10 @@
 
 The genai-studio playbook script will:
 
-1. Deploy a persistent volume for prometheus and a customized monitoring stack based on prometheus-community/kube-prometheus-stack (which contains both Prometheus and Grafana) in the monitoring namespace.
+1. Deploy a customized monitoring stack based on prometheus-community/kube-prometheus-stack (which contains both Prometheus and Grafana) in the monitoring namespace with a local-path-provisioner in local-path-storage namespace, for dynamic Persistent Volumes (PVs) provisioning.
 
 2. Deploy the studio-backend, studio-frontend and also a studio-nginx in the studio namespace.
+
 
 
 ### Pre-requisite
@@ -16,8 +17,7 @@ The genai-studio playbook script will:
 
 Run below commands:
 ```sh
-sudo apt install ansible
-ansible-galaxy collection install kubernetes.core
+sudo apt install ansible -y
 ansible-playbook genai-studio.yml
 ```
 

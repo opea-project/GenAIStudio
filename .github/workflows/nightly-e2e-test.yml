@@ -1,0 +1,24 @@
+# Copyright (C) 2024 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+
+name: Nightly - E2E test
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "5 18 * * *" # UTC time
+
+jobs:
+  nightly-build-images:
+    uses: ./.github/workflows/_build-image-to-registry.yml
+    with:
+      node: xeon
+      tag: latest
+    secrets: inherit
+  nightly-run-e2e-test:
+    uses: ./.github/workflows/_e2e-test.yml
+    needs: nightly-build-images
+    with:
+      node: xeon
+      tag: latest
+    secrets: inherit

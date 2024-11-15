@@ -1,0 +1,31 @@
+# Copyright (C) 2024 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+
+name: PR - E2E test
+
+on:
+  pull_request:
+    branches: ["main", "*rc"]
+    types: [opened, reopened, ready_for_review, synchronize] # added `ready_for_review` since draft is skipped
+    paths-ignore:
+      - "**.md"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pr-build-images:
+    uses: ./.github/workflows/_build-image-to-registry.yml
+    with:
+      node: xeon
+      tag: ${{ github.event_name == 'workflow_dispatch' && 'latest' || github.event.pull_request.head.sha }}
+    secrets: inherit
+  pr-run-e2e-test:
+    uses: ./.github/workflows/_e2e-test.yml
+    needs: pr-build-images
+    with:
+      node: xeon
+      tag: ${{ github.event_name == 'workflow_dispatch' && 'latest' || github.event.pull_request.head.sha }}
+    secrets: inherit

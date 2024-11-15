@@ -1,0 +1,42 @@
+# Copyright (C) 2024 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+
+name: Manual - Docker Build and Test
+on:
+  workflow_dispatch:
+    inputs:
+      nodes:
+        default: "xeon"
+        description: "Hardware to run test"
+        required: true
+        type: string
+      tag:
+        default: "latest"
+        description: "Tag to apply to images"
+        required: true
+        type: string
+      e2e_test:
+        default: true
+        description: "Run E2E test after build"
+        required: false
+        type: boolean
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-on-manual-dispatch
+  cancel-in-progress: true
+
+jobs:
+  manual-build-images:
+    uses: ./.github/workflows/_build-image-to-registry.yml
+    with:
+      node: ${{ inputs.nodes }}
+      tag: ${{ inputs.tag }}
+    secrets: inherit
+  manual-run-e2e-test:
+    if: ${{ inputs.e2e_test }}
+    uses: ./.github/workflows/_e2e-test.yml
+    needs: manual-build-images
+    with:
+      node: ${{ inputs.nodes }}
+      tag: ${{ inputs.tag }}
+    secrets: inherit

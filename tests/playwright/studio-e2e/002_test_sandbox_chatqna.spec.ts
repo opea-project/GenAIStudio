@@ -3,8 +3,8 @@ import { waitForStatusText } from '../utils';
 import path from 'path';
 
 const sampleWorkflow = path.resolve(__dirname, '../../../sample-workflows/sample_workflow_chatqna.json');
-const uploadPDF1 = path.resolve(__dirname, '../../test-files/Q3 24_EarningsRelease.pdf');
-const uploadPDF2 = path.resolve(__dirname, '../../test-files/tennis_tutorial.pdf');
+const uploadPDF1 = path.resolve(__dirname, '../../test-files/tennis_tutorial.pdf');
+const uploadPDF2 = path.resolve(__dirname, '../../test-files/Q3 24_EarningsRelease.pdf');
 
 const question = "what is intel third-quarter 2024 revenue?";
 const keyword = "$13.3 billion";
@@ -53,7 +53,7 @@ test('002_test_sandbox_chatqna', async ({ page, baseURL }) => {
     await expect(page.locator('td.MuiTableCell-root div.MuiStack-root p.MuiTypography-root').first()).toHaveText('Not Running', { timeout: 60000 });
     await page.getByLabel('a dense table').locator('button').first().click();
     await waitForStatusText(page, 'td.MuiTableCell-root div.MuiStack-root p.MuiTypography-root', 'Ready', 5, 60000);
-    await page.waitForTimeout(8000);
+    await page.waitForTimeout(10000);
 
     // Open APP-UI
     const page2Promise = page.waitForEvent('popup');
@@ -73,51 +73,54 @@ test('002_test_sandbox_chatqna', async ({ page, baseURL }) => {
     }
     apiResponse.value = "";
 
+    await page2.getByRole('button').nth(2).click();
+    await page2.getByRole('button').nth(2).click(); // Double click
+
     // Document Upload 1
-    await page2.getByRole('button').nth(2).click();
-    await page2.getByRole('button').nth(2).click();
     fileChooserPromise = page2.waitForEvent('filechooser');
     await page2.getByRole('button', { name: 'Choose File' }).click()
     fileChooser = await fileChooserPromise;
-    await fileChooser.setFiles(uploadPDF1); // TBD: Update the path to the file
+    await fileChooser.setFiles(uploadPDF1);
     await page2.getByRole('button', { name: 'Upload', exact: true }).click();
     await page2.waitForSelector('tr:nth-of-type(1) button[data-variant="light"] .tabler-icon-check', { state: 'visible', timeout: 300000 });
     // Refresh page and verify upload with retry 
-    let isVisible = false;
+    let isVisible1 = false;
+    for (let i = 0; i < 2; i++) {
+        await page2.reload();
+        await page2.waitForTimeout(1500);
+        await page2.getByRole('button').nth(2).click();
+        try {
+            await expect(page2.getByRole('cell', { name: 'tennis_tutorial.pdf' })).toBeVisible({ timeout: 60000 });
+            isVisible1 = true;
+            break;
+        } catch (error) {
+            console.log(`Attempt ${i + 1} failed: ${error}`);
+        }
+    }
+    await page2.waitForTimeout(1000);
+    
+    // Document Upload 2
+    fileChooserPromise = page2.waitForEvent('filechooser');
+    await page2.getByRole('button', { name: 'Choose File' }).click()
+    fileChooser = await fileChooserPromise;
+    await fileChooser.setFiles(uploadPDF2);
+    await page2.getByRole('button', { name: 'Upload', exact: true }).click();
+    await page2.waitForSelector('tr:nth-of-type(2) button[data-variant="light"] .tabler-icon-check', { state: 'visible', timeout: 300000 });
+    // Refresh page and verify upload with retry 
+    let isVisible2 = false;
     for (let i = 0; i < 2; i++) {
         await page2.reload();
         await page2.waitForTimeout(1500);
         await page2.getByRole('button').nth(2).click();
         try {
             await expect(page2.getByRole('cell', { name: 'Q3 24_EarningsRelease' })).toBeVisible({ timeout: 60000 });
-            isVisible = true;
+            isVisible2 = true;
             break;
         } catch (error) {
             console.log(`Attempt ${i + 1} failed: ${error}`);
         }
     }
-
-    // Document Upload 2
-    fileChooserPromise = page2.waitForEvent('filechooser');
-    await page2.getByRole('button', { name: 'Choose File' }).click()
-    fileChooser = await fileChooserPromise;
-    await fileChooser.setFiles(uploadPDF2); // TBD Update the file path
-    await page2.getByRole('button', { name: 'Upload', exact: true }).click();
-    await page2.waitForSelector('tr:nth-of-type(2) button[data-variant="light"] .tabler-icon-check', { state: 'visible', timeout: 300000 });
-    // Refresh page and verify upload with retry 
-    isVisible = false;
-    for (let i = 0; i < 2; i++) {
-        await page2.reload();
-        await page2.waitForTimeout(1500);
-        await page2.getByRole('button').nth(2).click();
-        try {
-        await expect(page2.getByRole('cell', { name: 'tennis_tutorial.pdf' })).toBeVisible({ timeout: 60000 });
-        isVisible = true;
-        break;
-        } catch (error) {
-        console.log(`Attempt ${i + 1} failed: ${error}`);
-        }
-    }
+    await page2.waitForTimeout(1000);
 
     // Link Upload
     await page2.getByRole('button', { name: 'Use Link' }).click();
@@ -126,20 +129,21 @@ test('002_test_sandbox_chatqna', async ({ page, baseURL }) => {
     await page2.getByRole('button', { name: 'Upload', exact: true }).click();
     await page2.waitForSelector('tr:nth-of-type(3) button[data-variant="light"] .tabler-icon-check', { state: 'visible', timeout: 300000 });
     // Refresh page and verify upload with retry 
-    isVisible = false;
+    let isVisible3 = false;
     for (let i = 0; i < 2; i++) {
         await page2.reload();
         await page2.waitForTimeout(1500);
         await page2.getByRole('button').nth(2).click();
         try {
-        await expect(page2.getByRole('cell', { name: 'https://pnatraj.medium.com/' })).toBeVisible({ timeout: 60000 });
-        isVisible = true;
+            await expect(page2.getByRole('cell', { name: 'https://pnatraj.medium.com/' })).toBeVisible({ timeout: 60000 });
+            isVisible3 = true;
         break;
         } catch (error) {
-        console.log(`Attempt ${i + 1} failed: ${error}`);
+            console.log(`Attempt ${i + 1} failed: ${error}`);
         }
     }
     await page2.getByRole('banner').getByRole('button').click();
+    await page2.waitForTimeout(10000);
 
     // Chat Attempt 2
     await page2.getByPlaceholder('Ask a question').fill(question);

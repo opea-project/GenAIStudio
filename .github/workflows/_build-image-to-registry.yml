@@ -1,0 +1,43 @@
+# Copyright (C) 2024 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+
+name: Call - Build Images to Registry
+permissions: read-all
+on:
+  workflow_call:
+    inputs:
+      node:
+        default: "xeon"
+        required: true
+        type: string
+      tag:
+        default: "latest"
+        required: false
+        type: string
+
+jobs:
+  call-build-image-to-registry:
+    runs-on: "docker-build-${{ inputs.node }}"
+    steps:
+      - name: Clean Up Working Directory
+        run: sudo rm -rf ${{github.workspace}}/*
+
+      - name: Get Checkout Ref
+        run: |
+          if [ "${{ github.event_name }}" == "pull_request" ] || [ "${{ github.event_name }}" == "pull_request_target" ]; then
+          echo "CHECKOUT_REF=refs/pull/${{ github.event.number }}/merge" >> $GITHUB_ENV
+          else
+            echo "CHECKOUT_REF=${{ github.ref }}" >> $GITHUB_ENV
+          fi
+
+      - name: Checkout out Repo
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.CHECKOUT_REF }}
+          fetch-depth: 0
+
+      - name: Build Image and Push Image
+        run: |
+          sudo apt install ansible -y
+          ansible-playbook build-image-to-registry.yml -e "container_registry=${OPEA_IMAGE_REPO}opea" -e "container_tag=${{ inputs.tag }}"
+        working-directory: ${{ github.workspace }}/setup-scripts/build-image-to-registry/
