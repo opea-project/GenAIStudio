@@ -75,6 +75,8 @@ _Note: This setup has been validated on a system running Ubuntu 22.04 on an Inte
 ### Prerequisites
 GenAIStudio requires an on-premise Kubernetes cluster. If your server does not have Kubernetes set up, please install by following the [Kubernetes official setup guide](https://kubernetes.io/docs/setup/). Alternatively, you can try out our [setup onpremise kubernetes script](./setup-scripts/setup-onpremise-kubernetes/readme.md).
 
+_Note: GenAIStudio have only been validated in a single node bare-metal kubernetes setup using [setup onpremise kubernetes script](./setup-scripts/setup-onpremise-kubernetes/readme.md)._
+
 ### Installation
 The installation is done using genai-studio playbook script. The script will
 - Deploy a persistent volume for prometheus and a customized monitoring stack based on prometheus-community/kube-prometheus-stack (which contains both Prometheus and Grafana) in the monitoring namespace.
@@ -209,16 +211,3 @@ Get started quickly with the Studio UI by downloading and importing this [sample
 - [Code of Conduct](https://github.com/opea-project/docs/tree/main/community/CODE_OF_CONDUCT.md)
 - [Security Policy](https://github.com/opea-project/docs/tree/main/community/SECURITY.md)
 - [Legal Information](LEGAL_INFORMATION.md)
-
-
-
-
-
-
-
-
-
-
-
-
-
