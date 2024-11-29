@@ -35,7 +35,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Check Dangerous Command Injection
-        uses: opea-project/validation/actions/check-cmd@add_cmd_check
+        uses: opea-project/validation/actions/check-cmd@add_js_check
         with:
           work_dir: ${{ github.workspace }}
 
