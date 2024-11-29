@@ -38,7 +38,7 @@ jobs:
       
       - name: Check Dangerous Command Injection
         if: github.event_name == 'pull_request' || github.event_name == 'pull_request_target'
-        uses: opea-project/validation/actions/check-cmd@add_js_check
+        uses: opea-project/validation/actions/check-cmd@main
         with:
           work_dir: ${{ github.workspace }}
 
