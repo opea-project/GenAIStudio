@@ -35,7 +35,13 @@ jobs:
         with:
           ref: ${{ env.CHECKOUT_REF }}
           fetch-depth: 0
-
+      
+      - name: Check Dangerous Command Injection
+        if: github.event_name == 'pull_request' || github.event_name == 'pull_request_target'
+        uses: opea-project/validation/actions/check-cmd@main
+        with:
+          work_dir: ${{ github.workspace }}
+          
       - name: Build Image and Push Image
         run: |
           sudo apt install ansible -y
