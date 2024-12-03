@@ -7,7 +7,7 @@ router.post('/', chatflowsController.saveChatflow)
 router.post('/importchatflows', chatflowsController.importChatflows)
 
 // READ
-router.get('/', chatflowsController.getAllChatflows)
+router.get('/', chatflowsController.getAllChatflowsbyUserId)
 router.get(['/', '/:id'], chatflowsController.getChatflowById)
 router.get(['/apikey/', '/apikey/:apikey'], chatflowsController.getChatflowByApiKey)
 

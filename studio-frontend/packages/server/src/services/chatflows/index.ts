@@ -134,6 +134,32 @@ const getAllChatflows = async (type?: ChatflowType): Promise<ChatFlow[]> => {
     }
 }
 
+const getAllChatflowsbyUserId = async (userid: string, type?: ChatflowType): Promise<ChatFlow[]> => {
+    try {
+        const appServer = getRunningExpressApp()
+        
+        // Use find with a where condition to filter by userid
+        const dbResponse = await appServer.AppDataSource.getRepository(ChatFlow).find({
+            where: {
+                userid: userid,  // Filter by the specific userid
+            },
+        })
+        
+        // Filter further by type if needed
+        if (type) {
+            return dbResponse.filter((chatflow) => chatflow.type === type)
+        }
+        
+        return dbResponse
+    } catch (error) {
+        throw new InternalFlowiseError(
+            StatusCodes.INTERNAL_SERVER_ERROR,
+            `Error: chatflowsService.getAllChatflows - ${getErrorMessage(error)}`
+        )
+    }
+}
+
+
 const getChatflowByApiKey = async (apiKeyId: string, keyonly?: unknown): Promise<any> => {
     try {
         // Here we only get chatflows that are bounded by the apikeyid and chatflows that are not bounded by any apikey
@@ -455,6 +481,7 @@ export default {
     checkIfChatflowIsValidForUploads,
     deleteChatflow,
     getAllChatflows,
+    getAllChatflowsbyUserId,
     getChatflowByApiKey,
     getChatflowById,
     saveChatflow,

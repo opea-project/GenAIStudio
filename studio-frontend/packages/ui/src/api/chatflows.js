@@ -7,6 +7,8 @@ const getAllAgentflows = () => client.get('/chatflows?type=MULTIAGENT')
 
 const getAllOpeaflows = () => client.get('/chatflows?type=OPEA')
 
+const getUserOpeaflows = (userid) => client.get(`/chatflows?userid=${userid}&type=OPEA`)
+
 const getSpecificChatflow = (id) => client.get(`/chatflows/${id}`)
 
 const getSpecificChatflowFromPublicEndpoint = (id) => client.get(`/public-chatflows/${id}`)
@@ -33,6 +35,7 @@ export default {
     getAllChatflows,
     getAllAgentflows,
     getAllOpeaflows,
+    getUserOpeaflows,
     getSpecificChatflow,
     getSpecificChatflowFromPublicEndpoint,
     createNewChatflow,

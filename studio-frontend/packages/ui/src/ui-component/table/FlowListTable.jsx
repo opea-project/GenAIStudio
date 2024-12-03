@@ -61,11 +61,12 @@ const getLocalStorageKeyName = (name, isAgentCanvas) => {
     return (isAgentCanvas ? 'agentcanvas' : 'chatflowcanvas') + '_' + name
 }
 
-export const FlowListTable = ({ data, images, isLoading, filterFunction, updateFlowsApi, setError, isAgentCanvas, isOpeaCanvas, stopSandboxApi, updateFlowToServerApi }) => {
+export const FlowListTable = ({ data, images, isLoading, filterFunction, updateFlowsApi, setError, isAgentCanvas, isOpeaCanvas, stopSandboxApi, updateFlowToServerApi, userRole }) => {
     // overwrite setError
     setError = (error) => {
         console.error(error)
     }
+    // console.log ("table user", userRole)
     const theme = useTheme()
     const customization = useSelector((state) => state.customization)
 
@@ -89,7 +90,7 @@ export const FlowListTable = ({ data, images, isLoading, filterFunction, updateF
 
     const handleSortData = () => {
         if (!data) return [];
-        console.log('handleSortData', data);
+        // console.log('handleSortData', data);
         const sorted = [...data].map((row) => ({
             ...row,
             sandboxStatus: row.sandboxStatus || 'Not Running' // Ensure initial status
@@ -288,6 +289,16 @@ export const FlowListTable = ({ data, images, isLoading, filterFunction, updateF
                                     Last Modified Date
                                 </TableSortLabel>
                             </StyledTableCell>
+                            {userRole === 'admin' && 
+                                <StyledTableCell style={{ width: '25%' }} key='3'>
+                                    <Stack
+                                        direction={{ xs: 'column', sm: 'row' }}
+                                        spacing={1}
+                                        justifyContent='center'
+                                    >
+                                        User
+                                    </Stack>
+                                </StyledTableCell>}
                         </TableRow>
                     </TableHead>
                     <TableBody>
@@ -309,8 +320,14 @@ export const FlowListTable = ({ data, images, isLoading, filterFunction, updateF
                                     <StyledTableCell>
                                         <Skeleton variant='text' />
                                     </StyledTableCell>
+                                    <StyledTableCell>
+                                        <Skeleton variant='text' />
+                                    </StyledTableCell>
                                 </StyledTableRow>
                                 <StyledTableRow>
+                                    <StyledTableCell>
+                                        <Skeleton variant='text' />
+                                    </StyledTableCell>
                                     <StyledTableCell>
                                         <Skeleton variant='text' />
                                     </StyledTableCell>
@@ -465,6 +482,8 @@ export const FlowListTable = ({ data, images, isLoading, filterFunction, updateF
                                             </Stack>
                                         </StyledTableCell>
                                         <StyledTableCell key='4'>{moment(row.updatedDate).format('MMMM Do, YYYY')}</StyledTableCell>
+                                        {userRole=='admin' && <StyledTableCell key='5'>{row.userid}</StyledTableCell>}
+
                                     </StyledTableRow>
                                 ))}
                             </>
