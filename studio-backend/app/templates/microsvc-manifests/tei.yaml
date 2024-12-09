@@ -11,9 +11,9 @@ data:
   MODEL_ID: "{modelName}"
   PORT: "{port}"
   HF_TOKEN: "{huggingFaceToken}"
-  http_proxy: ""
-  https_proxy: ""
-  no_proxy: ""
+  http_proxy: "${HTTP_PROXY}"
+  https_proxy: "${HTTP_PROXY}"
+  no_proxy: "${NO_PROXY}"
   NUMBA_CACHE_DIR: "/tmp"
   TRANSFORMERS_CACHE: "/tmp/transformers_cache"
   HF_HOME: "/tmp/.cache/huggingface"
@@ -108,9 +108,12 @@ spec:
             {}
       volumes:
         - name: model-volume
-          hostPath:
-            path: /mnt/opea-models
-            type: Directory
+          persistentVolumeClaim:
+            claimName: model-pvc
+        # - name: model-volume
+        #   hostPath:
+        #     path: /mnt/opea-models
+        #     type: Directory
         - name: shm
           emptyDir:
             medium: Memory
@@ -119,11 +122,3 @@ spec:
           emptyDir: {}
       # extra time to finish processing buffered requests before pod is forcibly terminated
       terminationGracePeriodSeconds: 60
----
-# Source: tei/templates/horizontalPodAutoscaler.yaml
-# Copyright (C) 2024 Intel Corporation
-# SPDX-License-Identifier: Apache-2.0
----
-# Source: tei/templates/servicemonitor.yaml
-# Copyright (C) 2024 Intel Corporation
-# SPDX-License-Identifier: Apache-2.0

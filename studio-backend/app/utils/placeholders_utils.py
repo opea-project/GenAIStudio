@@ -44,6 +44,8 @@ def replace_manifest_placeholders(obj, variables):
                 # Replace ${REGISTRY} and ${TAG} with the value from environment variables
                 value = value.replace("${REGISTRY}", os.getenv("REGISTRY", "opea"))
                 value = value.replace("${TAG}", os.getenv("TAG", "latest"))
+                value = value.replace("${HTTP_PROXY}", os.getenv("SBX_HTTP_PROXY", ""))
+                value = value.replace("${NO_PROXY}", os.getenv("SBX_NO_PROXY", ""))
                 # Attempt to replace placeholders in the string
                 formatted_value = value.format(**variables)
                 # If the key is a port-related field and the formatted value is a digit, convert to int

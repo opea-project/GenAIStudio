@@ -215,3 +215,15 @@ spec:
           defaultMode: 420
           name: app-nginx-config
         name: nginx-config-volume
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: model-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 50Gi
+  storageClassName: local-path
