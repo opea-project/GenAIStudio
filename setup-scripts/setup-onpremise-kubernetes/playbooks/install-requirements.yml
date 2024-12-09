@@ -7,17 +7,6 @@
     - ../vars.yml
 
   tasks:
-
-  - name: Configure APT proxy settings
-    block:
-      - file:
-          path: /etc/apt/apt.conf.d/
-          state: directory
-      - copy:
-          dest: /etc/apt/apt.conf.d/proxy.conf
-          content: |
-            Acquire::http::Proxy "{{ http_proxy }}";
-            Acquire::https::Proxy "{{ http_proxy }}";
     
   - name: Download Docker's official GPG key
     get_url:
@@ -26,6 +15,7 @@
     environment:
       http_proxy: "{{ http_proxy }}"
       https_proxy: "{{ http_proxy }}"
+      no_proxy: "{{ no_proxy }}"
 
   - name: Add Docker's official GPG key
     command: gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg /tmp/docker.gpg
@@ -34,6 +24,7 @@
     environment:
       http_proxy: "{{ http_proxy }}"
       https_proxy: "{{ http_proxy }}"
+      no_proxy: "{{ no_proxy }}"
 
   - name: Set up the Docker stable repository
     lineinfile:
@@ -48,6 +39,7 @@
     environment:
       http_proxy: "{{ http_proxy }}"
       https_proxy: "{{ http_proxy }}"
+      no_proxy: "{{ no_proxy }}"
 
   - name: Add Kubernetes GPG apt Key
     shell: gpg --no-default-keyring --keyring gnupg-ring:/etc/apt/trusted.gpg.d/kubernetes.gpg --import /tmp/kubernetes.gpg
@@ -56,6 +48,7 @@
     environment:
       http_proxy: "{{ http_proxy }}"
       https_proxy: "{{ http_proxy }}"
+      no_proxy: "{{ no_proxy }}"
 
   - name: Set permissions for kubernetes.gpg
     ansible.builtin.file:
@@ -69,6 +62,7 @@
     environment:
       http_proxy: "{{ http_proxy }}"
       https_proxy: "{{ http_proxy }}"
+      no_proxy: "{{ no_proxy }}"
 
   - name: Update apt package list
     command: apt-get update
@@ -77,6 +71,7 @@
     environment:
       http_proxy: "{{ http_proxy }}"
       https_proxy: "{{ http_proxy }}"
+      no_proxy: "{{ no_proxy }}"
     register: apt_update
     failed_when: "'W:' in apt_update.stdout or 'W:' in apt_update.stderr"
 
@@ -92,6 +87,7 @@
     environment:
       http_proxy: "{{ http_proxy }}"
       https_proxy: "{{ http_proxy }}"
+      no_proxy: "{{ no_proxy }}"
 
   - name: Install Docker and related packages
     apt:
@@ -105,6 +101,7 @@
     environment:
       http_proxy: "{{ http_proxy }}"
       https_proxy: "{{ http_proxy }}"
+      no_proxy: "{{ no_proxy }}"
   
   - name: Restart Docker service
     systemd:
@@ -280,5 +277,3 @@
           line: 'KUBELET_EXTRA_ARGS="--cgroup-driver=cgroupfs"'
       - command: systemctl daemon-reload
       - command: systemctl restart kubelet
-
-

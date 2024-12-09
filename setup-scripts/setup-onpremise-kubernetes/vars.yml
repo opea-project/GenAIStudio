@@ -1,6 +1,6 @@
 # ## cluster configuration
-# ## if proxy not needed, replace parameter values to empty strings
-ansible_user: 'some_user'
-ansible_become_password: 'some_password'
-http_proxy: ''
-no_proxy: ''
+# ## if proxy needed, ensure no_proxy contains {{ groups['k8_master'][0] }}
+ansible_user: "some_user"
+ansible_become_password: "some_password"
+http_proxy: ""
+no_proxy: "localhost,127.0.0.1,{{ groups['k8_master'][0] }}"

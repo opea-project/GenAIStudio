@@ -56,6 +56,8 @@ def deploy_manifest_in_namespace(core_v1_api, apps_v1_api, proj_info):
                 apps_v1_api.create_namespaced_deployment(namespace=namespace_name, body=manifest)
             elif kind == "Secret":
                 core_v1_api.create_namespaced_secret(namespace=namespace_name, body=manifest)
+            elif kind == "PersistentVolumeClaim":
+                core_v1_api.create_namespaced_persistent_volume_claim(namespace=namespace_name, body=manifest)
             else:
                 deployment_status.append({
                     "kind": kind,

@@ -11,9 +11,9 @@ data:
   MODEL_ID: "{modelName}"
   PORT: "{port}"
   HF_TOKEN: "{huggingFaceToken}"
-  http_proxy: ""
-  https_proxy: ""
-  no_proxy: ""
+  http_proxy: "${HTTP_PROXY}"
+  https_proxy: "${HTTP_PROXY}"
+  no_proxy: "${NO_PROXY}"
   HABANA_LOGS: "/tmp/habana_logs"
   NUMBA_CACHE_DIR: "/tmp"
   HF_HOME: "/tmp/.cache/huggingface"
@@ -102,9 +102,12 @@ spec:
             {}
       volumes:
         - name: model-volume
-          hostPath:
-            path: /mnt/opea-models
-            type: Directory
+          persistentVolumeClaim:
+            claimName: model-pvc
+        # - name: model-volume
+        #   hostPath:
+        #     path: /mnt/opea-models
+        #     type: Directory
         - name: shm
           emptyDir:
             medium: Memory
@@ -113,16 +116,3 @@ spec:
           emptyDir: {}
       # extra time to finish processing buffered requests before pod is forcibly terminated
       terminationGracePeriodSeconds: 120
----
-# Source: tgi/templates/horizontalPorAutoscaler.yaml
-# Copyright (C) 2024 Intel Corporation
-# SPDX-License-Identifier: Apache-2.0
----
-# Source: tgi/templates/servicemonitor.yaml
-# Copyright (C) 2024 Intel Corporation
-# SPDX-License-Identifier: Apache-2.0
-#
-# Dashboard for the exposed TGI metrics:
-# - https://grafana.com/grafana/dashboards/19831-text-generation-inference-dashboard/
-# Metric descriptions:
-# - https://github.com/huggingface/text-generation-inference/discussions/1127#discussioncomment-7240527
