@@ -144,9 +144,9 @@ Get started quickly with the Studio UI by downloading and importing this [sample
 
 #### Launch a Sandbox
 
-	Back on the **Main Page**, you’ll see the saved workflow under the Workflow list. Click the ▶️ **Start button** to initiate the sandbox environment for your workflow. Please allow 3-5 minutes for the environment to be fully set up. Once ready, you can test the workflow in the Sandbox App UI and monitor resource usage through the Grafana Dashboard.
+Back on the **Main Page**, you’ll see the saved workflow under the Workflow list. Click the ▶️ **Start button** to initiate the sandbox environment for your workflow. Please allow 3-5 minutes for the environment to be fully set up. Once ready, you can test the workflow in the Sandbox App UI and monitor resource usage through the Grafana Dashboard.
 
-	![start_new_project_4](./assets/screenshots/start_new_project_4.png)
+![start_new_project_4](./assets/screenshots/start_new_project_4.png)
 
 #### App UI Features
 1. **Conversational Interactions with Custom Settings**
