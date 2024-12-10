@@ -26,13 +26,14 @@
    - [Prerequisites](#prerequisites)
    - [Installation](#installation)
 3. [Getting Started with GenAIStudio](#getting-started-with-genaistudio)
+   - [Import a Sample Workflow](#import-a-sample-workflow)
    - [Start a New Workflow](#start-a-new-workflow)
+   - [Launch a Sandbox](#launch-a-sandbox)
    - [App UI Features](#app-ui-features)
    - [Monitor Sandbox Resource Utilization in Grafana Dashboard](#monitor-sandbox-resource-utilization-in-grafana-dashboard)
    - [Download and Run GenAI App Deployment Package Locally](#download-and-run-genai-app-deployment-package-locally)
-4. [Import and Run a Sample Workflow](#import-and-run-a-sample-workflow)
-5. [Known Limitations](#known-limitations)
-6. [Additional Content](#additional-content)
+4. [Known Limitations](#known-limitations)
+5. [Additional Content](#additional-content)
 
  ## Key Components
 ![key_components](./assets/screenshots/key_components.png)
@@ -101,11 +102,29 @@ The installation can be done with the following steps:
 ## Getting Started with GenAIStudio 
 
 You can access the the Studio UI in a web browser at `http://<studio_server_ip>:30007`.
- 
+
+#### Import a Sample Workflow
+
+Get started quickly with the Studio UI by downloading and importing this [sample workflow](./sample-workflows/sample_workflow_chatqna.json), which deploys a ChatQnA application.
+
+1. 	On the `Main Page`, click **Create New Workflow**. This will open a blank `Canvas Page` where you can import a sample workflow or start building your new workflow.
+
+	![start_new_project_1](./assets/screenshots/start_new_project_1.png)
+	
+2. Then, click on the ⚙️ button in the header bar to import a workflow.
+
+	![import-sample-project](./assets/screenshots/import-sample-project.png)
+
+3. Rename the workflow to "ChatQnA" and review the settings in each node. Enter your Hugging Face token in the relevant nodes, then save the workflow.
+
+	![sample-project](./assets/screenshots/sample-project.png)
+
+4. Return to the main page and click the run button to [launch the sandbox](#launch-a-sandbox).
+
 #### Start a New Workflow
 1. **Create a new workflow:** 
 
-	On the `Main Page`, click **Create New Workflow**. This will open a blank `Canvas Page` where you can start building your new project.
+	On the `Main Page`, click **Create New Workflow**. This will open a blank `Canvas Page` where you can start building your new workflow.
 
 	![start_new_project_1](./assets/screenshots/start_new_project_1.png)
 
@@ -121,7 +140,9 @@ You can access the the Studio UI in a web browser at `http://<studio_server_ip>:
 
 	![start_new_project_3](./assets/screenshots/start_new_project_3.png)
 
-4. **Run a Sandbox:** 
+4. Return to the main page and click the run button to [launch the sandbox](#launch-a-sandbox).
+
+#### Launch a Sandbox
 
 	Back on the **Main Page**, you’ll see the saved workflow under the Workflow list. Click the ▶️ **Start button** to initiate the sandbox environment for your workflow. Please allow 3-5 minutes for the environment to be fully set up. Once ready, you can test the workflow in the Sandbox App UI and monitor resource usage through the Grafana Dashboard.
 
@@ -188,19 +209,6 @@ The downloaded zip file includes the necessary configurations for deploying the 
     http://<public_host_ip>:8080
     ```
 
-## Import and Run a Sample Workflow
-
-Get started quickly with the Studio UI by downloading and importing this [sample workflow](./sample-workflows/sample_workflow_chatqna.json), which deploys a ChatQnA application.
-
-1. On the Studio main page, create a new workflow. Then, click on the ⚙️ button in the header bar to import a workflow.
-
-	![import-sample-project](./assets/screenshots/import-sample-project.png)
-
-2. Rename the workflow to "ChatQnA" and review the settings in each node. Enter your Hugging Face token in the relevant nodes, then save the workflow.
-
-	![sample-project](./assets/screenshots/sample-project.png)
-
-3. Return to the main page and click the run button to launch the sandbox.
 
 ## Known Limitations
 - **Having more than one same microservice node within the same workflow is not allowed.** The sandbox execution of a workflow with more than one instance of the same microservice node will fail.
