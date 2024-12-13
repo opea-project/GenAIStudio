@@ -11,7 +11,7 @@ template_file_path = os.path.join(os.path.dirname(__file__), '..', 'templates', 
 def import_grafana_dashboards(namespace_name):
 
     print("Getting post_url")
-    grafana_url = os.getenv("GRAFANA_URL", "kube-prometheus-stack-grafana.monitoring.svc.cluster.local")
+    grafana_url = os.getenv("GRAFANA_DNS", "localhost:30007")
     post_url = f"http://{grafana_url}/grafana/api/dashboards/db"
 
     print("Getting headers")
@@ -42,7 +42,7 @@ def import_grafana_dashboards(namespace_name):
     return response.text
     
 def delete_dashboard(namespace_name):
-    grafana_url = os.getenv("GRAFANA_URL", "kube-prometheus-stack-grafana.monitoring.svc.cluster.local")
+    grafana_url = os.getenv("GRAFANA_DNS", "localhost:30007")
     post_url = f"http://{grafana_url}/grafana/api/dashboards/uid/{namespace_name.replace('sandbox-','')}"
     auth_str = f"admin:prom-operator"
     b64_auth_str = base64.b64encode(auth_str.encode()).decode()
