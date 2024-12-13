@@ -9,10 +9,6 @@ data:
     # Copyright (C) 2024 Intel Corporation
     # SPDX-License-Identifier: Apache-2.0
 
-    upstream grafana {
-        server localhost:3000;
-    }
-
     server {
         listen 80;
         listen [::]:80;
@@ -48,9 +44,9 @@ data:
             }
     
             # Initialize the target host
-            set $target_host http://studio-frontend.studio.svc.cluster.local:3000;
+            set $target_host http://${STUDIO_FRONTEND_DNS};
             if ($namespace != "") {
-                set $target_host http://app-frontend.$namespace.svc.cluster.local:5175;
+                set $target_host http://${APP_FRONTEND_DNS};
             }
     
             # Rewrite the request to include the namespace
@@ -76,7 +72,7 @@ data:
             rewrite ^/(.*)$ /$1?ns=$namespace break;
 
             # Proxy to the desired service using the namespace
-            proxy_pass http://app-backend.$namespace.svc.cluster.local:8888;
+            proxy_pass http://${APP_BACKEND_DNS};
     
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
@@ -102,7 +98,7 @@ data:
             rewrite ^/(.*)$ /$1?ns=$namespace break;
 
             # Proxy to the desired service using the namespace
-            proxy_pass http://prepare-doc-redis-prep-0.$namespace.svc.cluster.local:6007;
+            proxy_pass http://${PREPARE_DOC_REDIS_PREP_DNS};
     
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
@@ -112,7 +108,7 @@ data:
             
         # Additional location block for Grafana static assets
         location /grafana {
-            proxy_pass http://kube-prometheus-stack-grafana.monitoring.svc.cluster.local;
+            proxy_pass http://${GRAFANA_DNS};
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -121,7 +117,7 @@ data:
 
         # Proxy Grafana Live WebSocket connections
         location /grafana/api/live/ {
-            proxy_pass http://kube-prometheus-stack-grafana.monitoring.svc.cluster.local;
+            proxy_pass http://${GRAFANA_DNS};
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -134,7 +130,7 @@ data:
         }
 
         location /studio-backend {
-            proxy_pass http://studio-backend.studio.svc.cluster.local:5000;
+            proxy_pass http://${STUDIO_BACKEND_DNS};
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -142,7 +138,7 @@ data:
         }
 
         location /studio-backend/ws {
-            proxy_pass http://studio-backend.studio.svc.cluster.local:5000/studio-backend/ws;
+            proxy_pass http://${STUDIO_BACKEND_DNS}/studio-backend/ws;
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -186,19 +182,36 @@ spec:
       labels:
         app: studio-nginx
     spec:
-      containers:
-      - image: nginx:1.27.1
-        imagePullPolicy: IfNotPresent
-        name: nginx
+      initContainers:
+      - name: init-nginx
+        image: nginx:1.27.1
+        command: ["/bin/sh", "-c"]
+        args:
+          - |
+            envsubst "$(env | grep _DNS= | awk -F= '{print "${"$1"}"}' | tr '\n' ' ')" < /tmp/default.conf > /etc/nginx/conf.d/default.conf
+        envFrom:
+        - configMapRef:
+            name: internal-dns-config
         volumeMounts:
-        - mountPath: /etc/nginx/conf.d
-          name: nginx-config-volume
+        - name: tmp-volume
+          mountPath: /tmp
+        - name: nginx-conf-volume
+          mountPath: /etc/nginx/conf.d
+      containers:
+      - name: nginx
+        image: nginx:1.27.1
+        imagePullPolicy: IfNotPresent
+        volumeMounts:
+        - name: nginx-conf-volume
+          mountPath: /etc/nginx/conf.d
       securityContext: {}
       volumes:
-      - configMap:
+      - name: tmp-volume
+        configMap:
           defaultMode: 420
           name: studio-nginx-config
-        name: nginx-config-volume
+      - name: nginx-conf-volume
+        emptyDir: {}
 ---
 apiVersion: v1
 kind: Service
@@ -297,6 +310,9 @@ spec:
           value: ${HTTP_PROXY}
         - name: SBX_NO_PROXY
           value: ${NO_PROXY}      
+        envFrom:
+        - configMapRef:
+            name: internal-dns-config
         ports:
         - containerPort: 5000
         resources:
