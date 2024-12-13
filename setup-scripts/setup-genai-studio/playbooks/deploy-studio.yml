@@ -18,6 +18,9 @@
       shell: sed -i 's/kube-dns/coredns/g' ../manifests/studio-manifest.yaml
       when: coredns_check.stdout != ''
 
+    - name: Apply internal DNS configuration
+      command: kubectl apply -f ../internal-dns-config.yaml
+
     - name: Apply customized studio manifest
       shell: "envsubst '${REGISTRY} ${TAG} ${HTTP_PROXY} ${NO_PROXY}' < ../manifests/studio-manifest.yaml | kubectl apply -f -"
       environment:
