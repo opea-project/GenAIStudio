@@ -10,12 +10,16 @@ export const KeycloakProvider = ({ children }) => {
     const [isInitialized, setIsInitialized] = useState(false);
 
     useEffect(() => {
+        if (!window.crypto || !window.crypto.subtle) {
+            console.error("Web Crypto API is not available. This may cause security issues.");
+        }
+
         const initOptions = {
-            url: 'http://localhost:8090/',
+            url: '/auth/',
             realm: 'genaistudio',
             clientId: 'genaistudio',
             onLoad: 'login-required', // check-sso | login-required
-            KeycloakResponseType: 'code',
+            responseType: 'code', // Corrected from KeycloakResponseType to responseType
             silentCheckSsoRedirectUri: window.location.origin + "/silent-check-sso.html",
             checkLoginIframe: false,
         };
@@ -24,7 +28,7 @@ export const KeycloakProvider = ({ children }) => {
 
         kc.init({
             onLoad: initOptions.onLoad,
-            KeycloakResponseType: 'code',
+            responseType: 'code', // Corrected from KeycloakResponseType to responseType
         }).then((auth) => {
             if (!auth) {
                 window.location.reload();
@@ -40,8 +44,8 @@ export const KeycloakProvider = ({ children }) => {
                 setKeycloak(kc); // Set the Keycloak instance in state
                 setIsInitialized(true); // Mark initialization as complete
             }
-        }).catch(() => {
-            console.error("Authentication Failed");
+        }).catch((error) => {
+            console.error("Authentication Failed", error);
         });
     }, []);
 

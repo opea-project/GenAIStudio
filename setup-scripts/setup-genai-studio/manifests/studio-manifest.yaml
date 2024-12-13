@@ -14,8 +14,13 @@ data:
     }
 
     server {
-        listen 80;
-        listen [::]:80;
+        # listen 80;
+        # listen [::]:80;
+        listen 443 ssl;
+        listen [::]:443 ssl;
+
+        ssl_certificate /etc/ssl/tls.crt;
+        ssl_certificate_key /etc/ssl/tls.key;
 
         proxy_connect_timeout 600;
         proxy_send_timeout 600;
@@ -28,10 +33,9 @@ data:
         resolver_timeout 5s;
 
         location /home {
-            root /usr/share/nginx/html;  # Use root to serve files from a directory
+            root /usr/share/nginx/html;
             index index.html;
         }
-
         # Location block for studio-appbuilder and app-frontend
         location / {
             # Initialize the default variable for namespace
@@ -60,6 +64,15 @@ data:
             proxy_pass $target_host;
     
             proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
+        # Location block for keycloak
+        location /auth {
+            proxy_pass https://keycloak.studio.svc.cluster.local:8443/auth/;
+            proxy_set_header Host $host:30007;
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto $scheme;
@@ -164,10 +177,11 @@ spec:
   selector:
     app: studio-nginx
   ports:
-    - protocol: TCP
-      port: 80
-      targetPort: 80
-      nodePort: 30007
+    - name: https
+      protocol: TCP
+      port: 443
+      targetPort: 443
+      nodePort: 30007 
   type: NodePort
 ---
 apiVersion: apps/v1
@@ -193,12 +207,17 @@ spec:
         volumeMounts:
         - mountPath: /etc/nginx/conf.d
           name: nginx-config-volume
+        - name: tls
+          mountPath: /etc/ssl
       securityContext: {}
       volumes:
       - configMap:
           defaultMode: 420
           name: studio-nginx-config
         name: nginx-config-volume
+      - name: tls
+        secret:
+          secretName: tls-secret
 ---
 apiVersion: v1
 kind: Service
@@ -356,3 +375,87 @@ spec:
       volumes:
       - name: tmp
         emptyDir: {}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: keycloak
+  namespace: studio
+  labels:
+    app: keycloak
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: keycloak
+  template:
+    metadata:
+      labels:
+        app: keycloak
+    spec:
+      containers:
+      - name: keycloak
+        image: quay.io/keycloak/keycloak:latest
+        volumeMounts:
+        - name: tls
+          mountPath: /etc/ssl
+          readOnly: true
+        args:
+        - start
+        ports:
+        - containerPort: 8080
+        - containerPort: 8443
+        env:
+        - name: KC_BOOTSTRAP_ADMIN_USERNAME
+          value: "admin"
+        - name: KC_BOOTSTRAP_ADMIN_PASSWORD
+          value: "admin"
+        - name: KC_PROXY_HEADERS
+          value: "forwarded"
+        - name: KC_HTTP_RELATIVE_PATH
+          value: "/auth"
+        - name: KC_PROXY
+          value: edge
+        - name: KC_HTTPS_CERTIFICATE_FILE
+          value: /etc/ssl/tls.crt
+        - name: KC_HTTPS_CERTIFICATE_KEY_FILE
+          value: /etc/ssl/tls.key
+        - name: KC_HOSTNAME_STRICT
+          value: "false"
+        - name: KC_HOSTNAME_STRICT_HTTPS
+          value: "true"
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: auth/realms/master
+            port: 8443
+            scheme: HTTPS
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "1Gi"
+            cpu: "1"
+      volumes:
+      - name: tls
+        secret:
+          secretName: tls-secret
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: keycloak
+  namespace: studio
+spec:
+  type: ClusterIP
+  ports:
+  - name: https
+    protocol: TCP
+    port: 8443
+    targetPort: 8443
+  selector:
+    app: keycloak
