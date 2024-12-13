@@ -65,7 +65,7 @@ class AppGateway(Gateway):
                     params[id]['max_new_tokens'] = params[id]['max_tokens']
                     llm_parameters = LLMParams(**params[id])
             result_dict, runtime_graph = await self.megaservice.schedule(
-                initial_inputs={'text': prompt},
+                initial_inputs={'query':prompt, 'text': prompt},
                 llm_parameters=llm_parameters,
                 params=params,
             )
