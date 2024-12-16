@@ -11,9 +11,9 @@ data:
   TGI_LLM_ENDPOINT: "http://{tgi_endpoint}"
   HUGGINGFACEHUB_API_TOKEN: "{tgi_huggingFaceToken}"
   HF_HOME: "/tmp/.cache/huggingface"
-  http_proxy: ""
-  https_proxy: ""
-  no_proxy: ""
+  http_proxy: "${HTTP_PROXY}"
+  https_proxy: "${HTTP_PROXY}"
+  no_proxy: "${NO_PROXY}"
   LOGFLAG: ""
 ---
 # Source: llm-uservice/templates/service.yaml

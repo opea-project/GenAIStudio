@@ -3,13 +3,7 @@
   vars_files:
     - ../vars.yml
   tasks:
-    - name: Create directory for OPEA models
-      file:
-        path: /mnt/opea-models
-        state: directory
-        mode: '0777'
-      become: yes
-
+  
     - name: Create studio namespace
       command: kubectl create namespace studio
       ignore_errors: yes
@@ -24,8 +18,13 @@
       shell: sed -i 's/kube-dns/coredns/g' ../manifests/studio-manifest.yaml
       when: coredns_check.stdout != ''
 
+    - name: Apply internal DNS configuration
+      command: kubectl apply -f ../internal-dns-config.yaml
+
     - name: Apply customized studio manifest
-      shell: "envsubst '${REGISTRY} ${TAG}' < ../manifests/studio-manifest.yaml | kubectl apply -f -"
+      shell: "envsubst '${REGISTRY} ${TAG} ${HTTP_PROXY} ${NO_PROXY}' < ../manifests/studio-manifest.yaml | kubectl apply -f -"
       environment:
         REGISTRY: "{{ container_registry }}"
         TAG: "{{ container_tag }}"
+        HTTP_PROXY: "{{ http_proxy }}"
+        NO_PROXY: "{{ no_proxy }}"

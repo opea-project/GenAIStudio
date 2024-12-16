@@ -59,7 +59,6 @@ def test_deploy_sandbox_api(setup_and_teardown):
    
    # Simulate a POST request to the /deploy-sandbox endpoint with the JSON payload
     test_client = TestClient(app)
-    os.environ["GRAFANA_URL"] = "localhost:30007"
     response = test_client.post("/studio-backend/deploy-sandbox", content=json.dumps(payload))
 
     # Check that the response is successful
