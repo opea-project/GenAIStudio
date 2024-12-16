@@ -58,6 +58,15 @@ const getAllChatflows = async (req: Request, res: Response, next: NextFunction) 
     }
 }
 
+const getAllChatflowsbyUserId = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const apiResponse = await chatflowsService.getAllChatflowsbyUserId(req.query.userid as string, req.query.type as ChatflowType)
+        return res.json(apiResponse)
+    } catch (error) {
+        next(error)
+    }
+}
+
 // Get specific chatflow via api key
 const getChatflowByApiKey = async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -98,6 +107,7 @@ const saveChatflow = async (req: Request, res: Response, next: NextFunction) => 
         const body = req.body
         const newChatFlow = new ChatFlow()
         Object.assign(newChatFlow, body)
+        console.log ('newChatFlow', newChatFlow)
         const apiResponse = await chatflowsService.saveChatflow(newChatFlow)
         return res.json(apiResponse)
     } catch (error) {
@@ -257,6 +267,7 @@ export default {
     checkIfChatflowIsValidForUploads,
     deleteChatflow,
     getAllChatflows,
+    getAllChatflowsbyUserId,
     getChatflowByApiKey,
     getChatflowById,
     saveChatflow,

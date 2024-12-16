@@ -78,6 +78,7 @@ export const init = async (): Promise<void> => {
             break
         default:
             homePath = process.env.DATABASE_PATH ?? flowisePath
+            console.log ("***", path.resolve(homePath, 'database.sqlite'))
             appDataSource = new DataSource({
                 type: 'sqlite',
                 database: path.resolve(homePath, 'database.sqlite'),
