@@ -14,7 +14,7 @@ test('001_test_sandbox_deployment', async ({ page, baseURL }) => {
     let fileChooserPromise = page.waitForEvent('filechooser');
     await page.getByRole('button', { name: 'Import Workflow' }).click();
     let fileChooser = await fileChooserPromise;
-    const filePath = path.resolve(__dirname, '../../../sample-workflows/sample_workflow_chatqna.json');
+    const filePath = path.resolve(__dirname, '../../../sample-workflows/basic_llm_workflow.json');
     await fileChooser.setFiles(filePath);
     await page.getByRole('button', { name: 'Save Workflow' }).click();
     await page.getByPlaceholder('My New Chatflow').click();
