@@ -1,0 +1,27 @@
+{
+  "realm" : "genaistudio",
+  "users" : [ {
+    "id" : "dd540d78-5bab-4a70-9cab-65de7301161b",
+    "username" : "kasumi",
+    "firstName" : "kasumi",
+    "lastName" : "intel",
+    "email" : "kasumi@intel.com",
+    "emailVerified" : false,
+    "createdTimestamp" : 1734515470581,
+    "enabled" : true,
+    "totp" : false,
+    "credentials" : [ {
+      "id" : "463d654e-0c5f-494f-9438-bca8fb1e9338",
+      "type" : "password",
+      "userLabel" : "My password",
+      "createdDate" : 1734515480513,
+      "secretData" : "{\"value\":\"UIRQ6sw0XjFsuuTCbqp9MXlH4nF6/UmzMZnT7CTHNDw=\",\"salt\":\"mDogr7ECJEYOXGrNW1cszA==\",\"additionalParameters\":{}}",
+      "credentialData" : "{\"hashIterations\":5,\"algorithm\":\"argon2\",\"additionalParameters\":{\"hashLength\":[\"32\"],\"memory\":[\"7168\"],\"type\":[\"id\"],\"version\":[\"1.3\"],\"parallelism\":[\"1\"]}}"
+    } ],
+    "disableableCredentialTypes" : [ ],
+    "requiredActions" : [ "UPDATE_PASSWORD" ],
+    "realmRoles" : [ "default-roles-genaistudio" ],
+    "notBefore" : 0,
+    "groups" : [ "/user" ]
+  } ]
+}
