@@ -18,8 +18,8 @@
       shell: sed -i 's/kube-dns/coredns/g' ../manifests/studio-manifest.yaml
       when: coredns_check.stdout != ''
 
-    - name: Apply internal DNS configuration
-      command: kubectl apply -f ../internal-dns-config.yaml
+    - name: Apply studio configuration
+      command: kubectl apply -f ../studio-config.yaml
 
     - name: Apply customized studio manifest
       shell: "envsubst '${REGISTRY} ${TAG} ${HTTP_PROXY} ${NO_PROXY}' < ../manifests/studio-manifest.yaml | kubectl apply -f -"
@@ -28,3 +28,9 @@
         TAG: "{{ container_tag }}"
         HTTP_PROXY: "{{ http_proxy }}"
         NO_PROXY: "{{ no_proxy }}"
+
+    - name: Wait for all pods to be ready in studio namespace
+      shell: kubectl wait --for=condition=ready pod --all --namespace=studio --timeout=180s
+      register: pod_ready_check
+      failed_when: pod_ready_check.rc != 0
+      changed_when: false

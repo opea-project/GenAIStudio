@@ -1,9 +1,11 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: internal-dns-config
+  name: studio-config
   namespace: studio
 data:
+  KC_ASSETS_GIT_URL: "https://github.com/opea-project/GenAIStudio/tree/main/assets/keycloak"
+  KEYCLOAK_DNS: "keycloak.studio.svc.cluster.local:8443"
   GRAFANA_DNS: "kube-prometheus-stack-grafana.monitoring.svc.cluster.local"
   STUDIO_FRONTEND_DNS: "studio-frontend.studio.svc.cluster.local:3000"
   APP_FRONTEND_DNS: "app-frontend.$namespace.svc.cluster.local:5175"
