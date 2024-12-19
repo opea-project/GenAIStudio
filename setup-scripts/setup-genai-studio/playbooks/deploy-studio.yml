@@ -4,9 +4,14 @@
     - ../vars.yml
   tasks:
   
+    - name: Check if studio namespace exists
+      command: kubectl get namespace studio
+      register: studio_namespace
+      ignore_errors: yes
+    
     - name: Create studio namespace
       command: kubectl create namespace studio
-      ignore_errors: yes
+      when: studio_namespace.rc != 0
 
     - name: Check for coredns service
       shell: kubectl get svc coredns -n kube-system --ignore-not-found
@@ -17,6 +22,18 @@
     - name: Update manifest if coredns is available
       shell: sed -i 's/kube-dns/coredns/g' ../manifests/studio-manifest.yaml
       when: coredns_check.stdout != ''
+
+    - name: Check if tls-secret exists in studio namespace
+      command: kubectl get secret tls-secret -n studio
+      register: tls_secret_check
+      ignore_errors: yes
+
+    - name: Generate TLS certificate and create tls-secret
+      shell: |
+        openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout tls.key -out tls.crt -subj "/CN=studio/O=studio"
+        kubectl create secret generic tls-secret --from-file=tls.crt --from-file=tls.key -n studio
+        rm tls.key tls.crt
+      when: tls_secret_check.rc != 0
 
     - name: Apply studio configuration
       command: kubectl apply -f ../studio-config.yaml
