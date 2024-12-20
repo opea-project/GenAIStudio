@@ -54,7 +54,7 @@ spec:
           seccompProfile:
             type: RuntimeDefault
         image: __APP_BACKEND_IMAGE__
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: Always
         volumeMounts:
         - mountPath: /tmp
           name: tmp
@@ -112,6 +112,7 @@ spec:
         __UI_CONFIG_INFO_ENV_PLACEHOLDER__
         securityContext: {}
         image: __APP_FRONTEND_IMAGE__
+        imagePullPolicy: Always
         ports:
         - name: ui
           containerPort: 80

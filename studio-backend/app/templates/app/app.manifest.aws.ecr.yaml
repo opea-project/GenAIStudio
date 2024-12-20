@@ -63,7 +63,7 @@ spec:
           seccompProfile:
             type: RuntimeDefault
         image: ${REGISTRY:-opea}/app-backend:${TAG:-latest}
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: Always
         volumeMounts:
         - mountPath: /tmp
           name: tmp
@@ -123,6 +123,7 @@ spec:
         __UI_CONFIG_INFO_ENV_PLACEHOLDER__
         securityContext: {}
         image: ${REGISTRY:-opea}/app-frontend:${TAG:-latest}
+        imagePullPolicy: Always
         ports:
         - name: ui
           containerPort: 80

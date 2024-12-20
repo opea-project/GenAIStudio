@@ -369,6 +369,7 @@ spec:
       - name: studio-frontend
         securityContext: {}
         image: ${REGISTRY}/studio-frontend:${TAG}
+        imagePullPolicy: Always
         ports:
         - name: studio-frontend
           containerPort: 8080
