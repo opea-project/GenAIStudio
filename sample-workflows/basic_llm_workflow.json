@@ -1,0 +1,316 @@
+{
+  "nodes": [
+    {
+      "id": "chat_input_0",
+      "position": {
+        "x": -104.87337962629226,
+        "y": 133.0786252446273
+      },
+      "type": "customNode",
+      "data": {
+        "label": "Chat Input",
+        "name": "chat_input",
+        "version": 1,
+        "type": "ChatCompletionRequest",
+        "icon": "/usr/src/packages/server/src/nodes/opea-icon-color.svg",
+        "category": "Controls",
+        "description": "User Input from Chat Window",
+        "baseClasses": [
+          "ChatCompletionRequest"
+        ],
+        "tags": [
+          "OPEA"
+        ],
+        "inMegaservice": false,
+        "filePath": "/usr/src/packages/server/src/nodes/chat_input.js",
+        "inputAnchors": [],
+        "inputParams": [],
+        "inputs": {},
+        "outputs": {},
+        "outputAnchors": [
+          {
+            "id": "chat_input_0-output-chat_input-ChatCompletionRequest",
+            "name": "chat_input",
+            "label": "ChatCompletionRequest",
+            "description": "User Input from Chat Window",
+            "type": "ChatCompletionRequest"
+          }
+        ],
+        "id": "chat_input_0",
+        "selected": false
+      },
+      "width": 300,
+      "height": 143,
+      "selected": false,
+      "positionAbsolute": {
+        "x": -104.87337962629226,
+        "y": 133.0786252446273
+      },
+      "dragging": false
+    },
+    {
+      "id": "opea_service@llm_tgi_0",
+      "position": {
+        "x": 320.28599745224875,
+        "y": 74.42581341053906
+      },
+      "type": "customNode",
+      "data": {
+        "label": "LLM Text Generation",
+        "name": "opea_service@llm_tgi",
+        "version": 1,
+        "type": "GeneratedDoc",
+        "icon": "/usr/src/packages/server/src/nodes/opea-icon-color.svg",
+        "category": "LLM",
+        "description": "LLM Text Generation Inference",
+        "baseClasses": [
+          "GeneratedDoc",
+          "StreamingResponse",
+          "ChatCompletion"
+        ],
+        "tags": [
+          "OPEA"
+        ],
+        "inMegaservice": true,
+        "dependent_services": {
+          "tgi": {
+            "modelName": "",
+            "huggingFaceToken": "NA"
+          }
+        },
+        "inputs": {
+          "text": "{{chat_input_0.data.instance}}",
+          "modelName": "Intel/neural-chat-7b-v3-3",
+          "huggingFaceToken": "",
+          "max_tokens": 17,
+          "top_k": 10,
+          "top_p": 0.95,
+          "typical_p": 0.95,
+          "temperature": 0.01,
+          "presence_penalty": 1.03,
+          "frequency_penalty": "",
+          "streaming": true,
+          "chat_template": "### You are a helpful, respectful and honest assistant to help the user with questions.\n### Context: {context}\n### Question: {question}\n### Answer:"
+        },
+        "filePath": "/usr/src/packages/server/src/nodes/llm.js",
+        "inputAnchors": [
+          {
+            "label": "LLM Params Document",
+            "name": "text",
+            "type": "LLMParamsDoc|ChatCompletionRequest|SearchedDoc",
+            "id": "opea_service@llm_tgi_0-input-text-LLMParamsDoc|ChatCompletionRequest|SearchedDoc"
+          }
+        ],
+        "inputParams": [
+          {
+            "label": "Model Name",
+            "name": "modelName",
+            "type": "options",
+            "default": "Intel/neural-chat-7b-v3-3",
+            "options": [
+              {
+                "name": "Intel/neural-chat-7b-v3-3",
+                "label": "Intel/neural-chat-7b-v3-3"
+              },
+              {
+                "name": "Llama-2-7b-chat-hf",
+                "label": "Llama-2-7b-chat-hf"
+              },
+              {
+                "name": "Llama-2-70b-chat-hf",
+                "label": "Llama-2-70b-chat-hf"
+              },
+              {
+                "name": "Meta-Llama-3-8B-Instruct",
+                "label": "Meta-Llama-3-8B-Instruct"
+              },
+              {
+                "name": "Meta-Llama-3-70B-Instruct",
+                "label": "Meta-Llama-3-70B-Instruct"
+              },
+              {
+                "name": "Phi-3",
+                "label": "Phi-3"
+              }
+            ],
+            "id": "opea_service@llm_tgi_0-input-modelName-options"
+          },
+          {
+            "label": "HuggingFace Token",
+            "name": "huggingFaceToken",
+            "type": "password",
+            "optional": true,
+            "id": "opea_service@llm_tgi_0-input-huggingFaceToken-password"
+          },
+          {
+            "label": "Maximum Tokens",
+            "name": "max_tokens",
+            "type": "number",
+            "default": 17,
+            "optional": true,
+            "additionalParams": true,
+            "id": "opea_service@llm_tgi_0-input-max_tokens-number"
+          },
+          {
+            "label": "Top K",
+            "name": "top_k",
+            "type": "number",
+            "default": 10,
+            "optional": true,
+            "additionalParams": true,
+            "id": "opea_service@llm_tgi_0-input-top_k-number"
+          },
+          {
+            "label": "Top P",
+            "name": "top_p",
+            "type": "number",
+            "default": 0.95,
+            "optional": true,
+            "additionalParams": true,
+            "id": "opea_service@llm_tgi_0-input-top_p-number"
+          },
+          {
+            "label": "Typical P",
+            "name": "typical_p",
+            "type": "number",
+            "default": 0.95,
+            "optional": true,
+            "additionalParams": true,
+            "id": "opea_service@llm_tgi_0-input-typical_p-number"
+          },
+          {
+            "label": "Temperature",
+            "name": "temperature",
+            "type": "number",
+            "default": 0.01,
+            "optional": true,
+            "additionalParams": true,
+            "id": "opea_service@llm_tgi_0-input-temperature-number"
+          },
+          {
+            "label": "Presence Penalty",
+            "name": "presence_penalty",
+            "type": "number",
+            "default": 1.03,
+            "optional": true,
+            "additionalParams": true,
+            "id": "opea_service@llm_tgi_0-input-presence_penalty-number"
+          },
+          {
+            "label": "Frequency Penalty",
+            "name": "frequency_penalty",
+            "type": "number",
+            "default": 0,
+            "optional": true,
+            "additionalParams": true,
+            "id": "opea_service@llm_tgi_0-input-frequency_penalty-number"
+          },
+          {
+            "label": "Streaming",
+            "name": "streaming",
+            "type": "boolean",
+            "default": true,
+            "optional": true,
+            "additionalParams": true,
+            "id": "opea_service@llm_tgi_0-input-streaming-boolean"
+          },
+          {
+            "label": "Chat Template",
+            "name": "chat_template",
+            "type": "string",
+            "rows": true,
+            "default": "### You are a helpful, respectful and honest assistant to help the user with questions.\n### Context: {context}\n### Question: {question}\n### Answer:",
+            "optional": true,
+            "additionalParams": true,
+            "id": "opea_service@llm_tgi_0-input-chat_template-string"
+          }
+        ],
+        "outputs": {},
+        "outputAnchors": [
+          {
+            "id": "opea_service@llm_tgi_0-output-opea_service@llm_tgi-GeneratedDoc|StreamingResponse|ChatCompletion",
+            "name": "opea_service@llm_tgi",
+            "label": "GeneratedDoc",
+            "description": "LLM Text Generation Inference",
+            "type": "GeneratedDoc | StreamingResponse | ChatCompletion"
+          }
+        ],
+        "id": "opea_service@llm_tgi_0",
+        "selected": false
+      },
+      "width": 300,
+      "height": 478,
+      "selected": false,
+      "positionAbsolute": {
+        "x": 320.28599745224875,
+        "y": 74.42581341053906
+      },
+      "dragging": false
+    },
+    {
+      "id": "chat_completion_0",
+      "position": {
+        "x": 856.6184063184758,
+        "y": 137.45379050568326
+      },
+      "type": "customNode",
+      "data": {
+        "label": "Chat Completion",
+        "name": "chat_completion",
+        "version": 1,
+        "type": "ChatCompletion",
+        "icon": "/usr/src/packages/server/src/nodes/opea-icon-color.svg",
+        "category": "Controls",
+        "description": "Send Chat Response to UI",
+        "baseClasses": [],
+        "tags": [
+          "OPEA"
+        ],
+        "inMegaservice": false,
+        "inputs": {
+          "llm_response": "{{opea_service@llm_tgi_0.data.instance}}"
+        },
+        "hideOutput": true,
+        "filePath": "/usr/src/packages/server/src/nodes/chat_completion.js",
+        "inputAnchors": [
+          {
+            "label": "LLM Response",
+            "name": "llm_response",
+            "type": "ChatCompletion",
+            "id": "chat_completion_0-input-llm_response-ChatCompletion"
+          }
+        ],
+        "inputParams": [],
+        "outputs": {},
+        "outputAnchors": [],
+        "id": "chat_completion_0",
+        "selected": false
+      },
+      "width": 300,
+      "height": 143,
+      "positionAbsolute": {
+        "x": 856.6184063184758,
+        "y": 137.45379050568326
+      },
+      "selected": false
+    }
+  ],
+  "edges": [
+    {
+      "source": "chat_input_0",
+      "sourceHandle": "chat_input_0-output-chat_input-ChatCompletionRequest",
+      "target": "opea_service@llm_tgi_0",
+      "targetHandle": "opea_service@llm_tgi_0-input-text-LLMParamsDoc|ChatCompletionRequest|SearchedDoc",
+      "type": "buttonedge",
+      "id": "chat_input_0-chat_input_0-output-chat_input-ChatCompletionRequest-opea_service@llm_tgi_0-opea_service@llm_tgi_0-input-text-LLMParamsDoc|ChatCompletionRequest|SearchedDoc"
+    },
+    {
+      "source": "opea_service@llm_tgi_0",
+      "sourceHandle": "opea_service@llm_tgi_0-output-opea_service@llm_tgi-GeneratedDoc|StreamingResponse|ChatCompletion",
+      "target": "chat_completion_0",
+      "targetHandle": "chat_completion_0-input-llm_response-ChatCompletion",
+      "type": "buttonedge",
+      "id": "opea_service@llm_tgi_0-opea_service@llm_tgi_0-output-opea_service@llm_tgi-GeneratedDoc|StreamingResponse|ChatCompletion-chat_completion_0-chat_completion_0-input-llm_response-ChatCompletion"
+    }
+  ]
+}
