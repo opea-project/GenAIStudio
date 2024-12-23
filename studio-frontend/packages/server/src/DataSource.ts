@@ -105,7 +105,18 @@ const getDatabaseSSLFromEnv = () => {
             ca: Buffer.from(process.env.DATABASE_SSL_KEY_BASE64, 'base64')
         }
     } else if (process.env.DATABASE_SSL === 'true') {
-        return true
+        // return true
+        try {
+            return {
+                rejectUnauthorized: false,
+                ca: fs.readFileSync('/etc/mysql/ssl/ca.pem'),
+                cert: fs.readFileSync('/etc/mysql/ssl/client-cert.pem'),
+                key: fs.readFileSync('/etc/mysql/ssl/client-key.pem')
+            };
+        } catch (error) {
+            console.error('Error reading certificates from mounted path:', error);
+            return undefined;
+        }
     }
     return undefined
 }

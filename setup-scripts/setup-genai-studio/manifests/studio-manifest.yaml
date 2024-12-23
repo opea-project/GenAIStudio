@@ -390,6 +390,21 @@ spec:
         securityContext: {}
         image: ${REGISTRY}/studio-frontend:${TAG}
         imagePullPolicy: Always
+        env:
+        - name: DATABASE_TYPE
+          value: mysql
+        - name: DATABASE_HOST
+          value: ${MYSQL_HOST}
+        - name: DATABASE_PORT
+          value: "3306"
+        - name: DATABASE_USER
+          value: studio
+        - name: DATABASE_PASSWORD
+          value: studio
+        - name: DATABASE_NAME
+          value: studio
+        - name: DATABASE_SSL
+          value: "true"
         ports:
         - name: studio-frontend
           containerPort: 8080
@@ -398,9 +413,15 @@ spec:
         volumeMounts:
         - mountPath: /tmp
           name: tmp
+        - name: mysql-tls
+          mountPath: /etc/mysql/ssl
+          readOnly: true
       volumes:
       - name: tmp
         emptyDir: {}
+      - name: mysql-tls
+        secret:
+          secretName: mysql-tls
 ---
 apiVersion: apps/v1
 kind: Deployment
