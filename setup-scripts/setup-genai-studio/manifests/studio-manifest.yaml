@@ -15,8 +15,8 @@ data:
         listen 443 ssl;
         listen [::]:443 ssl;
 
-        ssl_certificate /etc/ssl/tls.crt;
-        ssl_certificate_key /etc/ssl/tls.key;
+        ssl_certificate /etc/ssl/app-tls.crt;
+        ssl_certificate_key /etc/ssl/app-tls.key;
 
         proxy_connect_timeout 600;
         proxy_send_timeout 600;
@@ -219,7 +219,7 @@ spec:
         volumeMounts:
         - name: nginx-conf-volume
           mountPath: /etc/nginx/conf.d
-        - name: tls
+        - name: app-tls
           mountPath: /etc/ssl
       securityContext: {}
       volumes:
@@ -229,9 +229,9 @@ spec:
           name: studio-nginx-config
       - name: nginx-conf-volume
         emptyDir: {}
-      - name: tls
+      - name: app-tls
         secret:
-          secretName: tls-secret
+          secretName: app-tls
 ---
 apiVersion: v1
 kind: Service
@@ -389,6 +389,7 @@ spec:
       - name: studio-frontend
         securityContext: {}
         image: ${REGISTRY}/studio-frontend:${TAG}
+        imagePullPolicy: Always
         ports:
         - name: studio-frontend
           containerPort: 8080
@@ -447,7 +448,10 @@ spec:
       - name: keycloak
         image: quay.io/keycloak/keycloak:latest
         volumeMounts:
-        - name: tls
+        - name: mysql-tls
+          mountPath: /etc/mysql/ssl
+          readOnly: true
+        - name: app-tls
           mountPath: /etc/ssl
           readOnly: true
         - name: keycloak-themes-volume
@@ -472,13 +476,24 @@ spec:
         - name: KC_PROXY
           value: edge
         - name: KC_HTTPS_CERTIFICATE_FILE
-          value: /etc/ssl/tls.crt
+          value: /etc/ssl/app-tls.crt
         - name: KC_HTTPS_CERTIFICATE_KEY_FILE
-          value: /etc/ssl/tls.key
+          value: /etc/ssl/app-tls.key
         - name: KC_HOSTNAME_STRICT
           value: "false"
         - name: KC_HOSTNAME_STRICT_HTTPS
           value: "true"
+        # Database Configuration for MySQL
+        - name: KC_DB
+          value: "mysql"
+        - name: KC_DB_URL
+          value: "jdbc:mysql://${MYSQL_HOST}:3306/keycloak?useSSL=true&requireSSL=true&clientCertificateKeyStoreUrl=file:/etc/mysql/ssl/client-keystore.p12&trustCertificateKeyStoreUrl=file:/etc/mysql/ssl/ca.pem"
+        - name: KC_DB_USERNAME
+          value: "studio"
+        - name: KC_DB_PASSWORD
+          value: "studio"
+        - name: KC_DB_DATABASE
+          value: "keycloak"
         readinessProbe:
           failureThreshold: 3
           httpGet:
@@ -496,9 +511,12 @@ spec:
             memory: "1Gi"
             cpu: "1"
       volumes:
-      - name: tls
+      - name: app-tls
         secret:
-          secretName: tls-secret
+          secretName: app-tls
+      - name: mysql-tls
+        secret:
+          secretName: mysql-tls
       - name: keycloak-themes-volume
         emptyDir: {}
       - name: keycloak-dataimport-volume

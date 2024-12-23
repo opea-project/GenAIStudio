@@ -23,28 +23,29 @@
       shell: sed -i 's/kube-dns/coredns/g' ../manifests/studio-manifest.yaml
       when: coredns_check.stdout != ''
 
-    - name: Check if tls-secret exists in studio namespace
-      command: kubectl get secret tls-secret -n studio
+    - name: Check if app-tls exists in studio namespace
+      command: kubectl get secret app-tls -n studio
       register: tls_secret_check
       ignore_errors: yes
 
-    - name: Generate TLS certificate and create tls-secret
+    - name: Generate TLS certificate and create app-tls
       shell: |
-        openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout tls.key -out tls.crt -subj "/CN=studio/O=studio"
-        kubectl create secret generic tls-secret --from-file=tls.crt --from-file=tls.key -n studio
-        rm tls.key tls.crt
+        openssl req -x509 -nodes -days 365 -newkey rsa:4096 -keyout app-tls.key -out app-tls.crt -subj "/CN=studio/O=studio"
+        kubectl create secret generic app-tls --from-file=app-tls.crt --from-file=app-tls.key -n studio
+        rm app-tls.key app-tls.crt
       when: tls_secret_check.rc != 0
 
     - name: Apply studio configuration
       command: kubectl apply -f ../studio-config.yaml
 
     - name: Apply customized studio manifest
-      shell: "envsubst '${REGISTRY} ${TAG} ${HTTP_PROXY} ${NO_PROXY}' < ../manifests/studio-manifest.yaml | kubectl apply -f -"
+      shell: "envsubst '${REGISTRY} ${TAG} ${HTTP_PROXY} ${NO_PROXY} ${MYSQL_HOST}' < ../manifests/studio-manifest.yaml | kubectl apply -f -"
       environment:
         REGISTRY: "{{ container_registry }}"
         TAG: "{{ container_tag }}"
         HTTP_PROXY: "{{ http_proxy }}"
         NO_PROXY: "{{ no_proxy }}"
+        MYSQL_HOST: "{{ mysql_host }}"
 
     - name: Wait for all pods to be ready in studio namespace
       shell: kubectl wait --for=condition=ready pod --all --namespace=studio --timeout=180s
