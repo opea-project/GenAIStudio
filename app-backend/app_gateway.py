@@ -31,10 +31,10 @@ category_params_map = {
 class AppGateway(Gateway):
     def __init__(self, megaservice, host='0.0.0.0', port=8888):
         try: 
-            with open('config/project-info.json', 'r') as f:
-                self.project_info = json.load(f)
+            with open('config/workflow-info.json', 'r') as f:
+                self.workflow_info = json.load(f)
         except:
-            logging.error('Failed to load project-info.json')
+            logging.error('Failed to load workflow-info.json')
         super().__init__(
             megaservice, host, port, '/v1/app-backend', ChatCompletionRequest, ChatCompletionResponse
         )
@@ -42,11 +42,11 @@ class AppGateway(Gateway):
     async def handle_request(self, request: Request):
         data = await request.json()
         print('\n'*5, '====== handle_request ======\n', data)
-        if 'chat_completion_ids' in self.project_info:
+        if 'chat_completion_ids' in self.workflow_info:
             prompt = self._handle_message(data['messages'])
             params = {}
             llm_parameters = None
-            for id, node in self.project_info['nodes'].items():
+            for id, node in self.workflow_info['nodes'].items():
                 if node['category'] in category_params_map:
                     param_class = category_params_map[node['category']]()
                     param_keys = [key for key in dir(param_class) if not key.startswith('__') and not callable(getattr(param_class, key))]

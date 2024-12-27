@@ -150,7 +150,7 @@ services:
     image: opea/app-backend:latest
     container_name: app-backend
     volumes:
-    - ./project-info.json:/home/user/config/project-info.json
+    - ./workflow-info.json:/home/user/config/workflow-info.json
     depends_on:
     - redis-vector-store-0
     - tei-0
