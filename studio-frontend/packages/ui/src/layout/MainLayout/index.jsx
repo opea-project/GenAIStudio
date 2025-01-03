@@ -12,6 +12,8 @@ import Sidebar from './Sidebar'
 import { drawerWidth, headerHeight } from '@/store/constant'
 import { SET_MENU } from '@/store/actions'
 
+import {useKeycloak } from '../../KeycloakContext.jsx'
+
 // styles
 const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })(({ theme, open }) => ({
     ...theme.typography.mainContent,
@@ -57,6 +59,16 @@ const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })(({
 // ==============================|| MAIN LAYOUT ||============================== //
 
 const MainLayout = () => {
+    const keycloak = useKeycloak()
+    console.log ("login roles", keycloak?.tokenParsed?.resource_access?.genaistudio?.roles[0])
+    let userRole = keycloak?.tokenParsed?.resource_access?.genaistudio?.roles[0]
+
+    const handleLogout = () => {
+        keycloak.logout({
+            redirectUri: window.location.origin, // Redirect to the home page or desired URL after logout
+        });
+    };
+
     const theme = useTheme()
     const matchDownMd = useMediaQuery(theme.breakpoints.down('lg'))
 
@@ -73,45 +85,51 @@ const MainLayout = () => {
     }, [matchDownMd])
 
     return (
-        <Box sx={{ display: 'flex' }}>
-            <CssBaseline />
-            {/* header */}
-            <AppBar
-                enableColorOnDark
-                position='fixed'
-                color='inherit'
-                elevation={0}
-                sx={{
-                    bgcolor: theme.palette.background.default,
-                    transition: leftDrawerOpened ? theme.transitions.create('width') : 'none'
-                }}
-            >
-                <Toolbar sx={{ height: `${headerHeight}px`, borderBottom: '1px solid', borderColor: theme.palette.primary[200] + 75 }}>
-                    <Header handleLeftDrawerToggle={handleLeftDrawerToggle} />
-                </Toolbar>
-            </AppBar>
-
-            {/* drawer */}
-            {/* <Sidebar drawerOpen={leftDrawerOpened} drawerToggle={handleLeftDrawerToggle} /> */}
-
-            {/* main content */}
-            <Main theme={theme} open={leftDrawerOpened}>
-                <Outlet />
-                <Box
+        (userRole==='admin' || userRole==='user')? 
+            (<Box sx={{ display: 'flex' }}>
+                <CssBaseline />
+                {/* header */}
+                <AppBar
+                    enableColorOnDark
+                    position='fixed'
+                    color='inherit'
+                    elevation={0}
                     sx={{
-                        position: 'fixed',
-                        bottom: 16, // distance from the bottom of the page
-                        right: 16, // distance from the right side of the page
-                        zIndex: 1000 // make sure it appears above other elements if needed
+                        bgcolor: theme.palette.background.default,
+                        transition: leftDrawerOpened ? theme.transitions.create('width') : 'none'
                     }}
                 >
-                    <a href="https://flowiseai.com" target="_blank" style={{ textDecoration: 'none', color:"#bfbfbf", fontSize:"10px"}}>
-                        FlowiseAI
-                    </a>
-                </Box>
-            </Main>
+                    <Toolbar sx={{ height: `${headerHeight}px`, borderBottom: '1px solid', borderColor: theme.palette.primary[200] + 75 }}>
+                        <Header handleLeftDrawerToggle={handleLeftDrawerToggle} />
+                    </Toolbar>
+                </AppBar>
 
-        </Box>
+                {/* drawer */}
+                {/* <Sidebar drawerOpen={leftDrawerOpened} drawerToggle={handleLeftDrawerToggle} /> */}
+
+                {/* main content */}
+                (<Main theme={theme} open={leftDrawerOpened}>
+                    <Outlet />
+                    <Box
+                        sx={{
+                            position: 'fixed',
+                            bottom: 16, // distance from the bottom of the page
+                            right: 16, // distance from the right side of the page
+                            zIndex: 1000 // make sure it appears above other elements if needed
+                        }}
+                    >
+                        <a href="https://flowiseai.com" target="_blank" style={{ textDecoration: 'none', color:"#bfbfbf", fontSize:"10px"}}>
+                            FlowiseAI
+                        </a>
+                    </Box>
+                </Main>)
+            </Box>):
+            (
+                <Box>
+                    <h1>You are unauthorised. Please contact your admin for approval.</h1>
+                    <Chip label="Back to login page" onClick={handleLogout} />
+                </Box>
+            )
     )
 }
 

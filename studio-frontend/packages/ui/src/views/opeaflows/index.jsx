@@ -29,9 +29,13 @@ import { baseURL } from '@/store/constant'
 // icons
 import { IconPlus, IconLayoutGrid, IconList } from '@tabler/icons-react'
 
+//keycloak
+import { useKeycloak } from '../../KeycloakContext'
+
 // ==============================|| OPEAFlows ||============================== //
 
 const Opeaflows = () => {
+    const keycloak = useKeycloak()
     const navigate = useNavigate()
     const theme = useTheme()
 
@@ -42,7 +46,22 @@ const Opeaflows = () => {
     const [loginDialogOpen, setLoginDialogOpen] = useState(false)
     const [loginDialogProps, setLoginDialogProps] = useState({})
 
-    const getAllOpeaflowsApi = useApi(chatflowsApi.getAllOpeaflows)
+    console.log ("roles", keycloak?.tokenParsed?.resource_access?.genaistudio?.roles[0])
+    let userRole = keycloak?.tokenParsed?.resource_access?.genaistudio?.roles[0]
+    let getAllOpeaflowsApi = null
+    if (keycloak.authenticated) {
+        getAllOpeaflowsApi = useApi(chatflowsApi.getAllOpeaflows)
+
+        if (userRole === 'admin') {
+            getAllOpeaflowsApi = useApi(chatflowsApi.getAllOpeaflows)
+            }
+        else if (userRole === 'user') {
+            getAllOpeaflowsApi = useApi(() => chatflowsApi.getUserOpeaflows(keycloak.tokenParsed.email));
+            console.log("email", keycloak.tokenParsed.email)
+            console.log ("get user opeaflows", getAllOpeaflowsApi)
+        }
+    }
+     
     const stopSandboxApi = chatflowsApi.stopSandbox
     const updateFlowToServerApi = chatflowsApi.updateChatflow
     const [view, setView] = useState(localStorage.getItem('flowDisplayStyle') || 'list')
@@ -86,15 +105,16 @@ const Opeaflows = () => {
 
     useEffect(() => {
         if (getAllOpeaflowsApi.error) {
-            if (getAllOpeaflowsApi.error?.response?.status === 401) {
-                setLoginDialogProps({
-                    title: 'Login',
-                    confirmButtonName: 'Login'
-                })
-                setLoginDialogOpen(true)
-            } else {
-                setError(getAllOpeaflowsApi.error)
-            }
+            console.log ("error", getAllOpeaflowsApi.error)
+            // if (getAllOpeaflowsApi.error?.response?.status === 401) {
+            //     setLoginDialogProps({
+            //         title: 'Login',
+            //         confirmButtonName: 'Login'
+            //     })
+            //     setLoginDialogOpen(true)
+            // } else {
+            //     setError(getAllOpeaflowsApi.error)
+            // }
         }
     }, [getAllOpeaflowsApi.error])
 
@@ -196,6 +216,7 @@ const Opeaflows = () => {
                             setError={setError}
                             stopSandboxApi={stopSandboxApi}
                             isOpeaCanvas={true}
+                            userRole={userRole}
                         />
                     )}
                     {!isLoading && (!getAllOpeaflowsApi.data || getAllOpeaflowsApi.data.length === 0) && (

@@ -134,6 +134,66 @@ const getAllChatflows = async (type?: ChatflowType): Promise<ChatFlow[]> => {
     }
 }
 
+const getAllChatflowsbyUserId = async (userid: string, type?: ChatflowType): Promise<ChatFlow[]> => {
+    try {
+        const appServer = getRunningExpressApp()
+        
+        // Use find with a where condition to filter by userid
+        let dbResponse = await appServer.AppDataSource.getRepository(ChatFlow).find({
+            where: {
+                userid: userid,  // Filter by the specific userid
+            },
+        })
+
+        // If no chatflows are found for the user, create a new one based from sample workflow
+        if (dbResponse.length === 0) {
+            // URL to fetch the sample workflow
+            const url = 'https://raw.githubusercontent.com/opea-project/GenAIStudio/refs/heads/main/sample-workflows/sample_workflow_chatqna.json';
+            
+            try {
+                // Fetch and parse the JSON data from the URL
+                const response = await axios.get(url);
+                const parsedFlowData = response.data;
+
+                // Create a new chatflow with the flowData from the URL
+                const newChatflow: Partial<ChatFlow> = {
+                    userid: userid,
+                    name: 'sample-chatqna',
+                    flowData: JSON.stringify(parsedFlowData),
+                    type: 'OPEA',
+                    deployed: false,
+                    isPublic: false
+                };
+
+                // Call the importChatflows function to insert the new chatflow
+                await importChatflows([newChatflow]);
+            } catch (error) {
+                throw new Error('Failed to import sample chatflow');
+            }
+
+            // Rerun the find query to fetch the latest state of chatflows after insertion
+            dbResponse = await appServer.AppDataSource.getRepository(ChatFlow).find({
+                where: {
+                    userid: userid,
+                },
+            });
+        }
+        
+        // Filter further by type if needed
+        if (type) {
+            return dbResponse.filter((chatflow) => chatflow.type === type)
+        }
+        
+        return dbResponse
+    } catch (error) {
+        throw new InternalFlowiseError(
+            StatusCodes.INTERNAL_SERVER_ERROR,
+            `Error: chatflowsService.getAllChatflows - ${getErrorMessage(error)}`
+        )
+    }
+}
+
+
 const getChatflowByApiKey = async (apiKeyId: string, keyonly?: unknown): Promise<any> => {
     try {
         // Here we only get chatflows that are bounded by the apikeyid and chatflows that are not bounded by any apikey
@@ -455,6 +515,7 @@ export default {
     checkIfChatflowIsValidForUploads,
     deleteChatflow,
     getAllChatflows,
+    getAllChatflowsbyUserId,
     getChatflowByApiKey,
     getChatflowById,
     saveChatflow,

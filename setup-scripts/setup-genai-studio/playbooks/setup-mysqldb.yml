@@ -1,0 +1,92 @@
+- name: Setup MySQL Server
+  hosts: localhost
+  become: yes
+  tasks:
+    
+    - name: Install PyMySQL module
+      pip:
+        name: PyMySQL
+        state: present
+
+    - name: Check if MySQL user 'studio' exists
+      mysql_user:
+        login_user: root
+        login_password: root
+        name: studio
+        check_implicit_admin: yes
+        state: present
+      register: studio_user_exists
+      ignore_errors: yes
+
+    - name: End playbook if MySQL user 'studio' exists
+      meta: end_play
+      when: studio_user_exists is succeeded
+
+    - name: Install MySQL server
+      apt:
+        name: mysql-server
+        state: present
+        update_cache: yes
+
+    - name: Configure MySQL to listen on all interfaces
+      lineinfile:
+        path: /etc/mysql/mysql.conf.d/mysqld.cnf
+        regexp: '^bind-address'
+        line: 'bind-address = 0.0.0.0'
+        state: present
+
+    - name: Restart MySQL service
+      service:
+        name: mysql
+        state: restarted
+
+    - name: Secure MySQL installation updating root password
+      mysql_user:
+        name: root
+        host: localhost
+        password: root
+        login_unix_socket: /var/run/mysqld/mysqld.sock
+        priv: '*.*:ALL,GRANT'
+        state: present
+        plugin: mysql_native_password
+      ignore_errors: yes
+    
+    - name: Create MySQL user 'studio' for all hosts
+      mysql_user:
+        login_user: root
+        login_password: root
+        name: studio
+        host: '%'
+        password: studio
+        priv: '*.*:ALL,GRANT'
+        state: present
+
+    - name: Enforce SSL for MySQL user 'studio' for all hosts
+      mysql_query:
+        login_user: root
+        login_password: root
+        query: "ALTER USER 'studio'@'%' REQUIRE X509;"
+    
+    - name: Create MySQL user 'studio' for localhost without X509
+      mysql_user:
+        login_user: root
+        login_password: root
+        name: studio
+        host: localhost
+        password: studio
+        priv: '*.*:ALL,GRANT'
+        state: present
+
+    - name: Create database 'keycloak'
+      mysql_db:
+        login_user: studio
+        login_password: studio
+        name: keycloak
+        state: present
+
+    - name: Create database 'studio'
+      mysql_db:
+        login_user: studio
+        login_password: studio
+        name: studio
+        state: present
