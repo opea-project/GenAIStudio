@@ -1,0 +1,9 @@
+/* admin/resources/css/styles.css file */
+/* Override global colors */
+:root {
+    --pf-global--primary-color--100: var(--pf-global--palette--purple-600);
+    --pf-global--primary-color--200: var(--pf-global--palette--purple-700);
+    --pf-global--active-color--100: var(--pf-global--palette--purple-600);
+    --pf-global--BackgroundColor--dark-300: #606C38;
+    --pf-global--BackgroundColor--dark-100: #283618;
+  }
