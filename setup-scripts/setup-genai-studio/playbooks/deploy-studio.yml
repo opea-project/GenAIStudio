@@ -25,7 +25,7 @@
 
     - name: Check if app-tls exists in studio namespace
       command: kubectl get secret app-tls -n studio
-      register: tls_secret_check
+      register: app_tls_secret_check
       ignore_errors: yes
 
     - name: Generate TLS certificate and create app-tls
@@ -33,7 +33,36 @@
         openssl req -x509 -nodes -days 365 -newkey rsa:4096 -keyout app-tls.key -out app-tls.crt -subj "/CN=studio/O=studio"
         kubectl create secret generic app-tls --from-file=app-tls.crt --from-file=app-tls.key -n studio
         rm app-tls.key app-tls.crt
-      when: tls_secret_check.rc != 0
+      when: app_tls_secret_check.rc != 0
+
+    - name: Check if mysql-tls exists in studio namespace
+      command: kubectl get secret mysql-tls -n studio
+      register: mysql_tls_secret_check
+      ignore_errors: yes
+
+    - name: Copy mysql ssl to current user
+      become: yes
+      become_user: root
+      shell: |
+        cp /var/lib/mysql/ca.pem .
+        cp /var/lib/mysql/client-cert.pem .
+        cp /var/lib/mysql/client-key.pem .
+        chown -R {{ ansible_env.USER }}:{{ ansible_env.USER }} ca.pem
+        chown -R {{ ansible_env.USER }}:{{ ansible_env.USER }} client-key.pem
+        chown -R {{ ansible_env.USER }}:{{ ansible_env.USER }} client-cert.pem
+      when: mysql_tls_secret_check.rc != 0
+
+    - name: Create mysql-tls from mysql ssl
+      shell: |
+        openssl pkcs12 -export -in client-cert.pem -inkey client-key.pem -out client-keystore.p12 -name keycloak -CAfile ca.pem -caname root -password pass:
+        kubectl create secret generic mysql-tls \
+          --from-file=ca.pem \
+          --from-file=client-cert.pem \
+          --from-file=client-key.pem \
+          --from-file=client-keystore.p12 \
+          -n studio
+        rm ca.pem client-key.pem client-cert.pem client-keystore.p12 
+      when: mysql_tls_secret_check.rc != 0
 
     - name: Apply studio configuration
       command: kubectl apply -f ../studio-config.yaml
