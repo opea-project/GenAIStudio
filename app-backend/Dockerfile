@@ -12,7 +12,8 @@ RUN useradd -m -s /bin/bash user && \
     chown -R user /home/user/
 
 WORKDIR /home/user/
-RUN git clone https://github.com/opea-project/GenAIComps.git
+# temporary pointing to v1.1 GenAIComps for Gateway dependency
+RUN git clone https://github.com/opea-project/GenAIComps.git -b v1.1rc
 
 WORKDIR /home/user/GenAIComps
 RUN pip install --no-cache-dir --upgrade pip==24.3.1 setuptools==75.3.0 && \

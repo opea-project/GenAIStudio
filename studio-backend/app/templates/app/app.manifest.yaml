@@ -4,7 +4,7 @@ kind: ConfigMap
 metadata:
   name: app-backend-config
 data:
-  project-info.json: |+
+  workflow-info.json: |+
     __BACKEND_PROJECT_INFO_JSON_PLACEHOLDER__
 ---
 apiVersion: v1
@@ -54,13 +54,13 @@ spec:
           seccompProfile:
             type: RuntimeDefault
         image: __APP_BACKEND_IMAGE__
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: Always
         volumeMounts:
         - mountPath: /tmp
           name: tmp
-        - mountPath: /home/user/config/project-info.json
-          name: project-info-volume
-          subPath: project-info.json
+        - mountPath: /home/user/config/workflow-info.json
+          name: workflow-info-volume
+          subPath: workflow-info.json
         ports:
         - name: app-backend
           containerPort: 8888
@@ -69,7 +69,7 @@ spec:
       volumes:
       - name: tmp
         emptyDir: {}
-      - name: project-info-volume
+      - name: workflow-info-volume
         configMap:
           name: app-backend-config
 ---
@@ -112,6 +112,7 @@ spec:
         __UI_CONFIG_INFO_ENV_PLACEHOLDER__
         securityContext: {}
         image: __APP_FRONTEND_IMAGE__
+        imagePullPolicy: Always
         ports:
         - name: ui
           containerPort: 80

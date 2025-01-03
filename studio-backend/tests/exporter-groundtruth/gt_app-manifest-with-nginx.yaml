@@ -180,9 +180,8 @@ spec:
         resources: {}
       volumes:
       - name: model-volume
-        hostPath:
-          path: /mnt/opea-models
-          type: Directory
+        persistentVolumeClaim:
+          claimName: model-pvc
       - name: shm
         emptyDir:
           medium: Memory
@@ -285,9 +284,8 @@ spec:
         resources: {}
       volumes:
       - name: model-volume
-        hostPath:
-          path: /mnt/opea-models
-          type: Directory
+        persistentVolumeClaim:
+          claimName: model-pvc
       - name: shm
         emptyDir:
           medium: Memory
@@ -395,9 +393,8 @@ spec:
         resources: {}
       volumes:
       - name: model-volume
-        hostPath:
-          path: /mnt/opea-models
-          type: Directory
+        persistentVolumeClaim:
+          claimName: model-pvc
       - name: shm
         emptyDir:
           medium: Memory
@@ -505,9 +502,8 @@ spec:
         resources: {}
       volumes:
       - name: model-volume
-        hostPath:
-          path: /mnt/opea-models
-          type: Directory
+        persistentVolumeClaim:
+          claimName: model-pvc
       - name: shm
         emptyDir:
           medium: Memory
@@ -1023,7 +1019,7 @@ kind: ConfigMap
 metadata:
   name: app-backend-config
 data:
-  project-info.json: |
+  workflow-info.json: |
     {
             "chat_completion_ids": [
                 "chat_completion_0"
@@ -1043,6 +1039,7 @@ data:
                         "opea_service@llm_tgi_0"
                     ],
                     "connected_to": [],
+                    "dependent_services": null,
                     "hideOutput": true,
                     "id": "chat_completion_0",
                     "inMegaservice": false,
@@ -1057,6 +1054,8 @@ data:
                     "connected_to": [
                         "opea_service@embedding_tei_langchain_0"
                     ],
+                    "dependent_services": null,
+                    "hideOutput": null,
                     "id": "chat_input_0",
                     "inMegaservice": false,
                     "inference_params": {},
@@ -1070,6 +1069,8 @@ data:
                     "connected_to": [
                         "opea_service@prepare_doc_redis_prep_0"
                     ],
+                    "dependent_services": null,
+                    "hideOutput": null,
                     "id": "doc_input_0",
                     "inMegaservice": false,
                     "inference_params": {},
@@ -1093,6 +1094,7 @@ data:
                             "modelName": "BAAI/bge-large-en-v1.5"
                         }
                     },
+                    "hideOutput": null,
                     "id": "opea_service@embedding_tei_langchain_0",
                     "inMegaservice": true,
                     "inference_params": {},
@@ -1116,16 +1118,17 @@ data:
                             "modelName": "Intel/neural-chat-7b-v3-3"
                         }
                     },
+                    "hideOutput": null,
                     "id": "opea_service@llm_tgi_0",
                     "inMegaservice": true,
                     "inference_params": {
                         "chat_template": "### You are a helpful, respectful and honest assistant to help the user with questions.\n### Context: {context}\n### Question: {question}\n### Answer:",
-                        "frequency_penalty": "",
-                        "max_tokens": 17,
+                        "frequency_penalty": 0,
+                        "max_tokens": 17.0,
                         "presence_penalty": 1.03,
-                        "streaming": true,
+                        "streaming": "True",
                         "temperature": 0.01,
-                        "top_k": 10,
+                        "top_k": 10.0,
                         "top_p": 0.95,
                         "typical_p": 0.95
                     },
@@ -1149,6 +1152,7 @@ data:
                             "modelName": "BAAI/bge-large-en-v1.5"
                         }
                     },
+                    "hideOutput": null,
                     "id": "opea_service@prepare_doc_redis_prep_0",
                     "inMegaservice": false,
                     "inference_params": {},
@@ -1172,10 +1176,11 @@ data:
                             "modelName": "BAAI/bge-reranker-base"
                         }
                     },
+                    "hideOutput": null,
                     "id": "opea_service@reranking_tei_0",
                     "inMegaservice": true,
                     "inference_params": {
-                        "top_n": 1
+                        "top_n": 1.0
                     },
                     "name": "opea_service@reranking_tei",
                     "params": {},
@@ -1198,6 +1203,7 @@ data:
                             "modelName": "BAAI/bge-base-en-v1.5"
                         }
                     },
+                    "hideOutput": null,
                     "id": "opea_service@retriever_redis_0",
                     "inMegaservice": true,
                     "inference_params": {
@@ -1215,6 +1221,8 @@ data:
                     "connected_to": [
                         "opea_service@retriever_redis_0"
                     ],
+                    "dependent_services": null,
+                    "hideOutput": null,
                     "id": "redis_vector_store_0",
                     "inMegaservice": true,
                     "inference_params": {},
@@ -1281,13 +1289,13 @@ spec:
           seccompProfile:
             type: RuntimeDefault
         image: opea/app-backend:latest
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: Always
         volumeMounts:
         - mountPath: /tmp
           name: tmp
-        - mountPath: /home/user/config/project-info.json
-          name: project-info-volume
-          subPath: project-info.json
+        - mountPath: /home/user/config/workflow-info.json
+          name: workflow-info-volume
+          subPath: workflow-info.json
         ports:
         - name: app-backend
           containerPort: 8888
@@ -1296,7 +1304,7 @@ spec:
       volumes:
       - name: tmp
         emptyDir: {}
-      - name: project-info-volume
+      - name: workflow-info-volume
         configMap:
           name: app-backend-config
 ---
@@ -1405,6 +1413,13 @@ data:
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto $scheme;
+
+            # Disable buffering for SSE
+            proxy_buffering off;
+            proxy_cache off;
+            proxy_http_version 1.1;
+            proxy_set_header Connection '';
+            chunked_transfer_encoding off;
         }
 
         location /v1/embeddings {
@@ -1493,3 +1508,17 @@ spec:
           defaultMode: 420
           name: app-nginx-config
         name: nginx-config-volume
+---
+# Copyright (C) 2024 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: model-pvc
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 50Gi
+  storageClassName: local-path

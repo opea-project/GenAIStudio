@@ -7,7 +7,7 @@ import unittest
 
 import json
 
-from app.services.project_info_service import ProjectInfo
+from app.services.workflow_info_service import WorkflowInfo
 
 class TestFlowisePipelineTranslator(unittest.TestCase):
 
@@ -21,9 +21,9 @@ class TestFlowisePipelineTranslator(unittest.TestCase):
 
     def test_flowise_pipeline_translator(self):
         # Call the function directly
-        print("converting flowise_pipeline to project_info")
-        project_info = ProjectInfo(json.loads(self.pipeline_json))
-        print('project_info', project_info.export_to_json())
+        print("converting flowise_pipeline to workflow_info")
+        workflow_info = WorkflowInfo(json.loads(self.pipeline_json))
+        print('workflow_info', workflow_info.export_to_json())
 
         self.assertTrue = True
 

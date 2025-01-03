@@ -19,8 +19,8 @@ class AppService:
         self.host = host
         self.port = port
         self.megaservice = ServiceOrchestrator()
-        with open('config/project-info.json', 'r') as f:
-            self.project_info = json.load(f)
+        with open('config/workflow-info.json', 'r') as f:
+            self.workflow_info = json.load(f)
         
     def import_all_microservices_from_template(self):
         template_dir = os.path.join(os.path.dirname(__file__), 'templates', 'microservices')
@@ -35,13 +35,13 @@ class AppService:
     def add_remote_service(self):
         print("add_remote_service")
         templates = self.import_all_microservices_from_template()
-        if 'chat_input_ids' not in self.project_info:
-            raise Exception('chat_input_ids not found in project_info')
-        nodes = self.project_info['chat_input_ids']
+        if 'chat_input_ids' not in self.workflow_info:
+            raise Exception('chat_input_ids not found in workflow_info')
+        nodes = self.workflow_info['chat_input_ids']
         services = {}
         while nodes:
             node_id = nodes.pop(0)
-            node = self.project_info['nodes'][node_id]
+            node = self.workflow_info['nodes'][node_id]
             print('node', node)
             if node['inMegaservice']:
                 print('adding Node', node_id)
