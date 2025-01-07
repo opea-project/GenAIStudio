@@ -6,12 +6,28 @@ import json
 import importlib
 
 # library import
+from fastapi import Request
+from fastapi.responses import StreamingResponse
 
 # comps import
-from comps import  MicroService, ServiceOrchestrator, ServiceType
-from app_gateway import AppGateway
+from comps import MicroService, ServiceOrchestrator, ServiceRoleType, ServiceType
+from comps.cores.mega.utils import handle_message
+from comps.cores.proto.api_protocol import (
+    ChatCompletionRequest,
+    ChatCompletionResponse,
+    ChatCompletionResponseChoice,
+    ChatMessage,
+    UsageInfo,
+)
+from comps.cores.proto.docarray import LLMParams, RerankerParms, RetrieverParms
 
-HOST_IP = os.getenv("HOST_IP", "0,0,0,0")
+category_params_map = {
+    'LLM': LLMParams,
+    'Reranking': RerankerParms,
+    'Retreiver': RetrieverParms,
+}
+
+HOST_IP = os.getenv("HOST_IP", "0.0.0.0")
 USE_NODE_ID_AS_IP = os.getenv("USE_NODE_ID_AS_IP","").lower() == 'true'
 
 class AppService:
@@ -19,6 +35,8 @@ class AppService:
         self.host = host
         self.port = port
         self.megaservice = ServiceOrchestrator()
+        self.megaservice.align_inputs = self.align_inputs
+        self.endpoint = "/v1/app-backend"
         with open('config/workflow-info.json', 'r') as f:
             self.workflow_info = json.load(f)
         
@@ -56,8 +74,7 @@ class AppService:
                         self.megaservice.flow_to(services[prev_node], microservice)
             for next_node in node['connected_to']:
                 nodes.append(next_node)
-        self.megaservice.align_inputs = self.align_inputs
-        self.gateway = AppGateway(megaservice=self.megaservice, host="0.0.0.0", port=self.port)
+        
     def align_inputs(self, inputs, *args, **kwargs):
         """Override this method in megaservice definition."""
         print('\n'*2,'align_inputs')
@@ -73,10 +90,74 @@ class AppService:
             except Exception as e:
                 print('unable to parse input', e)
         return inputs
+    
+    async def handle_request(self, request: Request):
+        data = await request.json()
+        print('\n'*5, '====== handle_request ======\n', data)
+        if 'chat_completion_ids' in self.workflow_info:
+            prompt = handle_message(data['messages'])
+            params = {}
+            llm_parameters = None
+            for id, node in self.workflow_info['nodes'].items():
+                if node['category'] in category_params_map:
+                    param_class = category_params_map[node['category']]()
+                    param_keys = [key for key in dir(param_class) if not key.startswith('__') and not callable(getattr(param_class, key))]
+                    print('param_keys', param_keys)
+                    params_dict = {}
+                    for key in param_keys:
+                        if key in data:
+                            params_dict[key] = data[key]
+                            # hadle special case for stream and streaming
+                            if key in ['stream', 'streaming']:
+                                params_dict[key] = data.get('stream', True) and data.get('streaming', True)
+                        elif key in node['inference_params']:
+                            params_dict[key] = node['inference_params'][key]
+                    params[id] = params_dict
+                if node['category'] == 'LLM':
+                    params[id]['max_new_tokens'] = params[id]['max_tokens']
+                    llm_parameters = LLMParams(**params[id])
+            result_dict, runtime_graph = await self.megaservice.schedule(
+                initial_inputs={'query':prompt, 'text': prompt},
+                llm_parameters=llm_parameters,
+                params=params,
+            )
+            print('runtime_graph', runtime_graph.graph)
+            for node, response in result_dict.items():
+                if isinstance(response, StreamingResponse):
+                    return response
+            last_node = runtime_graph.all_leaves()[-1]
+            print('result_dict:', result_dict)
+            print('last_node:',last_node)
+            response = result_dict[last_node]['text']
+            choices = []
+            usage = UsageInfo()
+            choices.append(
+                ChatCompletionResponseChoice(
+                    index=0,
+                    message=ChatMessage(role='assistant', content=response),
+                    finish_reason='stop',
+                )
+            )
+            return ChatCompletionResponse(model='custom_app', choices=choices, usage=usage)
 
+    def start(self):
+
+        self.service = MicroService(
+            self.__class__.__name__,
+            service_role=ServiceRoleType.MEGASERVICE,
+            host=self.host,
+            port=self.port,
+            endpoint=self.endpoint,
+            input_datatype=ChatCompletionRequest,
+            output_datatype=ChatCompletionResponse,
+        )
+
+        self.service.add_route(self.endpoint, self.handle_request, methods=["POST"])
+        self.service.start()
 
 if __name__ == "__main__":
-    megaservice_host_ip = None if USE_NODE_ID_AS_IP else HOST_IP
-    chatqna = AppService(host=HOST_IP, port=8888)
+    print('pre initialize appService')
+    app = AppService(host=HOST_IP, port=8888)
     print('after initialize appService')
-    chatqna.add_remote_service()
+    app.add_remote_service()
+    app.start()

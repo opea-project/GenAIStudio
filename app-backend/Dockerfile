@@ -12,14 +12,12 @@ RUN useradd -m -s /bin/bash user && \
     chown -R user /home/user/
 
 WORKDIR /home/user/
-# temporary pointing to v1.1 GenAIComps for Gateway dependency
-RUN git clone https://github.com/opea-project/GenAIComps.git -b v1.1rc
+RUN git clone https://github.com/opea-project/GenAIComps.git
 
 WORKDIR /home/user/GenAIComps
 RUN pip install --no-cache-dir --upgrade pip==24.3.1 setuptools==75.3.0 && \
     pip install --no-cache-dir -r /home/user/GenAIComps/requirements.txt
 
-COPY ./app_gateway.py /home/user/app_gateway.py
 COPY ./templates/microservices/* /home/user/templates/microservices/
 COPY ./megaservice.py /home/user/megaservice.py
 COPY config/* /home/user/config/
