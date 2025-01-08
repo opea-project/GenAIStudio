@@ -70,7 +70,7 @@ spec:
             seccompProfile:
               type: RuntimeDefault
           image: "${REGISTRY}/embedding-tei:${TAG}"
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           ports:
             - name: embedding-usvc
               containerPort: 6000

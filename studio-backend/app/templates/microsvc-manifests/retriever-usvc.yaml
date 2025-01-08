@@ -76,7 +76,7 @@ spec:
             seccompProfile:
               type: RuntimeDefault
           image: "${REGISTRY}/retriever-redis:${TAG}"
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           ports:
             - name: retriever-usvc
               containerPort: 7000

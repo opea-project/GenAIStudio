@@ -580,7 +580,7 @@ spec:
           seccompProfile:
             type: RuntimeDefault
         image: opea/embedding-tei:latest
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: Always
         ports:
         - name: embedding-usvc
           containerPort: 6000
@@ -679,7 +679,7 @@ spec:
           seccompProfile:
             type: RuntimeDefault
         image: opea/llm-tgi:latest
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: Always
         ports:
         - name: llm-uservice
           containerPort: 9000
@@ -783,7 +783,7 @@ spec:
           seccompProfile:
             type: RuntimeDefault
         image: opea/dataprep-redis:latest
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: Always
         ports:
         - name: data-prep
           containerPort: 6007
@@ -880,7 +880,7 @@ spec:
           seccompProfile:
             type: RuntimeDefault
         image: opea/reranking-tei:latest
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: Always
         ports:
         - name: reranking-usvc
           containerPort: 8000
@@ -983,7 +983,7 @@ spec:
           seccompProfile:
             type: RuntimeDefault
         image: opea/retriever-redis:latest
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: Always
         ports:
         - name: retriever-usvc
           containerPort: 7000
@@ -1281,7 +1281,7 @@ spec:
           seccompProfile:
             type: RuntimeDefault
         image: opea/app-backend:latest
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: Always
         volumeMounts:
         - mountPath: /tmp
           name: tmp
