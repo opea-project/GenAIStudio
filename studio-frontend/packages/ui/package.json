@@ -21,7 +21,7 @@
         "@mui/material": "5.15.0",
         "@mui/x-data-grid": "6.8.0",
         "@react-keycloak/web": "^3.4.0",
-        "@tabler/icons-react": "^3.3.0",
+        "@tabler/icons-react": "3.7.0",
         "@uiw/codemirror-theme-sublime": "^4.21.21",
         "@uiw/codemirror-theme-vscode": "^4.21.21",
         "@uiw/react-codemirror": "^4.21.21",
