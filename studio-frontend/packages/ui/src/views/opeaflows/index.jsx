@@ -93,6 +93,15 @@ const Opeaflows = () => {
         navigate('/opeacanvas')
     }
 
+    const importSamples = () => {
+        setLoading(true);
+        chatflowsApi.importSampleChatflowsbyUserId(keycloak.tokenParsed.email).then(() => {
+            getAllOpeaflowsApi.request();
+        }).catch(() => {
+            setLoading(false);
+        });
+    }
+    
     const goToCanvas = (selectedChatflow) => {
         navigate(`/opeacanvas/${selectedChatflow.id}`)
     }
@@ -186,9 +195,14 @@ const Opeaflows = () => {
                             </ToggleButton>
                         </ToggleButtonGroup> */}
                     </ViewHeader>
-                    <StyledButton variant='contained' onClick={addNew} startIcon={<IconPlus />} sx={{ borderRadius: 2, height: 40, width:250}}>
+                    <Box sx={{ display: 'flex', gap: 2 }}>
+                        <StyledButton variant='contained' onClick={addNew} startIcon={<IconPlus />} sx={{ borderRadius: 2, height: 40, width: 250 }}>
                             Create New Workflow
-                    </StyledButton>
+                        </StyledButton>
+                        <StyledButton variant='contained' onClick={importSamples} startIcon={<IconPlus />} sx={{ borderRadius: 2, height: 40, width: 250 }}>
+                            Import Sample Workflows
+                        </StyledButton>
+                    </Box>
                     {!view || view === 'card' ? (
                         <>
                             {isLoading && !getAllOpeaflowsApi.data ? (

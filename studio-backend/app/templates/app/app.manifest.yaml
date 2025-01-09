@@ -107,7 +107,7 @@ spec:
       containers:
       - name: app-frontend
         env:
-        - name: APP_BACKEND_SERVICE_URL
+        - name: VITE_APP_BACKEND_SERVICE_URL
           value: /v1/app-backend
         __UI_CONFIG_INFO_ENV_PLACEHOLDER__
         securityContext: {}

@@ -25,7 +25,7 @@ app-frontend:
     - no_proxy=${no_proxy}
     - https_proxy=${https_proxy}
     - http_proxy=${http_proxy}
-    - APP_BACKEND_SERVICE_URL=/v1/app-backend
+    - VITE_APP_BACKEND_SERVICE_URL=/v1/app-backend
     __UI_CONFIG_INFO_ENV_PLACEHOLDER__
   ipc: host
   restart: always

@@ -31,6 +31,8 @@ const stopSandbox = (id) => client.post(`/chatflows-sandbox/stop/${id}`)
 
 const buildDeploymentPackage = (id, body) => client.post(`chatflows-sandbox/build-deployment-package/${id}`, body, {responseType: "arraybuffer"})
 
+const importSampleChatflowsbyUserId = (userid) => client.post(`/chatflows/importsamples?userid=${userid}&type=OPEA`)
+
 export default {
     getAllChatflows,
     getAllAgentflows,
@@ -39,6 +41,7 @@ export default {
     getSpecificChatflow,
     getSpecificChatflowFromPublicEndpoint,
     createNewChatflow,
+    importSampleChatflowsbyUserId,
     importChatflows,
     updateChatflow,
     deleteChatflow,

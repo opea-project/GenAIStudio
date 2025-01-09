@@ -72,7 +72,7 @@ def replace_dynamic_manifest_placeholder(value_str, service_info, proj_info_json
             # For __UI_CONFIG_INFO_ENV_PLACEHOLDER__
             url_name = value['url_name']
             endpoint_path = value['endpoint_path']
-            env_block = f"{indent_str}- name: {url_name}\n{indent_str}  value: {endpoint_path}\n"
+            env_block = f"{indent_str}- name: VITE_{url_name}\n{indent_str}  value: {endpoint_path}\n"
             ui_env_config_info_str += env_block
 
             # For __UI_CONFIG_INFO_ENV_PLACEHOLDER__
@@ -144,7 +144,7 @@ def replace_dynamic_compose_placeholder(value_str, service_info):
         for _, value in service_info['ui_config_info'].items():
             url_name = value['url_name']
             endpoint_path = value['endpoint_path']
-            endpoint_block = f"{indent_str}  - {url_name}={endpoint_path}\n"
+            endpoint_block = f"{indent_str}  - VITE_{url_name}={endpoint_path}\n"
             ui_env_config_info_str += endpoint_block
         
         # Get app images from environment variables

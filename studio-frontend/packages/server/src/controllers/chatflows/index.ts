@@ -67,6 +67,15 @@ const getAllChatflowsbyUserId = async (req: Request, res: Response, next: NextFu
     }
 }
 
+const importSampleChatflowsbyUserId = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const apiResponse = await chatflowsService.importSampleChatflowsbyUserId(req.query.userid as string, req.query.type as ChatflowType)
+        return res.json(apiResponse)
+    } catch (error) {
+        next(error)
+    }
+}
+
 // Get specific chatflow via api key
 const getChatflowByApiKey = async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -268,6 +277,7 @@ export default {
     deleteChatflow,
     getAllChatflows,
     getAllChatflowsbyUserId,
+    importSampleChatflowsbyUserId,
     getChatflowByApiKey,
     getChatflowById,
     saveChatflow,
