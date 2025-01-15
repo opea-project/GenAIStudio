@@ -20,6 +20,6 @@ ansible-playbook -i inventory.ini onpremise-kubernetes.yml
 To push your local docker images into the harbor container registry, run below:
 
 ```sh
-docker tag <image>:<tag> <k8_master_ip>:8443/k8s/<image>:<tag>
-docker push <k8_master_ip>:8443/k8s/<image>:<tag>
+docker tag <image>:<tag> <k8_master_ip>:5000/opea/<image>:<tag>
+docker push <k8_master_ip>:5000/opea/<image>:<tag>
 ```
