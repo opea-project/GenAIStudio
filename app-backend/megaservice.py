@@ -4,6 +4,7 @@
 import os
 import json
 import importlib
+import re
 
 # library import
 from fastapi import Request
@@ -20,6 +21,7 @@ from comps.cores.proto.api_protocol import (
     UsageInfo,
 )
 from comps.cores.proto.docarray import LLMParams, RerankerParms, RetrieverParms
+from langchain_core.prompts import PromptTemplate
 
 category_params_map = {
     'LLM': LLMParams,
@@ -30,12 +32,39 @@ category_params_map = {
 HOST_IP = os.getenv("HOST_IP", "0.0.0.0")
 USE_NODE_ID_AS_IP = os.getenv("USE_NODE_ID_AS_IP","").lower() == 'true'
 
+
+class ChatTemplate:
+    @staticmethod
+    def generate_rag_prompt(question, documents):
+        context_str = "\n".join(documents)
+        if context_str and len(re.findall("[\u4E00-\u9FFF]", context_str)) / len(context_str) >= 0.3:
+            # chinese context
+            template = """
+### 你将扮演一个乐于助人、尊重他人并诚实的助手，你的目标是帮助用户解答问题。有效地利用来自本地知识库的搜索结果。确保你的回答中只包含相关信息。如果你不确定问题的答案，请避免分享不准确的信息。
+### 搜索结果：{context}
+### 问题：{question}
+### 回答：
+"""
+        else:
+            template = """
+### You are a helpful, respectful and honest assistant to help the user with questions. \
+Please refer to the search results obtained from the local knowledge base. \
+But be careful to not incorporate the information that you think is not relevant to the question. \
+If you don't know the answer to a question, please don't share false information. \n
+### Search results: {context} \n
+### Question: {question} \n
+### Answer:
+"""
+        return template.format(context=context_str, question=question)
+
 class AppService:
     def __init__(self, host="0.0.0.0", port=8000):
         self.host = host
         self.port = port
         self.megaservice = ServiceOrchestrator()
         self.megaservice.align_inputs = self.align_inputs
+        self.megaservice.align_outputs = self.align_outputs
+        self.megaservice.align_generator = self.align_generator
         self.endpoint = "/v1/app-backend"
         with open('config/workflow-info.json', 'r') as f:
             self.workflow_info = json.load(f)
@@ -56,7 +85,7 @@ class AppService:
         if 'chat_input_ids' not in self.workflow_info:
             raise Exception('chat_input_ids not found in workflow_info')
         nodes = self.workflow_info['chat_input_ids']
-        services = {}
+        self.services = {}
         while nodes:
             node_id = nodes.pop(0)
             node = self.workflow_info['nodes'][node_id]
@@ -68,10 +97,11 @@ class AppService:
                 microservice = templates[microservice_name].get_service(host_ip=service_node_ip, node_id_as_ip=USE_NODE_ID_AS_IP)
                 microservice.name = node_id
                 self.megaservice.add(microservice)
-                services[node_id] = microservice
+                
+                self.services[node_id] = microservice
                 for prev_node in node['connected_from']:
-                    if prev_node in services:
-                        self.megaservice.flow_to(services[prev_node], microservice)
+                    if prev_node in self.services:
+                        self.megaservice.flow_to(self.services[prev_node], microservice)
             for next_node in node['connected_to']:
                 nodes.append(next_node)
         
@@ -79,17 +109,176 @@ class AppService:
         """Override this method in megaservice definition."""
         print('\n'*2,'align_inputs')
         node_id = args[0]
-        # print('node_id', node_id)
+        llm_parameters_dict = args[2]
+        print('node_id', node_id)
         params = kwargs.get('params', {})
+        print('original_inputs', inputs)
+        print('-'*20)
         # print('params', params)
         if node_id in params:
             try:
                 new_input = params[node_id]
                 inputs.update(new_input)
-                print('inputs', inputs)
             except Exception as e:
                 print('unable to parse input', e)
+        if self.services[node_id].service_type == ServiceType.EMBEDDING:
+            inputs["input"] = inputs["text"]
+            inputs["inputs"] = inputs["text"]
+            del inputs["text"]
+        elif self.services[node_id].service_type == ServiceType.RETRIEVER:
+            # prepare the retriever params
+            retriever_parameters = kwargs.get("retriever_parameters", None)
+            if retriever_parameters:
+                inputs.update(retriever_parameters.dict())
+        elif self.services[node_id].service_type == ServiceType.LLM:
+            # convert TGI/vLLM to unified OpenAI /v1/chat/completions format
+            next_inputs = {}
+            next_inputs["model"] = inputs.get("model") or "Intel/neural-chat-7b-v3-3"
+            if inputs.get("inputs"):
+                next_inputs["messages"] = [{"role": "user", "content": inputs["inputs"]}]
+            else:
+                # for rag case
+                next_inputs["query"] = inputs["query"]
+                next_inputs["documents"] = inputs.get("documents",[])
+            next_inputs["max_tokens"] = llm_parameters_dict["max_tokens"]
+            next_inputs["top_p"] = llm_parameters_dict["top_p"]
+            next_inputs["stream"] = inputs["stream"]
+            next_inputs["frequency_penalty"] = inputs["frequency_penalty"]
+            # next_inputs["presence_penalty"] = inputs["presence_penalty"]
+            # next_inputs["repetition_penalty"] = inputs["repetition_penalty"]
+            next_inputs["temperature"] = inputs["temperature"]
+            inputs = next_inputs
+        print('final_inputs', inputs)
+        print('-'*20)
         return inputs
+    
+    def align_outputs(self, data, cur_node, inputs, runtime_graph, llm_parameters_dict, **kwargs):
+        print('\n'*2,'align_outputs')
+        print('cur_node', cur_node)
+        print('data', data)
+        print('-'*20)
+        print('inputs', inputs)
+        print('-'*20)
+        next_data = {}
+        if self.services[cur_node].service_type == ServiceType.EMBEDDING:
+            # assert isinstance(data, dict)
+            next_data = {"text": inputs["inputs"], "embedding": data['data'][0]['embedding']}
+        elif self.services[cur_node].service_type == ServiceType.RETRIEVER:
+
+            docs = [doc["text"] for doc in data["retrieved_docs"]]
+
+            with_rerank = runtime_graph.downstream(cur_node)[0].startswith("opea_service@rerank")
+            if with_rerank and docs:
+                print("Rerank with docs")
+                # forward to rerank
+                # prepare inputs for rerank
+                next_data["initial_query"] = data["initial_query"]
+                next_data["texts"] = [doc["text"] for doc in data["retrieved_docs"]]
+                next_data["retrieved_docs"] = data["retrieved_docs"]
+            else:
+                print("No rerank")
+                # forward to llm
+                if not docs and with_rerank:
+                    # delete the rerank from retriever -> rerank -> llm
+                    for ds in reversed(runtime_graph.downstream(cur_node)):
+                        for nds in runtime_graph.downstream(ds):
+                            runtime_graph.add_edge(cur_node, nds)
+                        runtime_graph.delete_node_if_exists(ds)
+
+                # handle template
+                # if user provides template, then format the prompt with it
+                # otherwise, use the default template
+                prompt = data["initial_query"]
+                chat_template = llm_parameters_dict["chat_template"]
+                if chat_template:
+                    prompt_template = PromptTemplate.from_template(chat_template)
+                    input_variables = prompt_template.input_variables
+                    if sorted(input_variables) == ["context", "question"]:
+                        prompt = prompt_template.format(question=data["initial_query"], context="\n".join(docs))
+                    elif input_variables == ["question"]:
+                        prompt = prompt_template.format(question=data["initial_query"])
+                    else:
+                        print(f"{prompt_template} not used, we only support 2 input variables ['question', 'context']")
+                        prompt = ChatTemplate.generate_rag_prompt(data["initial_query"], docs)
+                else:
+                    prompt = ChatTemplate.generate_rag_prompt(data["initial_query"], docs)
+
+                next_data["inputs"] = prompt
+            
+        elif self.services[cur_node].service_type == ServiceType.RERANK:
+            # rerank the inputs with the scores
+            # reranker_parameters = kwargs.get("reranker_parameters", None)
+            # top_n = reranker_parameters.top_n if reranker_parameters else 1
+            # docs = inputs["texts"]
+            # reranked_docs = []
+            # for best_response in data['documents'][:top_n]:
+            #     reranked_docs.append(docs[best_response["index"]])
+
+            # # handle template
+            # # if user provides template, then format the prompt with it
+            # # otherwise, use the default template
+            # prompt = inputs["query"]
+            # chat_template = llm_parameters_dict["chat_template"]
+            # if chat_template:
+            #     prompt_template = PromptTemplate.from_template(chat_template)
+            #     input_variables = prompt_template.input_variables
+            #     if sorted(input_variables) == ["context", "question"]:
+            #         prompt = prompt_template.format(question=prompt, context="\n".join(reranked_docs))
+            #     elif input_variables == ["question"]:
+            #         prompt = prompt_template.format(question=prompt)
+            #     else:
+            #         print(f"{prompt_template} not used, we only support 2 input variables ['question', 'context']")
+            #         prompt = ChatTemplate.generate_rag_prompt(prompt, reranked_docs)
+            # else:
+            #     prompt = ChatTemplate.generate_rag_prompt(prompt, reranked_docs)
+
+            # next_data["inputs"] = prompt
+            next_data = data
+
+        elif self.services[cur_node].service_type == ServiceType.LLM and not llm_parameters_dict["stream"]:
+            next_data["text"] = data["choices"][0]["message"]["content"]
+        else:
+            next_data = data
+            
+        print('next_data', next_data)
+        print('-'*20)
+        return next_data
+    
+    def align_generator(self, gen, **kwargs):
+        print('\n'*2,'align_generator')
+        
+        buffer = ""
+        for line in gen:
+            line = line.decode("utf-8")
+            print('line', line)
+            start = line.find("{")
+            end = line.rfind("}") + 1
+
+            json_str = line[start:end]
+            try:
+                json_data = json.loads(json_str)
+                if json_data["choices"][0]["finish_reason"] != "eos_token":
+                    choice = json_data["choices"][0]
+                    if "delta" in choice and "content" in choice["delta"]:
+                        buffer += choice["delta"]["content"]
+                    elif "text" in choice:
+                        buffer += choice["text"]
+                    buffer = buffer.replace("\\n", "\n")
+                    print("buffer", buffer)
+                    
+                    words = buffer.split()
+                    if len(words) > 1:
+                        output_word = words[0] + ' '
+                        yield f"data: {repr(output_word.encode('utf-8'))}\n\n"
+                        buffer = " ".join(words[1:])
+                    else:
+                        buffer = words[0] if words else ""
+            except Exception as e:
+                yield f"data: {repr(json_str.encode('utf-8'))}\n\n"
+        if buffer:
+            yield f"data: {repr(buffer.encode('utf-8'))}\n\n"
+        yield "data: [DONE]\n\n"
+
     
     async def handle_request(self, request: Request):
         data = await request.json()

@@ -8,7 +8,7 @@ kind: ConfigMap
 metadata:
   name: config-{endpoint}
 data:
-  TGI_LLM_ENDPOINT: "http://{tgi_endpoint}"
+  LLM_ENDPOINT: "http://{tgi_endpoint}"
   HUGGINGFACEHUB_API_TOKEN: "{tgi_huggingFaceToken}"
   HF_HOME: "/tmp/.cache/huggingface"
   http_proxy: "${HTTP_PROXY}"
