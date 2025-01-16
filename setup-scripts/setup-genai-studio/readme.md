@@ -1,4 +1,6 @@
-### Overview
+# Setup GenAI Studio
+
+## Overview
 
 The genai-studio playbook script will:
 
@@ -8,12 +10,12 @@ The genai-studio playbook script will:
 
 
 
-### Pre-requisite
+## Pre-requisite
 
 - Existing kubernetes cluster available. If not, please install by following the [Kubernetes official setup guide](https://kubernetes.io/docs/setup/). Alternatively, you can try out our [setup onpremise kubernetes script](../setup-onpremise-kubernetes/readme.md).
 - Update var.yml accordingly
 
-### Installation steps:
+## Installation steps:
 
 Run below commands:
 ```sh
@@ -21,7 +23,7 @@ sudo apt install ansible -y
 ansible-playbook genai-studio.yml
 ```
 
-### Quick health test
+## Quick health test
 
 Run below commands to do a /health test:
 ```sh
