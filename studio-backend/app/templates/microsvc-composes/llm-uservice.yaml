@@ -2,9 +2,10 @@
   image: ${REGISTRY}/llm-tgi:${TAG}
   container_name: "{{endpoint}}"
   depends_on:
-    - "{{tgi_endpoint}}"
+    "{{tgi_endpoint}}":
+      condition: service_healthy
   ports:
-    - 9000:9000
+    - 9009:9000
   ipc: host
   environment:
     no_proxy: ${no_proxy}

@@ -2,10 +2,12 @@
   image: ${REGISTRY}/retriever-redis:${TAG}
   container_name: "{{endpoint}}"
   depends_on:
-    - "{{redis_vector_store_endpoint}}"
-    - "{{tei_endpoint}}"
+    "{{redis_vector_store_endpoint}}":
+      condition: service_started
+    "{{tei_endpoint}}":
+      condition: service_healthy
   ports:
-    - 7000:7000
+    - 7009:7000
   ipc: host
   environment:
     no_proxy: ${no_proxy}

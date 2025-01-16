@@ -8,6 +8,7 @@ kind: ConfigMap
 metadata:
   name: config-{endpoint}
 data:
+  HEALTHCHECK_ENDPOINT: "{tgi_endpoint}"
   LLM_ENDPOINT: "http://{tgi_endpoint}"
   HUGGINGFACEHUB_API_TOKEN: "{tgi_huggingFaceToken}"
   HF_HOME: "/tmp/.cache/huggingface"
@@ -56,6 +57,13 @@ spec:
     spec:
       securityContext:
         {}
+      initContainers:
+        - name: wait-for-remote-service
+          image: busybox
+          command: ['sh', '-c', 'until nc -z -v -w30 $HEALTHCHECK_ENDPOINT 80; do echo "Waiting for remote service..."; sleep 5; done']
+          envFrom:
+            - configMapRef:
+                name: config-{endpoint}
       containers:
         - name: llm-uservice
           envFrom:

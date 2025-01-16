@@ -2,9 +2,10 @@
   image: ${REGISTRY}/reranking-tei:${TAG}
   container_name: "{{endpoint}}"
   depends_on:
-    - "{{tei_endpoint}}"
+    "{{tei_endpoint}}":
+      condition: service_healthy
   ports:
-    - 8000:8000
+    - 8009:8000
   ipc: host
   environment:
     no_proxy: ${no_proxy}
