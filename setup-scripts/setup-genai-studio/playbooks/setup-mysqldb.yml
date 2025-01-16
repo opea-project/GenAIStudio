@@ -12,15 +12,17 @@
       mysql_user:
         login_user: root
         login_password: root
+        login_unix_socket: /var/run/mysqld/mysqld.sock
         name: studio
         check_implicit_admin: yes
         state: present
+      check_mode: yes
       register: studio_user_exists
       ignore_errors: yes
 
     - name: End playbook if MySQL user 'studio' exists
       meta: end_play
-      when: studio_user_exists is succeeded
+      when: studio_user_exists.changed == false
 
     - name: Install MySQL server
       apt:
