@@ -1,5 +1,5 @@
- ## Getting Started
- ### To run Playwright
+ # Getting Started
+ ## To run Playwright
 
 Install npm dependencies:
 ```
@@ -28,7 +28,7 @@ Open the test report:
 npx playwright show-report
 ```
 
-### VSCode setup
+## VSCode setup
 
 Install the 'Playwright Test for VSCode' extension from the Extensions tab in VSCode.
 
