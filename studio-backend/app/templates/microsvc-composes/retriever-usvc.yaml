@@ -9,6 +9,7 @@
   ports:
     - 7009:7000
   ipc: host
+  entrypoint: /bin/sh -c "sed '/^from integrations/ { /from integrations.redis import OpeaRedisRetriever/! s/^/#/ }' opea_retrievers_microservice.py > /tmp/tmp_opea_retrievers_microservice.py && python /tmp/tmp_opea_retrievers_microservice.py"
   environment:
     no_proxy: ${no_proxy}
     http_proxy: ${http_proxy}
