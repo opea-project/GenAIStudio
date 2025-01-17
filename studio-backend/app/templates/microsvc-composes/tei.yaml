@@ -10,4 +10,9 @@
     no_proxy: ${no_proxy}
     http_proxy: ${http_proxy}
     https_proxy: ${https_proxy}
-  command: --model-id {{modelName}} --auto-truncate
+  entrypoint: /bin/sh -c "apt-get update && apt-get install -y curl && text-embeddings-router --json-output --model-id {{modelName}} --auto-truncate"
+  healthcheck:
+    test: ["CMD", "curl", "-f", "http://localhost:80/health"]
+    interval: 30s
+    retries: 20
+    timeout: 10s

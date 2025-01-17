@@ -579,8 +579,8 @@ spec:
           runAsUser: 1000
           seccompProfile:
             type: RuntimeDefault
-        image: opea/embedding-tei:latest
-        imagePullPolicy: IfNotPresent
+        image: opea/embedding:latest
+        imagePullPolicy: Always
         ports:
         - name: embedding-usvc
           containerPort: 6000
@@ -678,8 +678,8 @@ spec:
           runAsUser: 1000
           seccompProfile:
             type: RuntimeDefault
-        image: opea/llm-tgi:latest
-        imagePullPolicy: IfNotPresent
+        image: opea/llm-textgen:latest
+        imagePullPolicy: Always
         ports:
         - name: llm-uservice
           containerPort: 9000
@@ -783,7 +783,7 @@ spec:
           seccompProfile:
             type: RuntimeDefault
         image: opea/dataprep-redis:latest
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: Always
         ports:
         - name: data-prep
           containerPort: 6007
@@ -879,8 +879,8 @@ spec:
           runAsUser: 1000
           seccompProfile:
             type: RuntimeDefault
-        image: opea/reranking-tei:latest
-        imagePullPolicy: IfNotPresent
+        image: opea/reranking:latest
+        imagePullPolicy: Always
         ports:
         - name: reranking-usvc
           containerPort: 8000
@@ -982,8 +982,8 @@ spec:
           runAsUser: 1000
           seccompProfile:
             type: RuntimeDefault
-        image: opea/retriever-redis:latest
-        imagePullPolicy: IfNotPresent
+        image: opea/retriever:latest
+        imagePullPolicy: Always
         ports:
         - name: retriever-usvc
           containerPort: 7000
@@ -1023,7 +1023,7 @@ kind: ConfigMap
 metadata:
   name: app-backend-config
 data:
-  project-info.json: |
+  workflow-info.json: |
     {
             "chat_completion_ids": [
                 "chat_completion_0"
@@ -1281,13 +1281,13 @@ spec:
           seccompProfile:
             type: RuntimeDefault
         image: opea/app-backend:latest
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: Always
         volumeMounts:
         - mountPath: /tmp
           name: tmp
-        - mountPath: /home/user/config/project-info.json
-          name: project-info-volume
-          subPath: project-info.json
+        - mountPath: /home/user/config/workflow-info.json
+          name: workflow-info-volume
+          subPath: workflow-info.json
         ports:
         - name: app-backend
           containerPort: 8888
@@ -1296,7 +1296,7 @@ spec:
       volumes:
       - name: tmp
         emptyDir: {}
-      - name: project-info-volume
+      - name: workflow-info-volume
         configMap:
           name: app-backend-config
 ---
@@ -1364,3 +1364,17 @@ spec:
       volumes:
       - name: tmp
         emptyDir: {}
+---
+# Copyright (C) 2024 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: model-pvc
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 50Gi
+  storageClassName: local-path

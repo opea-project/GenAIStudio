@@ -19,7 +19,7 @@ class UIConfigModel(BaseModel):
     chat_input: bool
     doc_input: bool
 
-class ProjectInfoModel(BaseModel):
+class WorkflowInfoModel(BaseModel):
     chat_completion_ids: List[str]
     chat_input_ids: List[str]
     doc_input_ids: List[str]

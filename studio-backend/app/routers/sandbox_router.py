@@ -4,8 +4,8 @@ from kubernetes import client
 import json
 
 
-from app.models.pipeline_model import PipelineFlow, ProjectId
-from app.services.project_info_service import ProjectInfo
+from app.models.pipeline_model import PipelineFlow, WorkflowId
+from app.services.workflow_info_service import WorkflowInfo
 from app.services.namespace_service import deploy_manifest_in_namespace, delete_namespace, check_ns_status
 
 router = APIRouter()
@@ -13,18 +13,18 @@ router = APIRouter()
 @router.post("/deploy-sandbox")
 async def deploy_sandbox(request: PipelineFlow):
     print('deploy-sandbox')
-    project_info = ProjectInfo(request.dict())
+    workflow_info = WorkflowInfo(request.dict())
     core_v1_api = client.CoreV1Api()
     apps_v1_api = client.AppsV1Api()
     try:
-        response = deploy_manifest_in_namespace(core_v1_api, apps_v1_api, json.loads(project_info.export_to_json()))
+        response = deploy_manifest_in_namespace(core_v1_api, apps_v1_api, json.loads(workflow_info.export_to_json()))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
     return response
 
 @router.post("/delete-sandbox")
-async def delete_sandbox(request: ProjectId):
+async def delete_sandbox(request: WorkflowId):
     print('deploy-sandbox')
     core_v1_api = client.CoreV1Api()
     try:

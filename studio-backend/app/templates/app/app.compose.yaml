@@ -2,7 +2,7 @@ app-backend:
   image: __APP_BACKEND_IMAGE__
   container_name: app-backend
   volumes:
-  - ./project-info.json:/home/user/config/project-info.json
+  - ./workflow-info.json:/home/user/config/workflow-info.json
   depends_on:
   __BACKEND_ENDPOINTS_LIST_PLACEHOLDER__
   ports:
@@ -25,7 +25,7 @@ app-frontend:
     - no_proxy=${no_proxy}
     - https_proxy=${https_proxy}
     - http_proxy=${http_proxy}
-    - APP_BACKEND_SERVICE_URL=/v1/app-backend
+    - VITE_APP_BACKEND_SERVICE_URL=/v1/app-backend
     __UI_CONFIG_INFO_ENV_PLACEHOLDER__
   ipc: host
   restart: always

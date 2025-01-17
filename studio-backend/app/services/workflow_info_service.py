@@ -1,7 +1,7 @@
 import json
 import re
 
-class ProjectInfo:
+class WorkflowInfo:
     def __init__(self, pipeline):
         data = pipeline
         self.id = data['id']
