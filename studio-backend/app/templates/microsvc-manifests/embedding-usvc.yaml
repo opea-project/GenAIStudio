@@ -77,7 +77,7 @@ spec:
             runAsUser: 1000
             seccompProfile:
               type: RuntimeDefault
-          image: "${REGISTRY}/embedding-tei:${TAG}"
+          image: "${REGISTRY}/embedding:${TAG}"
           imagePullPolicy: Always
           ports:
             - name: embedding-usvc

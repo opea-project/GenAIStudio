@@ -1,5 +1,5 @@
 "{{endpoint}}":
-  image: ${REGISTRY}/reranking-tei:${TAG}
+  image: ${REGISTRY}/reranking:${TAG}
   container_name: "{{endpoint}}"
   depends_on:
     "{{tei_endpoint}}":

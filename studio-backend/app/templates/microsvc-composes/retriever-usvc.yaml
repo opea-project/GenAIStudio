@@ -1,5 +1,5 @@
 "{{endpoint}}":
-  image: ${REGISTRY}/retriever-redis:${TAG}
+  image: ${REGISTRY}/retriever:${TAG}
   container_name: "{{endpoint}}"
   depends_on:
     "{{redis_vector_store_endpoint}}":

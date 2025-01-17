@@ -83,7 +83,7 @@ spec:
             runAsUser: 1000
             seccompProfile:
               type: RuntimeDefault
-          image: "${REGISTRY}/retriever-redis:${TAG}"
+          image: "${REGISTRY}/retriever:${TAG}"
           imagePullPolicy: Always
           ports:
             - name: retriever-usvc

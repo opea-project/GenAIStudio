@@ -1,5 +1,5 @@
 "{{endpoint}}":
-  image: ${REGISTRY}/llm-tgi:${TAG}
+  image: ${REGISTRY}/llm-textgen:${TAG}
   container_name: "{{endpoint}}"
   depends_on:
     "{{tgi_endpoint}}":

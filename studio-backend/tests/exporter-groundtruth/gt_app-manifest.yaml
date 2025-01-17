@@ -579,7 +579,7 @@ spec:
           runAsUser: 1000
           seccompProfile:
             type: RuntimeDefault
-        image: opea/embedding-tei:latest
+        image: opea/embedding:latest
         imagePullPolicy: Always
         ports:
         - name: embedding-usvc
@@ -678,7 +678,7 @@ spec:
           runAsUser: 1000
           seccompProfile:
             type: RuntimeDefault
-        image: opea/llm-tgi:latest
+        image: opea/llm-textgen:latest
         imagePullPolicy: Always
         ports:
         - name: llm-uservice
@@ -879,7 +879,7 @@ spec:
           runAsUser: 1000
           seccompProfile:
             type: RuntimeDefault
-        image: opea/reranking-tei:latest
+        image: opea/reranking:latest
         imagePullPolicy: Always
         ports:
         - name: reranking-usvc
@@ -982,7 +982,7 @@ spec:
           runAsUser: 1000
           seccompProfile:
             type: RuntimeDefault
-        image: opea/retriever-redis:latest
+        image: opea/retriever:latest
         imagePullPolicy: Always
         ports:
         - name: retriever-usvc
