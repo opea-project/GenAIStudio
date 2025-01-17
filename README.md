@@ -4,7 +4,7 @@
 ![concept](./assets/screenshots/concepts.png)
 
  ## Reduce Barrier of Adoption with Low-Code: End-to-End GenAI App Development for Productivity
- 
+
   **🌟Key Capabilities**
  - 🛠️ Build & configure GenAI applications rapidly with low-code and no setup hassle
  - 🔍 Instant evaluation with sandbox on Kubernetes Namespace
@@ -39,7 +39,7 @@
 ![key_components](./assets/screenshots/key_components.png)
 
  ### Kubernetes Cluster
- The Kubernetes cluster hosts both the Studio, Sandbox and Monitoring namespaces. 
+ The Kubernetes cluster hosts both the Studio, Sandbox and Monitoring namespaces.
  - **Studio Namespace:** This is the core application namespace containing the Studio-Frontend and Studio-Backend. The Studio-Frontend allows users to manage workflows and build GenAI pipelines. The Studio-Backend includes the Evaluation Sandbox Manager and Deployment Package Generator, which handle deployment of user-designed pipelines.
  - **Sandbox Namespace(s):** Managed by the Studio server, these namespaces create sandbox environments where users can test and evaluate the pipelines constructed through Studio-Frontend.
  - **Monitoring Namespace:** This namespace contains a Prometheus service that collects performance data from each sandbox. These collected metrics are visualized in a Grafana dashboard, enabling users to monitor resource utilization and pipeline performance.
@@ -60,7 +60,7 @@ Users can download the deployment package in a ZIP file from the Studio UI and d
 
 ## Setting up GenAIStudio
 ### Who needs to set up the Studio?
-  
+
 If you're part of a team and want to provide a testing playground for your members, you'll need to set up GenAIStudio. This setup allows your team members to test and evaluate their pipelines in a sandbox environment without worrying about infrastructure management.
 
 However, if you already have access to an existing Studio instance, you can skip the setup process and move directly to the next section to begin working with your workflows.
@@ -97,20 +97,20 @@ The installation can be done with the following steps:
 	ansible-playbook genai-studio.yml
 	```
 	_Note: you can review the deployment configurations in [genai-studio.yml](./setup-scripts/setup-genai-studio/genai-studio.yml)_
-	
 
-## Getting Started with GenAIStudio 
+
+## Getting Started with GenAIStudio
 
 You can access the the Studio UI in a web browser at `http://<studio_server_ip>:30007`.
 
-#### Import a Sample Workflow
+### Import a Sample Workflow
 
 Get started quickly with the Studio UI by downloading and importing this [sample workflow](./sample-workflows/sample_workflow_chatqna.json), which deploys a ChatQnA application.
 
 1. 	On the `Main Page`, click **Create New Workflow**. This will open a blank `Canvas Page` where you can import a sample workflow or start building your new workflow.
 
 	![start_new_project_1](./assets/screenshots/start_new_project_1.png)
-	
+
 2. Then, click on the ⚙️ button in the header bar to import a workflow.
 
 	![import-sample-project](./assets/screenshots/import-sample-project.png)
@@ -121,20 +121,20 @@ Get started quickly with the Studio UI by downloading and importing this [sample
 
 4. Return to the main page and click the run button to [launch the sandbox](#launch-a-sandbox).
 
-#### Start a New Workflow
-1. **Create a new workflow:** 
+### Start a New Workflow
+1. **Create a new workflow:**
 
 	On the `Main Page`, click **Create New Workflow**. This will open a blank `Canvas Page` where you can start building your new workflow.
 
 	![start_new_project_1](./assets/screenshots/start_new_project_1.png)
 
-2. **Drag-and-drop microservice nodes:** 
+2. **Drag-and-drop microservice nodes:**
 
 	In the top-left corner of the canvas, click the ➕ **Add Nodes** button to view a dropdown list of available microservice nodes. You can expand each category and drag nodes onto the canvas. Use your mouse scroll to zoom in and out of the canvas for easier navigation.
 
 	![start_new_project_2](./assets/screenshots/start_new_project_2.png)
 
-3. **Configure and connect microservice nodes:** 
+3. **Configure and connect microservice nodes:**
 
 	Some nodes have configurable parameters that let you set specific settings. After configuring a node, you can connect it to another node by dragging the output edge and dropping it onto the input edge of the target node. Once your workflow is complete, click the 💾 **Save Workflow** button to save your project.
 
@@ -142,13 +142,13 @@ Get started quickly with the Studio UI by downloading and importing this [sample
 
 4. Return to the main page and click the run button to [launch the sandbox](#launch-a-sandbox).
 
-#### Launch a Sandbox
+### Launch a Sandbox
 
 Back on the **Main Page**, you’ll see the saved workflow under the Workflow list. Click the ▶️ **Start button** to initiate the sandbox environment for your workflow. Please allow 3-5 minutes for the environment to be fully set up. Once ready, you can test the workflow in the Sandbox App UI and monitor resource usage through the Grafana Dashboard.
 
 ![start_new_project_4](./assets/screenshots/start_new_project_4.png)
 
-#### App UI Features
+### App UI Features
 1. **Conversational Interactions with Custom Settings**
 
 	Engage in a conversation with the chatbot using various parameter settings. The chatbot’s responses will be tailored based on the content in the uploaded data sources.
@@ -161,16 +161,16 @@ Back on the **Main Page**, you’ll see the saved workflow under the Workflow li
 
 	![app-ui-datasources](./assets/screenshots/app-ui-datasources.png)
 
-#### Monitor Sandbox Resource Utilization in Grafana Dashboard
+### Monitor Sandbox Resource Utilization in Grafana Dashboard
 - View real-time resource utilization metrics for the Sandbox environment. CPU and memory usage are tracked and visualized in the Grafana dashboard for easy monitoring.
 
 	![grafana-dashboard](./assets/screenshots/grafana-dashboard.png)
 
-### Download and Run GenAI App Deployment Package Locally	
-#### Prerequisites
+## Download and Run GenAI App Deployment Package Locally
+### Prerequisites
 To deploy the downloaded GenAI application locally, ensure that Docker Engine with Docker Compose are installed on your machine. If you haven't installed them yet, please refer to the official [Docker](https://docs.docker.com/engine/install/) documentation for setup instructions.
-	
-#### Deploying a GenAI Application
+
+### Deploying a GenAI Application
 The downloaded zip file includes the necessary configurations for deploying the microservices. Follow these steps to set up and run the application with Docker Compose:
 
 1. Set the `public_host_ip` environment variables in `.env` or export it in your environtment:

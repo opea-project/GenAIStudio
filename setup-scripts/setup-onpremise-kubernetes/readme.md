@@ -1,13 +1,15 @@
-### Overview
+# Setup On-premise Kubernetes Cluster
+
+## Overview
 
 The ansible scripts used here are using kubeadm method of installing an onpremise kubernetes cluster. It also installed an onpremise harbor for the container registry to be used by the onpremise kubernetes
 
-### Pre-requisite
+## Pre-requisite
 
 - enable sshkeys on all target machines and ensure no password prompt needed for ssh connections
 - update inventory.ini and var.yml accordingly
 
-### Installation steps:
+## Installation steps:
 
 _Note: This script has only been validated on a fresh installed Ubuntu 22.04 machines._
 
