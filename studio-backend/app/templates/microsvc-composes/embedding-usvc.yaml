@@ -1,11 +1,10 @@
 "{{endpoint}}":
-  image: ${REGISTRY}/embedding:${TAG}
+  image: ${REGISTRY}/embedding-tei:${TAG}
   container_name: "{{endpoint}}"
   depends_on:
-    "{{tei_endpoint}}":
-      condition: service_healthy
+    - "{{tei_endpoint}}"
   ports:
-    - 6009:6000
+    - 6000:6000
   ipc: host
   environment:
     no_proxy: ${no_proxy}

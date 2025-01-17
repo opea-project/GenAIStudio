@@ -20,13 +20,8 @@ data:
     # SPDX-License-Identifier: Apache-2.0
 
     server {
-        # listen 80;
-        # listen [::]:80;
-        listen 443 ssl;
-        listen [::]:443 ssl;
-
-        ssl_certificate /etc/ssl/tls.crt;
-        ssl_certificate_key /etc/ssl/tls.key;
+        listen 80;
+        listen [::]:80;
 
         proxy_connect_timeout 600;
         proxy_send_timeout 600;
@@ -39,7 +34,7 @@ data:
         resolver_timeout 5s;
 
         location /home {
-            root /usr/share/nginx/html;
+            root /usr/share/nginx/html;  # Use root to serve files from a directory
             index index.html;
         }
 
@@ -71,15 +66,6 @@ data:
             proxy_pass $target_host;
     
             proxy_set_header Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto $scheme;
-        }
-
-        # Location block for keycloak
-        location /auth {
-            proxy_pass https://${KEYCLOAK_DNS}/auth/;
-            proxy_set_header Host $host:30007;
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto $scheme;
@@ -184,11 +170,10 @@ spec:
   selector:
     app: studio-nginx
   ports:
-    - name: https
-      protocol: TCP
-      port: 443
-      targetPort: 443
-      nodePort: 30007 
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+      nodePort: 30007
   type: NodePort
 ---
 apiVersion: apps/v1
@@ -216,7 +201,7 @@ spec:
             envsubst "$(env | grep _DNS= | awk -F= '{print "${"$1"}"}' | tr '\n' ' ')" < /tmp/default.conf > /etc/nginx/conf.d/default.conf
         envFrom:
         - configMapRef:
-            name: studio-config
+            name: internal-dns-config
         volumeMounts:
         - name: tmp-volume
           mountPath: /tmp
@@ -229,8 +214,6 @@ spec:
         volumeMounts:
         - name: nginx-conf-volume
           mountPath: /etc/nginx/conf.d
-        - name: tls
-          mountPath: /etc/ssl
       securityContext: {}
       volumes:
       - name: tmp-volume
@@ -239,9 +222,6 @@ spec:
           name: studio-nginx-config
       - name: nginx-conf-volume
         emptyDir: {}
-      - name: tls
-        secret:
-          secretName: tls-secret
 ---
 apiVersion: v1
 kind: Service
@@ -289,9 +269,6 @@ rules:
 - apiGroups: [""] 
   resources: ["nodes"] 
   verbs: ["list", "get"]
-- apiGroups: [""]
-  resources: ["persistentvolumeclaims"]
-  verbs: ["get", "create", "list", "watch"]
 - apiGroups: [""]
   resources: ["persistentvolumeclaims"]
   verbs: ["get", "create", "list", "watch"]
@@ -345,7 +322,7 @@ spec:
           value: ${NO_PROXY}      
         envFrom:
         - configMapRef:
-            name: studio-config
+            name: internal-dns-config
         ports:
         - containerPort: 5000
         resources:
@@ -418,121 +395,3 @@ spec:
       volumes:
       - name: tmp
         emptyDir: {}
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: keycloak
-  namespace: studio
-  labels:
-    app: keycloak
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: keycloak
-  template:
-    metadata:
-      labels:
-        app: keycloak
-    spec:
-      initContainers:
-      - name: keycloak-assets
-        image: curlimages/curl:latest
-        command: ["/bin/sh", "-c"]
-        args:
-          - |
-            OWNER=$(echo ${KC_ASSETS_GIT_URL} | sed -E 's|https://github.com/([^/]+)/([^/]+)/tree/([^/]+)/.*|\1|')
-            REPO=$(echo ${KC_ASSETS_GIT_URL} | sed -E 's|https://github.com/([^/]+)/([^/]+)/tree/([^/]+)/.*|\2|')
-            BRANCH=$(echo ${KC_ASSETS_GIT_URL} | sed -E 's|https://github.com/[^/]+/[^/]+/tree/([^/]+)/.*|\1|')
-            KC_ASSETS_DIR=$(echo ${KC_ASSETS_GIT_URL} | sed -E 's|https://github.com/[^/]+/[^/]+/tree/[^/]+/(.*?)/?$|\1|')
-            if [[ "${KC_ASSETS_DIR: -1}" == "/" ]]; then KC_ASSETS_DIR="${KC_ASSETS_DIR%/}"; fi
-            DOWNLOAD_URL="https://codeload.github.com/${OWNER}/${REPO}/tar.gz/${BRANCH}"
-            curl "${DOWNLOAD_URL}" | tar -xz --strip-components=4 -C /opt/keycloak/themes "${REPO}-${BRANCH}/${KC_ASSETS_DIR}/themes"
-            curl "${DOWNLOAD_URL}" | tar -xz --strip-components=4 -C /opt/keycloak/data "${REPO}-${BRANCH}/${KC_ASSETS_DIR}/data"
-        envFrom:
-        - configMapRef:
-            name: studio-config
-        volumeMounts:
-        - name: keycloak-themes-volume
-          mountPath: /opt/keycloak/themes
-        - name: keycloak-dataimport-volume
-          mountPath: /opt/keycloak/data/import
-        securityContext:
-          runAsUser: 0
-          runAsGroup: 0
-      containers:
-      - name: keycloak
-        image: quay.io/keycloak/keycloak:latest
-        volumeMounts:
-        - name: tls
-          mountPath: /etc/ssl
-          readOnly: true
-        - name: keycloak-themes-volume
-          mountPath: /opt/keycloak/themes
-        - name: keycloak-dataimport-volume
-          mountPath: /opt/keycloak/data/import
-        args:
-        - start
-        - --import-realm
-        ports:
-        - containerPort: 8080
-        - containerPort: 8443
-        env:
-        - name: KC_BOOTSTRAP_ADMIN_USERNAME
-          value: "admin"
-        - name: KC_BOOTSTRAP_ADMIN_PASSWORD
-          value: "admin"
-        - name: KC_PROXY_HEADERS
-          value: "forwarded"
-        - name: KC_HTTP_RELATIVE_PATH
-          value: "/auth"
-        - name: KC_PROXY
-          value: edge
-        - name: KC_HTTPS_CERTIFICATE_FILE
-          value: /etc/ssl/tls.crt
-        - name: KC_HTTPS_CERTIFICATE_KEY_FILE
-          value: /etc/ssl/tls.key
-        - name: KC_HOSTNAME_STRICT
-          value: "false"
-        - name: KC_HOSTNAME_STRICT_HTTPS
-          value: "true"
-        readinessProbe:
-          failureThreshold: 3
-          httpGet:
-            path: auth/realms/master
-            port: 8443
-            scheme: HTTPS
-          periodSeconds: 10
-          successThreshold: 1
-          timeoutSeconds: 1
-        resources:
-          requests:
-            memory: "512Mi"
-            cpu: "500m"
-          limits:
-            memory: "1Gi"
-            cpu: "1"
-      volumes:
-      - name: tls
-        secret:
-          secretName: tls-secret
-      - name: keycloak-themes-volume
-        emptyDir: {}
-      - name: keycloak-dataimport-volume
-        emptyDir: {}
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: keycloak
-  namespace: studio
-spec:
-  type: ClusterIP
-  ports:
-  - name: https
-    protocol: TCP
-    port: 8443
-    targetPort: 8443
-  selector:
-    app: keycloak

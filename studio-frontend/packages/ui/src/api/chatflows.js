@@ -7,8 +7,6 @@ const getAllAgentflows = () => client.get('/chatflows?type=MULTIAGENT')
 
 const getAllOpeaflows = () => client.get('/chatflows?type=OPEA')
 
-const getUserOpeaflows = (userid) => client.get(`/chatflows?userid=${userid}&type=OPEA`)
-
 const getSpecificChatflow = (id) => client.get(`/chatflows/${id}`)
 
 const getSpecificChatflowFromPublicEndpoint = (id) => client.get(`/public-chatflows/${id}`)
@@ -31,17 +29,13 @@ const stopSandbox = (id) => client.post(`/chatflows-sandbox/stop/${id}`)
 
 const buildDeploymentPackage = (id, body) => client.post(`chatflows-sandbox/build-deployment-package/${id}`, body, {responseType: "arraybuffer"})
 
-const importSampleChatflowsbyUserId = (userid) => client.post(`/chatflows/importsamples?userid=${userid}&type=OPEA`)
-
 export default {
     getAllChatflows,
     getAllAgentflows,
     getAllOpeaflows,
-    getUserOpeaflows,
     getSpecificChatflow,
     getSpecificChatflowFromPublicEndpoint,
     createNewChatflow,
-    importSampleChatflowsbyUserId,
     importChatflows,
     updateChatflow,
     deleteChatflow,

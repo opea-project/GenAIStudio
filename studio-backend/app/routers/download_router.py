@@ -10,7 +10,7 @@ import json
 
 from app.services.exporter_service import convert_proj_info_to_compose
 from app.models.pipeline_model import PipelineFlow
-from app.services.workflow_info_service import WorkflowInfo
+from app.services.project_info_service import ProjectInfo
 
 router = APIRouter()
 
@@ -26,12 +26,12 @@ def create_and_download_zip(request: PipelineFlow, background_tasks: BackgroundT
     env_file_path = os.path.join(temp_dir, ".env")
     readme_file_path = os.path.join(temp_dir, "readme.MD")
     compose_file_path = os.path.join(temp_dir, "compose.yaml")
-    workflow_info_file_path = os.path.join(temp_dir, "workflow-info.json")
+    project_info_file_path = os.path.join(temp_dir, "project-info.json")
     zip_path = os.path.join(temp_dir, "docker-compose.zip")
 
-    # Covnert request to workflow info json
-    workflow_info_raw = WorkflowInfo(request.dict())
-    workflow_info = json.loads(workflow_info_raw.export_to_json())
+    # Covnert request to project info json
+    project_info_raw = ProjectInfo(request.dict())
+    project_info = json.loads(project_info_raw.export_to_json())
     
     # Write the strings to files
     try:
@@ -46,20 +46,20 @@ def create_and_download_zip(request: PipelineFlow, background_tasks: BackgroundT
             f.write(readme_content)
 
         # compose.yaml contents
-        compose_content = convert_proj_info_to_compose(workflow_info)
+        compose_content = convert_proj_info_to_compose(project_info)
         with open(compose_file_path, 'w') as f:
             f.write(compose_content)
 
-        # workflow-info.json contents
-        with open(workflow_info_file_path, 'w') as f:
-            f.write(json.dumps(workflow_info, indent=4))
+        # project-info.json contents
+        with open(project_info_file_path, 'w') as f:
+            f.write(json.dumps(project_info, indent=4))
 
         with zipfile.ZipFile(zip_path, 'w') as zipf:
             # Specify the folder structure in the arcname
             zipf.write(env_file_path, arcname=os.path.join("docker-compose", ".env"))
             zipf.write(readme_file_path, arcname=os.path.join("docker-compose", "readme.MD"))
             zipf.write(compose_file_path, arcname=os.path.join("docker-compose", "compose.yaml"))
-            zipf.write(workflow_info_file_path, arcname=os.path.join("docker-compose", "workflow-info.json"))
+            zipf.write(project_info_file_path, arcname=os.path.join("docker-compose", "project-info.json"))
         
         # Schedule the cleanup task to run after the response has been sent
         background_tasks.add_task(clean_up_temp_dir, temp_dir)

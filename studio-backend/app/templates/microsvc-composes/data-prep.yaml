@@ -2,10 +2,8 @@
   image: ${REGISTRY}/dataprep-redis:${TAG}
   container_name: "{{endpoint}}"
   depends_on:
-    "{{redis_vector_store_endpoint}}":
-      condition: service_started
-    "{{tei_endpoint}}":
-      condition: service_healthy
+    - "{{redis_vector_store_endpoint}}"
+    - "{{tei_endpoint}}"
   ports:
     - 6007:6007
   environment:

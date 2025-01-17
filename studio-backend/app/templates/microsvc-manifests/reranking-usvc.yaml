@@ -8,7 +8,6 @@ kind: ConfigMap
 metadata:
   name: config-{endpoint}
 data:
-  HEALTHCHECK_ENDPOINT: "{tei_endpoint}"
   TEI_RERANKING_ENDPOINT: "http://{tei_endpoint}"
   http_proxy: ""
   https_proxy: ""
@@ -55,13 +54,6 @@ spec:
     spec:
       securityContext:
         {}
-      initContainers:
-        - name: wait-for-remote-service
-          image: busybox
-          command: ['sh', '-c', 'until nc -z -v -w30 $HEALTHCHECK_ENDPOINT 80; do echo "Waiting for remote service..."; sleep 5; done']
-          envFrom:
-            - configMapRef:
-                name: config-{endpoint}
       containers:
         - name: reranking-usvc
           envFrom:
@@ -77,8 +69,8 @@ spec:
             runAsUser: 1000
             seccompProfile:
               type: RuntimeDefault
-          image: "${REGISTRY}/reranking:${TAG}"
-          imagePullPolicy: Always
+          image: "${REGISTRY}/reranking-tei:${TAG}"
+          imagePullPolicy: IfNotPresent
           ports:
             - name: reranking-usvc
               containerPort: 8000

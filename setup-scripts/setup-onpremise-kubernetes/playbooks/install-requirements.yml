@@ -161,7 +161,7 @@
       line: "{{ item }}"
     loop:
       - 'export http_proxy={{ http_proxy }}'
-      - 'export https_proxy={{ http_proxy }}'
+      - 'export http_proxy={{ http_proxy }}'
       - 'export no_proxy={{ no_proxy }}'
   - name: Set up proxy environment variables for Docker service
     block:
@@ -219,10 +219,6 @@
       name: ['kubelet', 'kubeadm', 'kubectl']
       state: present
       update_cache: yes
-    environment:
-      http_proxy: "{{ http_proxy }}"
-      https_proxy: "{{ http_proxy }}"
-      no_proxy: "{{ no_proxy }}"
 
   - name: Hold Kubernetes packages
     dpkg_selections:

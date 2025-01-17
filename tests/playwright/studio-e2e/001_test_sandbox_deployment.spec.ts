@@ -4,18 +4,11 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 
-test('001_test_sandbox_deployment', async ({ browser, baseURL }) => {
+test('001_test_sandbox_deployment', async ({ page, baseURL }) => {
     test.setTimeout(600000);
-    const context = await browser.newContext({
-        ignoreHTTPSErrors: true
-    });
-    const page = await context.newPage();
+
     const IDC_URL = baseURL || ""
     await page.goto(IDC_URL);
-    await page.getByLabel('Username or email').fill('test_automation@gmail.com');
-    await page.getByLabel('Password', { exact: true }).click();
-    await page.getByLabel('Password', { exact: true }).fill('test');
-    await page.getByRole('button', { name: 'Sign In' }).click();
     await page.getByRole('button', { name: 'Create New Workflow' }).click();
     await page.getByRole('button', { name: 'Settings' }).click();
     let fileChooserPromise = page.waitForEvent('filechooser');

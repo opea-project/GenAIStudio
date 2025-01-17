@@ -4,5 +4,5 @@
 - name: Setup K8 cluster
   import_playbook: playbooks/setup-k8-cluster.yml
 
-- name: Setup local container registry
-  import_playbook: playbooks/setup-local-registry.yml
+- name: Setup harbor container registry
+  import_playbook: playbooks/setup-harbor.yml

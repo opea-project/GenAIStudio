@@ -4,11 +4,10 @@ const router = express.Router()
 
 // CREATE
 router.post('/', chatflowsController.saveChatflow)
-router.post('/importsamples', chatflowsController.importSampleChatflowsbyUserId)
 router.post('/importchatflows', chatflowsController.importChatflows)
 
 // READ
-router.get('/', chatflowsController.getAllChatflowsbyUserId)
+router.get('/', chatflowsController.getAllChatflows)
 router.get(['/', '/:id'], chatflowsController.getChatflowById)
 router.get(['/apikey/', '/apikey/:apikey'], chatflowsController.getChatflowByApiKey)
 

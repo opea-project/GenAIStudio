@@ -1,13 +1,11 @@
 "{{endpoint}}":
-  image: ${REGISTRY}/retriever:${TAG}
+  image: ${REGISTRY}/retriever-redis:${TAG}
   container_name: "{{endpoint}}"
   depends_on:
-    "{{redis_vector_store_endpoint}}":
-      condition: service_started
-    "{{tei_endpoint}}":
-      condition: service_healthy
+    - "{{redis_vector_store_endpoint}}"
+    - "{{tei_endpoint}}"
   ports:
-    - 7009:7000
+    - 7000:7000
   ipc: host
   environment:
     no_proxy: ${no_proxy}
@@ -17,6 +15,4 @@
     INDEX_NAME: "rag-redis"
     TEI_EMBEDDING_ENDPOINT: "http://${public_host_ip}:{{tei_port}}"
     HUGGINGFACEHUB_API_TOKEN: "{{tei_huggingFaceToken}}"
-    LOGFLAG: ${LOGFLAG}
-    RETRIEVER_COMPONENT_NAME: "OPEA_RETRIEVER_REDIS"
   restart: unless-stopped

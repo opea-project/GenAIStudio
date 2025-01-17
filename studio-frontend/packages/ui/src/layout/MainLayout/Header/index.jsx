@@ -18,26 +18,6 @@ import { IconMenu2 } from '@tabler/icons-react'
 // store
 import { SET_DARKMODE } from '@/store/actions'
 
-// keycloak context
-import LogoutIcon from '@mui/icons-material/Logout';
-import { useKeycloak } from '../../../KeycloakContext'
-
-const LogoutButton = () => {
-    const keycloak = useKeycloak(); // Access the Keycloak instance
-
-    const handleLogout = () => {
-        keycloak.logout({
-            redirectUri: window.location.origin, // Redirect to the home page or desired URL after logout
-        });
-    };
-
-    return (
-        <ButtonBase onClick={handleLogout} sx={{ borderRadius: '12px', overflow: 'hidden' }}>
-            <LogoutIcon />
-        </ButtonBase>
-    );
-};
-
 // ==============================|| MAIN NAVBAR / HEADER ||============================== //
 
 const MaterialUISwitch = styled(Switch)(({ theme }) => ({
@@ -112,43 +92,45 @@ const Header = ({ handleLeftDrawerToggle }) => {
 
     return (
         <>
-            {/* Container for logo and logout button */}
+            {/* logo & toggler button */}
             <Box
                 sx={{
+                    width: 228,
                     display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between', // Space between left and right
-                    width: '100%', // Full width of the parent container
+                    [theme.breakpoints.down('md')]: {
+                        width: 'auto'
+                    }
                 }}
             >
-                {/* Logo Section */}
-                <Box
-                    sx={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        width: 228, // Fixed width for logo
-                        [theme.breakpoints.down('md')]: {
-                            width: 'auto', // Adjust for smaller screens
-                        },
-                    }}
-                >
-                    <Box component="span" sx={{ display: { xs: 'none', md: 'block' }, flexGrow: 1 }}>
-                        <LogoSection />
-                    </Box>
+                <Box component='span' sx={{ display: { xs: 'none', md: 'block' }, flexGrow: 1 }}>
+                    <LogoSection />
                 </Box>
-
-                {/* Logout Button */}
-                <Box
-                    sx={{
-                        display: 'flex',
-                        alignItems: 'center',
-                    }}
-                >
-                    <LogoutButton />
-                </Box>
+                {/* <ButtonBase sx={{ borderRadius: '12px', overflow: 'hidden' }}>
+                    <Avatar
+                        variant='rounded'
+                        sx={{
+                            ...theme.typography.commonAvatar,
+                            ...theme.typography.mediumAvatar,
+                            transition: 'all .2s ease-in-out',
+                            background: theme.palette.secondary.light,
+                            color: theme.palette.secondary.dark,
+                            '&:hover': {
+                                background: theme.palette.secondary.dark,
+                                color: theme.palette.secondary.light
+                            }
+                        }}
+                        onClick={handleLeftDrawerToggle}
+                        color='inherit'
+                    >
+                        <IconMenu2 stroke={1.5} size='1.3rem' />
+                    </Avatar>
+                </ButtonBase> */}
             </Box>
+            <Box sx={{ flexGrow: 1 }} />
+            {/* <MaterialUISwitch checked={isDark} onChange={changeDarkMode} /> */}
+            <Box sx={{ ml: 2 }}></Box>
+            {/* <ProfileSection handleLogout={signOutClicked} username={localStorage.getItem('username') ?? ''} /> */}
         </>
-
     )
 }
 

@@ -65,5 +65,5 @@ class PipelineFlow(BaseModel):
     createdDate: datetime
     updatedDate: datetime
 
-class WorkflowId(BaseModel):
+class ProjectId(BaseModel):
     id: str

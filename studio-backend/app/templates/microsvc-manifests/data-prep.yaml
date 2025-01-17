@@ -8,7 +8,6 @@ kind: ConfigMap
 metadata:
   name: config-{endpoint}
 data:
-  HEALTHCHECK_ENDPOINT: "{tei_endpoint}"
   TEI_ENDPOINT: "http://{tei_endpoint}"
   EMBED_MODEL: ""
   REDIS_URL: "redis://{redis_vector_store_endpoint}:{redis_vector_store_port}"
@@ -62,13 +61,6 @@ spec:
     spec:
       securityContext:
         {}
-      initContainers:
-        - name: wait-for-remote-service
-          image: busybox
-          command: ['sh', '-c', 'until nc -z -v -w30 $HEALTHCHECK_ENDPOINT 80; do echo "Waiting for remote service..."; sleep 5; done']
-          envFrom:
-            - configMapRef:
-                name: config-{endpoint}
       containers:
         - name: data-prep
           envFrom:
@@ -85,7 +77,7 @@ spec:
             seccompProfile:
               type: RuntimeDefault
           image: "${REGISTRY}/dataprep-redis:${TAG}"
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           ports:
             - name: data-prep
               containerPort: 6007

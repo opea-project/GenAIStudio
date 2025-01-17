@@ -12,7 +12,7 @@ from app.services.exporter_service import convert_proj_info_to_manifest
 def setup_and_teardown():
     test_dir = os.path.dirname(os.path.abspath(__file__))
     # Paths for the `mega.yaml` and output file
-    proj_info_file = os.path.join(test_dir, "flowise-pipeline-translator", "workflow-info.json")
+    proj_info_file = os.path.join(test_dir, "flowise-pipeline-translator", "project-info.json")
     output_file = os.path.join(test_dir, "exporter-groundtruth", "app-manifest.yaml")
     gt_file = os.path.join(test_dir, "exporter-groundtruth", "gt_app-manifest.yaml")
     gt_nginx_file = os.path.join(test_dir, "exporter-groundtruth", "gt_app-manifest-with-nginx.yaml")    
@@ -23,7 +23,7 @@ def setup_and_teardown():
         os.unlink(output_file)    
 
 def test_convert_chatqna_proj_info_to_manifest_obj(setup_and_teardown):
-    proj_info_file, output_file, gt_file, _ = setup_and_teardown
+    proj_info_file, _, gt_file, _ = setup_and_teardown
 
     with open(proj_info_file, "r") as file:
         proj_info = json.load(file)
@@ -39,11 +39,8 @@ def test_convert_chatqna_proj_info_to_manifest_obj(setup_and_teardown):
                 identifiers.add((doc['kind'], doc['metadata']['name']))
         return identifiers
     
-    manifest_dict = list(yaml.safe_load_all(output_manifest))
+    manifest_dict = yaml.safe_load_all(output_manifest)
     output_identifiers = create_identifiers_set(manifest_dict)
-
-    with open(output_file, "w") as f:
-        yaml.dump_all(manifest_dict, f)
 
     # Load the documents from the gt manifest
     with open(gt_file, 'r') as f:

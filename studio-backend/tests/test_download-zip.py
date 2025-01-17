@@ -55,4 +55,4 @@ def test_create_and_download_zip(setup_and_teardown):
         assert 'docker-compose/.env' in zipf.namelist()
         assert 'docker-compose/readme.MD' in zipf.namelist()
         assert 'docker-compose/compose.yaml' in zipf.namelist()
-        assert 'docker-compose/workflow-info.json' in zipf.namelist()    
+        assert 'docker-compose/project-info.json' in zipf.namelist()    

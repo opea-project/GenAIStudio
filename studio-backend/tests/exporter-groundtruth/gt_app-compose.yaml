@@ -64,7 +64,7 @@ services:
       https_proxy: ${https_proxy}
     command: --model-id BAAI/bge-base-en-v1.5 --auto-truncate
   embedding-tei-langchain-0:
-    image: opea/embedding:latest
+    image: opea/embedding-tei:latest
     container_name: embedding-tei-langchain-0
     depends_on:
     - tei-0
@@ -78,7 +78,7 @@ services:
       TEI_EMBEDDING_ENDPOINT: http://${public_host_ip}:2081
     restart: unless-stopped
   llm-tgi-0:
-    image: opea/llm-textgen:latest
+    image: opea/llm-tgi:latest
     container_name: llm-tgi-0
     depends_on:
     - tgi-0
@@ -112,7 +112,7 @@ services:
       TEI_ENDPOINT: http://${public_host_ip}:2081
       HUGGINGFACEHUB_API_TOKEN: NA
   reranking-tei-0:
-    image: opea/reranking:latest
+    image: opea/reranking-tei:latest
     container_name: reranking-tei-0
     depends_on:
     - tei-1
@@ -129,7 +129,7 @@ services:
       HF_HUB_ENABLE_HF_TRANSFER: 0
     restart: unless-stopped
   retriever-redis-0:
-    image: opea/retriever:latest
+    image: opea/retriever-redis:latest
     container_name: retriever-redis-0
     depends_on:
     - redis-vector-store-0
@@ -150,7 +150,7 @@ services:
     image: opea/app-backend:latest
     container_name: app-backend
     volumes:
-    - ./workflow-info.json:/home/user/config/workflow-info.json
+    - ./project-info.json:/home/user/config/project-info.json
     depends_on:
     - redis-vector-store-0
     - tei-0

@@ -7,7 +7,7 @@ from app.utils.placeholders_utils import ordered_load_all, replace_manifest_plac
 
 def convert_proj_info_to_manifest(proj_info_json, output_file=None):
 
-    print("Converting workflow info json to manifest.")
+    print("Converting project info json to manifest.")
 
     opea_services = process_opea_services(proj_info_json)
     # print(json.dumps(opea_services, indent=4))
@@ -56,7 +56,7 @@ def convert_proj_info_to_manifest(proj_info_json, output_file=None):
 
 def convert_proj_info_to_compose(proj_info_json, output_file=None):
 
-    print("Converting workflow info json to compose.")
+    print("Converting project info json to compose.")
 
     opea_services = process_opea_services(proj_info_json)
     # print(json.dumps(opea_services, indent=4))

@@ -579,8 +579,8 @@ spec:
           runAsUser: 1000
           seccompProfile:
             type: RuntimeDefault
-        image: opea/embedding:latest
-        imagePullPolicy: Always
+        image: opea/embedding-tei:latest
+        imagePullPolicy: IfNotPresent
         ports:
         - name: embedding-usvc
           containerPort: 6000
@@ -678,8 +678,8 @@ spec:
           runAsUser: 1000
           seccompProfile:
             type: RuntimeDefault
-        image: opea/llm-textgen:latest
-        imagePullPolicy: Always
+        image: opea/llm-tgi:latest
+        imagePullPolicy: IfNotPresent
         ports:
         - name: llm-uservice
           containerPort: 9000
@@ -783,7 +783,7 @@ spec:
           seccompProfile:
             type: RuntimeDefault
         image: opea/dataprep-redis:latest
-        imagePullPolicy: Always
+        imagePullPolicy: IfNotPresent
         ports:
         - name: data-prep
           containerPort: 6007
@@ -879,8 +879,8 @@ spec:
           runAsUser: 1000
           seccompProfile:
             type: RuntimeDefault
-        image: opea/reranking:latest
-        imagePullPolicy: Always
+        image: opea/reranking-tei:latest
+        imagePullPolicy: IfNotPresent
         ports:
         - name: reranking-usvc
           containerPort: 8000
@@ -982,8 +982,8 @@ spec:
           runAsUser: 1000
           seccompProfile:
             type: RuntimeDefault
-        image: opea/retriever:latest
-        imagePullPolicy: Always
+        image: opea/retriever-redis:latest
+        imagePullPolicy: IfNotPresent
         ports:
         - name: retriever-usvc
           containerPort: 7000
@@ -1023,7 +1023,7 @@ kind: ConfigMap
 metadata:
   name: app-backend-config
 data:
-  workflow-info.json: |
+  project-info.json: |
     {
             "chat_completion_ids": [
                 "chat_completion_0"
@@ -1281,13 +1281,13 @@ spec:
           seccompProfile:
             type: RuntimeDefault
         image: opea/app-backend:latest
-        imagePullPolicy: Always
+        imagePullPolicy: IfNotPresent
         volumeMounts:
         - mountPath: /tmp
           name: tmp
-        - mountPath: /home/user/config/workflow-info.json
-          name: workflow-info-volume
-          subPath: workflow-info.json
+        - mountPath: /home/user/config/project-info.json
+          name: project-info-volume
+          subPath: project-info.json
         ports:
         - name: app-backend
           containerPort: 8888
@@ -1296,7 +1296,7 @@ spec:
       volumes:
       - name: tmp
         emptyDir: {}
-      - name: workflow-info-volume
+      - name: project-info-volume
         configMap:
           name: app-backend-config
 ---
@@ -1364,17 +1364,3 @@ spec:
       volumes:
       - name: tmp
         emptyDir: {}
----
-# Copyright (C) 2024 Intel Corporation
-# SPDX-License-Identifier: Apache-2.0
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: model-pvc
-spec:
-  accessModes:
-  - ReadWriteOnce
-  resources:
-    requests:
-      storage: 50Gi
-  storageClassName: local-path
