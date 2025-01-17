@@ -14,3 +14,8 @@
     HF_HUB_DISABLE_PROGRESS_BARS: 1
     HF_HUB_ENABLE_HF_TRANSFER: 0
   command: --model-id {{modelName}} --cuda-graphs 0
+  healthcheck:
+    test: ["CMD", "curl", "-f", "http://localhost:80/health"]
+    interval: 30s
+    retries: 20
+    timeout: 10s

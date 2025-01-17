@@ -8,6 +8,7 @@ kind: ConfigMap
 metadata:
   name: config-{endpoint}
 data:
+  HEALTHCHECK_ENDPOINT: "{tei_endpoint}"
   TEI_EMBEDDING_ENDPOINT: "http://{tei_endpoint}"
   EMBED_MODEL: ""
   REDIS_URL: "redis://{redis_vector_store_endpoint}:{redis_vector_store_port}"
@@ -19,6 +20,7 @@ data:
   HF_HOME: "/tmp/.cache/huggingface"
   HUGGINGFACEHUB_API_TOKEN: "{tei_huggingFaceToken}"
   LOGFLAG: ""
+  RETRIEVER_COMPONENT_NAME: "OPEA_RETRIEVER_REDIS"
 ---
 # Source: retriever-usvc/templates/service.yaml
 # Copyright (C) 2024 Intel Corporation
@@ -60,6 +62,13 @@ spec:
     spec:
       securityContext:
         {}
+      initContainers:
+        - name: wait-for-remote-service
+          image: busybox
+          command: ['sh', '-c', 'until nc -z -v -w30 $HEALTHCHECK_ENDPOINT 80; do echo "Waiting for remote service..."; sleep 5; done']
+          envFrom:
+            - configMapRef:
+                name: config-{endpoint}
       containers:
         - name: retriever-usvc
           envFrom:
@@ -75,8 +84,8 @@ spec:
             runAsUser: 1000
             seccompProfile:
               type: RuntimeDefault
-          image: "${REGISTRY}/retriever-redis:${TAG}"
-          imagePullPolicy: IfNotPresent
+          image: "${REGISTRY}/retriever:${TAG}"
+          imagePullPolicy: Always
           ports:
             - name: retriever-usvc
               containerPort: 7000

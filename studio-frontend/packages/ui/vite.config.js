@@ -37,8 +37,8 @@ export default defineConfig(async ({ mode }) => {
         server: {
             open: true,
             proxy,
-            port: process.env.VITE_PORT ?? 8080,
-            host: process.env.VITE_HOST
+            port: process.env.VITE_PORT ?? 8088,
+            host: process.env.VITE_HOST ?? '0.0.0.0'
         }
     }
 })

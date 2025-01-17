@@ -11,7 +11,7 @@ from app.services.exporter_service import convert_proj_info_to_compose
 def setup_and_teardown():
     test_dir = os.path.dirname(os.path.abspath(__file__))
     # Paths for the `mega.yaml` and output file
-    proj_info_file = os.path.join(test_dir, "flowise-pipeline-translator", "project-info.json")
+    proj_info_file = os.path.join(test_dir, "flowise-pipeline-translator", "workflow-info.json")
     output_file = os.path.join(test_dir, "exporter-groundtruth", "app-compose.yaml")
     gt_file = os.path.join(test_dir, "exporter-groundtruth", "gt_app-compose.yaml")
 

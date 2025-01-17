@@ -13,7 +13,7 @@ kind: ConfigMap
 metadata:
   name: app-backend-config
 data:
-  project-info.json: |+
+  workflow-info.json: |+
     __BACKEND_PROJECT_INFO_JSON_PLACEHOLDER__
 ---
 apiVersion: v1
@@ -67,9 +67,9 @@ spec:
         volumeMounts:
         - mountPath: /tmp
           name: tmp
-        - mountPath: /home/user/config/project-info.json
-          name: project-info-volume
-          subPath: project-info.json
+        - mountPath: /home/user/config/workflow-info.json
+          name: workflow-info-volume
+          subPath: workflow-info.json
         ports:
         - name: app-backend
           containerPort: 8888
@@ -80,7 +80,7 @@ spec:
       volumes:
       - name: tmp
         emptyDir: {}
-      - name: project-info-volume
+      - name: workflow-info-volume
         configMap:
           name: app-backend-config
 ---
@@ -118,7 +118,7 @@ spec:
       containers:
       - name: app-frontend
         env:
-        - name: APP_BACKEND_SERVICE_URL
+        - name: VITE_APP_BACKEND_SERVICE_URL
           value: /v1/app-backend
         __UI_CONFIG_INFO_ENV_PLACEHOLDER__
         securityContext: {}
