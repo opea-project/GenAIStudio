@@ -71,6 +71,9 @@ spec:
                 name: config-{endpoint}
       containers:
         - name: retriever-usvc
+          command: ["/bin/sh", "-c"]
+          args:
+          - sed '/^from integrations/ { /from integrations.redis import OpeaRedisRetriever/! s/^/#/ }' opea_retrievers_microservice.py > /tmp/tmp_opea_retrievers_microservice.py && python /tmp/tmp_opea_retrievers_microservice.py
           envFrom:
             - configMapRef:
                 name: config-{endpoint}
