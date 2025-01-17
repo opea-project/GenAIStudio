@@ -20,6 +20,7 @@ data:
   HF_HOME: "/tmp/.cache/huggingface"
   HUGGINGFACEHUB_API_TOKEN: "{tei_huggingFaceToken}"
   LOGFLAG: ""
+  RETRIEVER_COMPONENT_NAME: "OPEA_RETRIEVER_REDIS"
 ---
 # Source: retriever-usvc/templates/service.yaml
 # Copyright (C) 2024 Intel Corporation
