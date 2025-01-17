@@ -136,10 +136,13 @@ class AppService:
             next_inputs["model"] = inputs.get("model") or "Intel/neural-chat-7b-v3-3"
             if inputs.get("inputs"):
                 next_inputs["messages"] = [{"role": "user", "content": inputs["inputs"]}]
-            else:
+            elif inputs.get("query") and inputs.get("documents"):
                 # for rag case
                 next_inputs["query"] = inputs["query"]
                 next_inputs["documents"] = inputs.get("documents",[])
+            else:
+                # simple llm case
+                next_inputs["messages"] = [{"role": "user", "content": next(value for key in ["query", "text", "input", "inputs"] if (value := inputs.get(key)))}]
             next_inputs["max_tokens"] = llm_parameters_dict["max_tokens"]
             next_inputs["top_p"] = llm_parameters_dict["top_p"]
             next_inputs["stream"] = inputs["stream"]
