@@ -98,28 +98,34 @@ The installation can be done with the following steps:
 	```
 	_Note: you can review the deployment configurations in [genai-studio.yml](./setup-scripts/setup-genai-studio/genai-studio.yml)_
 
+3. **Configure admin console**
+	
+	Refer to the [Admin Console Configuration Guide](./assets/keycloak/README.md) to learn how to configure and customize the admin console, as well as manage user permissions.
+
 
 ## Getting Started with GenAIStudio
 
-You can access the the Studio UI in a web browser at `http://<studio_server_ip>:30007`.
+You can access the the Studio UI in a web browser at `https://<studio_server_ip>:30007`, which will take you to the login page. 
 
-### Import a Sample Workflow
+You might see a `net::ERR_CERT_AUTHORITY_INVALID` warning in your browser, as shown in the screenshot below. This warning occurs because a self-signed SSL/TLS certificate is being used. If you are accessing the Studio setup on an internal private network, you can safely ignore this warning by clicking the Proceed button.
 
-Get started quickly with the Studio UI by downloading and importing this [sample workflow](./sample-workflows/sample_workflow_chatqna.json), which deploys a ChatQnA application.
+<img src="./assets/screenshots/login_unsafe_warning.png" alt="Alt Text" width="470" height="420">
 
-1. 	On the `Main Page`, click **Create New Workflow**. This will open a blank `Canvas Page` where you can import a sample workflow or start building your new workflow.
+If you are a first-time user, you will need to register as a new user, and request approval from your admin before gaining access to the `Main Page`. Once your registration is approved, simply refresh the page to proceed.
 
-	![start_new_project_1](./assets/screenshots/start_new_project_1.png)
+### Run a Sample Workflow
 
-2. Then, click on the ⚙️ button in the header bar to import a workflow.
+Get started quickly by running a built-in sample workflow:
 
-	![import-sample-project](./assets/screenshots/import-sample-project.png)
+1. 	On the `Main Page`, click on **Import Sample Workflow** and you will be able to see a list of sample workflows.
 
-3. Rename the workflow to "ChatQnA" and review the settings in each node. Enter your Hugging Face token in the relevant nodes, then save the workflow.
+	![run_sample_workflow_1](./assets/screenshots/run_sample_workflow_1.png)
 
-	![sample-project](./assets/screenshots/sample-project.png)
+2. Click on `sample_workflow_chatqna` to open the workflow in the canvas. Review the nodes and their configurations. You can modify the models to your preference and enter the Hugging Face token if needed.
 
-4. Return to the main page and click the run button to [launch the sandbox](#launch-a-sandbox).
+	![run_sample_workflow_2](./assets/screenshots/run_sample_workflow_2.png)
+
+3. Once everything is in place, you can return to the main page and click the run button to [launch the sandbox](#launch-a-sandbox).
 
 ### Start a New Workflow
 1. **Create a new workflow:**
@@ -139,6 +145,8 @@ Get started quickly with the Studio UI by downloading and importing this [sample
 	Some nodes have configurable parameters that let you set specific settings. After configuring a node, you can connect it to another node by dragging the output edge and dropping it onto the input edge of the target node. Once your workflow is complete, click the 💾 **Save Workflow** button to save your project.
 
 	![start_new_project_3](./assets/screenshots/start_new_project_3.png)
+
+	_*The saved workflow can be imported by selecting `Import Workflow` button from the dropdown of the_ ⚙️ _icon located at the top right of workflow canvas._
 
 4. Return to the main page and click the run button to [launch the sandbox](#launch-a-sandbox).
 
