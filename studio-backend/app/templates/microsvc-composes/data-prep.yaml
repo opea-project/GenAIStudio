@@ -7,7 +7,7 @@
     "{{tei_endpoint}}":
       condition: service_healthy
   ports:
-    - 6007:6007
+    - 6007:5000
   environment:
     no_proxy: ${no_proxy}
     http_proxy: ${http_proxy}
@@ -15,5 +15,6 @@
     REDIS_URL: "redis://${public_host_ip}:{{redis_vector_store_port}}"
     REDIS_HOST: "${public_host_ip}"
     INDEX_NAME: "rag-redis"
-    TEI_ENDPOINT: "http://${public_host_ip}:{{tei_port}}"
+    TEI_EMBEDDING_ENDPOINT: "http://${public_host_ip}:{{tei_port}}"
+    DATAPREP_COMPONENT_NAME: "OPEA_DATAPREP_REDIS"
     HUGGINGFACEHUB_API_TOKEN: "{{tei_huggingFaceToken}}"
