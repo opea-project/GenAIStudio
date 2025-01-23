@@ -277,7 +277,7 @@ export const FlowListTable = ({ data, images, isLoading, filterFunction, updateF
                                     spacing={1}
                                     justifyContent='center'
                                 >
-                                    App
+                                    Launch App
                                 </Stack>
                             </StyledTableCell>
                             <StyledTableCell style={{ width: '30%' }} key='3'>
@@ -286,7 +286,7 @@ export const FlowListTable = ({ data, images, isLoading, filterFunction, updateF
                                     spacing={1}
                                     justifyContent='center'
                                 >
-                                    Monitoring Dashboard
+                                    Launch Monitoring Dashboard
                                 </Stack>
                             </StyledTableCell>
                             <StyledTableCell style={{ width: '5%' }} key='4'>
@@ -295,7 +295,7 @@ export const FlowListTable = ({ data, images, isLoading, filterFunction, updateF
                                     spacing={1}
                                     justifyContent='center'
                                 >
-                                    Deployment
+                                    Deployment Package Generation
                                 </Stack>
                             </StyledTableCell>
                             <StyledTableCell style={{ width: '25%' }} key='5'>
