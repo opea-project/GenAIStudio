@@ -1,16 +1,13 @@
 FROM node:20-alpine
 
 # Install necessary packages
-RUN apk add --no-cache gcompat python3 make g++ \
+RUN apk add --no-cache gcompat python3 make g++ git \
     # Needed for pdfjs-dist
     build-base cairo-dev pango-dev \
     # Install Chromium
     chromium && \
     # Install PNPM globally
     npm install -g pnpm@9.12.3
-
-# Install git
-RUN apk add --no-cache git
 
 # Debug step to verify git installation
 RUN git --version

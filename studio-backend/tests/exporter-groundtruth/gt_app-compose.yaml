@@ -95,7 +95,7 @@ services:
       HF_HUB_ENABLE_HF_TRANSFER: 0
     restart: unless-stopped
   prepare-doc-redis-prep-0:
-    image: opea/dataprep-redis:latest
+    image: opea/dataprep:latest
     container_name: prepare-doc-redis-prep-0
     depends_on:
     - redis-vector-store-0
