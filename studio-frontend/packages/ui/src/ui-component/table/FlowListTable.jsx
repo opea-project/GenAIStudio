@@ -31,7 +31,7 @@ import {
     Analytics,
     PlayCircleOutline,
     UnarchiveOutlined
-} from '@mui/icons-material' 
+} from '@mui/icons-material'
 
 import BuildDeploymentPackageDialog from '../dialog/BuildDeploymentPackageDialog'
 import chatflowsApi from '@/api/chatflows'
@@ -75,7 +75,7 @@ export const FlowListTable = ({ data, images, isLoading, filterFunction, updateF
 
     const [order, setOrder] = useState(localStorage.getItem(localStorageKeyOrder) || 'desc')
     const [orderBy, setOrderBy] = useState(localStorage.getItem(localStorageKeyOrderBy) || 'updatedDate')
-    
+
 
     const handleRequestSort = (property) => {
         const isAsc = orderBy === property && order === 'asc'
@@ -115,7 +115,7 @@ export const FlowListTable = ({ data, images, isLoading, filterFunction, updateF
         const openWebSocketConnection = (id, status) => {
             const ws = new WebSocket(`${studio_server_url}/${statusCheckEndpoint}`);
             ws.onopen = () => {
-                const payload = JSON.stringify({id: id, status: status});
+                const payload = JSON.stringify({ id: id, status: status });
                 ws.send(payload);
                 console.log('Connected to WebSocket server', id);
             };
@@ -126,7 +126,7 @@ export const FlowListTable = ({ data, images, isLoading, filterFunction, updateF
                     ws.close();
                     openConnections.splice(openConnections.indexOf(ws), 1);
                     updateSandboxStatus(id, data.status, data.sandbox_app_url, data.sandbox_grafana_url);
-                    updateFlowToServerApi(id, {sandboxStatus: data.status, sandboxAppUrl: data.sandbox_app_url, sandboxGrafanaUrl: data.sandbox_grafana_url});
+                    updateFlowToServerApi(id, { sandboxStatus: data.status, sandboxAppUrl: data.sandbox_app_url, sandboxGrafanaUrl: data.sandbox_grafana_url });
                 }
             };
             ws.onclose = () => {
@@ -144,7 +144,7 @@ export const FlowListTable = ({ data, images, isLoading, filterFunction, updateF
             openConnections.forEach((ws) => {
                 ws.close();
             });
-        }; 
+        };
     }, [sortedData]);
 
     const updateSandboxStatus = (id, newStatus, sandboxAppUrl = null, sandboxGrafanaUrl = null) => {
@@ -179,7 +179,7 @@ export const FlowListTable = ({ data, images, isLoading, filterFunction, updateF
     const [buildDeploymentPackageDialogOpen, setBuildDeploymentPackageDialogOpen] = useState(false)
     const [buildDeploymentPackageDialogProps, setBuildDeploymentPackageDialogProps] = useState({})
 
-    const downloadDeploymentPackage = async(id, deploymentConfig) => {
+    const downloadDeploymentPackage = async (id, deploymentConfig) => {
         console.log('downloadDeploymentPackage', id, deploymentConfig);
         try {
             const response = await chatflowsApi.buildDeploymentPackage(id, deploymentConfig, {
@@ -200,7 +200,7 @@ export const FlowListTable = ({ data, images, isLoading, filterFunction, updateF
         }
         setBuildDeploymentPackageDialogOpen(false)
     }
-    
+
     const handleBuildDeploymentPackage = (id) => {
         setBuildDeploymentPackageDialogProps({
             id: id
@@ -208,7 +208,7 @@ export const FlowListTable = ({ data, images, isLoading, filterFunction, updateF
         setBuildDeploymentPackageDialogOpen(true)
     }
 
-    
+
 
     useEffect(() => {
         setSortedData(handleSortData());
@@ -253,25 +253,52 @@ export const FlowListTable = ({ data, images, isLoading, filterFunction, updateF
                                     Workflow Name
                                 </TableSortLabel>
                             </StyledTableCell>
-                            <StyledTableCell style={{ width: '30%' }} key='1'>
+                            <StyledTableCell style={{ width: '15%' }} key='1a'>
                                 <Stack
                                     direction={{ xs: 'column', sm: 'row' }}
                                     spacing={1}
                                     justifyContent='center'
                                 >
-                                Sandbox
+                                    Sandbox Control
                                 </Stack>
                             </StyledTableCell>
-                            <StyledTableCell style={{ width: '5%' }} key='2'>
+                            <StyledTableCell style={{ width: '15%' }} key='1b'>
                                 <Stack
                                     direction={{ xs: 'column', sm: 'row' }}
                                     spacing={1}
                                     justifyContent='center'
                                 >
-                                Deployment
+                                    Sandbox Status
                                 </Stack>
                             </StyledTableCell>
-                            <StyledTableCell style={{ width: '25%' }} key='3'>
+                            <StyledTableCell style={{ width: '30%' }} key='2'>
+                                <Stack
+                                    direction={{ xs: 'column', sm: 'row' }}
+                                    spacing={1}
+                                    justifyContent='center'
+                                >
+                                    Launch App
+                                </Stack>
+                            </StyledTableCell>
+                            <StyledTableCell style={{ width: '30%' }} key='3'>
+                                <Stack
+                                    direction={{ xs: 'column', sm: 'row' }}
+                                    spacing={1}
+                                    justifyContent='center'
+                                >
+                                    Launch Monitoring Dashboard
+                                </Stack>
+                            </StyledTableCell>
+                            <StyledTableCell style={{ width: '5%' }} key='4'>
+                                <Stack
+                                    direction={{ xs: 'column', sm: 'row' }}
+                                    spacing={1}
+                                    justifyContent='center'
+                                >
+                                    Deployment Package Generation
+                                </Stack>
+                            </StyledTableCell>
+                            <StyledTableCell style={{ width: '25%' }} key='5'>
                                 <Stack
                                     direction={{ xs: 'column', sm: 'row' }}
                                     spacing={1}
@@ -280,7 +307,7 @@ export const FlowListTable = ({ data, images, isLoading, filterFunction, updateF
                                     Actions
                                 </Stack>
                             </StyledTableCell>
-                            <StyledTableCell style={{ width: '25%' }} key='4'>
+                            <StyledTableCell style={{ width: '25%' }} key='6'>
                                 <TableSortLabel
                                     active={orderBy === 'updatedDate'}
                                     direction={order}
@@ -289,8 +316,8 @@ export const FlowListTable = ({ data, images, isLoading, filterFunction, updateF
                                     Last Modified Date
                                 </TableSortLabel>
                             </StyledTableCell>
-                            {userRole === 'admin' && 
-                                <StyledTableCell style={{ width: '25%' }} key='3'>
+                            {userRole === 'admin' &&
+                                <StyledTableCell style={{ width: '25%' }} key='7'>
                                     <Stack
                                         direction={{ xs: 'column', sm: 'row' }}
                                         spacing={1}
@@ -323,8 +350,20 @@ export const FlowListTable = ({ data, images, isLoading, filterFunction, updateF
                                     <StyledTableCell>
                                         <Skeleton variant='text' />
                                     </StyledTableCell>
+                                    <StyledTableCell>
+                                        <Skeleton variant='text' />
+                                    </StyledTableCell>
+                                    <StyledTableCell>
+                                        <Skeleton variant='text' />
+                                    </StyledTableCell>
                                 </StyledTableRow>
                                 <StyledTableRow>
+                                    <StyledTableCell>
+                                        <Skeleton variant='text' />
+                                    </StyledTableCell>
+                                    <StyledTableCell>
+                                        <Skeleton variant='text' />
+                                    </StyledTableCell>
                                     <StyledTableCell>
                                         <Skeleton variant='text' />
                                     </StyledTableCell>
@@ -363,7 +402,7 @@ export const FlowListTable = ({ data, images, isLoading, filterFunction, updateF
                                                     }}
                                                 >
                                                     <Link
-                                                        to={`/${isAgentCanvas ? 'agentcanvas' : isOpeaCanvas? 'opeacanvas': 'canvas'}/${row.id}`}
+                                                        to={`/${isAgentCanvas ? 'agentcanvas' : isOpeaCanvas ? 'opeacanvas' : 'canvas'}/${row.id}`}
                                                         style={{ color: '#1162cc', textDecoration: 'none' }}
                                                     >
                                                         {row.templateName || row.name}
@@ -371,100 +410,126 @@ export const FlowListTable = ({ data, images, isLoading, filterFunction, updateF
                                                 </Typography>
                                             </Tooltip>
                                         </StyledTableCell>
-                                        <StyledTableCell key='1'>
-                                            <Stack direction="row" alignItems="center" spacing={1}>
-                                                <Box flexBasis="40%">
-                                                    <Stack direction="row" alignItems="center" spacing={1}>
-                                                        {row.sandboxStatus === "Getting Ready" || row.sandboxStatus === "Stopping" ? (
-                                                                    <CircularProgress size={20} />
-                                                                ): null
-                                                        }
-                                                        <Typography variant="body2">{row.sandboxStatus}</Typography>
-                                                    </Stack>
-                                                </Box>
-                                                <Box flexBasis="60%">
-                                                    <Stack direction="row" alignItems="center" spacing={0.1}>
-                                                        <Box flexBasis="40%" justifyContent="center" alignItems="center" display="flex">
-                                                            {row.sandboxStatus === "Ready" || row.sandboxStatus === "Getting Ready"? (
-                                                                <Tooltip title="Stop Sandbox">
-                                                                    <Button
-                                                                        color='primary'
-                                                                        startIcon={<StopCircleOutlined />}
-                                                                        onClick={() => {
-                                                                            handleStopSandbox(row.id);
-                                                                        }}
-                                                                    >
-                                                                    </Button>
-                                                                </Tooltip>
-                                                            ) : (
-                                                                <Tooltip title="Run Sandbox">
-                                                                        <Button
-                                                                        color='primary'
-                                                                        startIcon={<PlayCircleOutline />}
-                                                                        onClick={() => {
-                                                                            handleRunSandbox(row.id);
-                                                                        }}
-                                                                        disabled={row.sandboxStatus==='Stopping'}
-                                                                    >
-                                                                    </Button>
-                                                                </Tooltip>
-                                                            )}
-                                                        </Box>
-                                                        <Box flexBasis="30%">
-                                                            <Tooltip title={row.sandboxStatus === 'Ready' ? "Click to open Application UI" : "Sandbox is not running"}>
-                                                                <span>
-                                                                    <Button
-                                                                        // variant="outlined"
-                                                                        // style={{ width: '20px' }}
-                                                                        color={row.sandboxStatus === 'Not Running' ? 'inherit' : 'primary'}
-                                                                        startIcon={<OpenInNew />}
-                                                                        onClick={() => {
-                                                                            // console.log('Button clicked for', row.name || row.id);
-                                                                            handleOpenUrl(row.sandboxAppUrl);
-                                                                        }}
-                                                                        disabled={row.sandboxStatus !== 'Ready'}
-                                                                    >
-                                                                    </Button>
-                                                                </span>
-                                                            </Tooltip>
-                                                        </Box>
-                                                        <Box flexBasis="30%">
-                                                            <Tooltip title={row.sandboxStatus === 'Ready' ? "Click to open Monitoring Dashboard" : "Sandbox is not running"}>
-                                                                <span>
-                                                                    <Button
-                                                                        // variant="outlined"
-                                                                        // style={{ width: '20px' }}
-                                                                        color={row.sandboxStatus === 'Not Running' ? 'inherit' : 'primary'}
-                                                                        startIcon={<Analytics />}
-                                                                        onClick={() => {
-                                                                            // console.log('Button clicked for', row.name || row.id);
-                                                                            handleOpenUrl(row.sandboxGrafanaUrl);
-                                                                        }}
-                                                                        disabled={row.sandboxStatus !== 'Ready'}
-                                                                    >
-                                                                    </Button>
-                                                                </span>
-                                                            </Tooltip>
-                                                        </Box>
-                                                    </Stack>
-                                                </Box>
+                                        <StyledTableCell key='1a'>
+                                            <Stack
+                                                direction={{ xs: 'column', sm: 'row' }}
+                                                spacing={1}
+                                                justifyContent='center'
+                                                alignItems='center'
+                                            >
+                                                {row.sandboxStatus === "Ready" || row.sandboxStatus === "Getting Ready" ? (
+                                                    <Tooltip title="Stop Sandbox">
+                                                        <Button
+                                                            color='primary'
+                                                            startIcon={<StopCircleOutlined />}
+                                                            onClick={() => {
+                                                                handleStopSandbox(row.id);
+                                                            }}
+                                                        >
+                                                        </Button>
+                                                    </Tooltip>
+                                                ) : (
+                                                    <Tooltip title="Run Sandbox">
+                                                        <Button
+                                                            color='primary'
+                                                            startIcon={<PlayCircleOutline />}
+                                                            onClick={() => {
+                                                                handleRunSandbox(row.id);
+                                                            }}
+                                                            disabled={row.sandboxStatus === 'Stopping'}
+                                                        >
+                                                        </Button>
+                                                    </Tooltip>
+                                                )}
+                                            </Stack>
+                                        </StyledTableCell>
+                                        <StyledTableCell key='1b'>
+                                            <Stack
+                                                direction={{ xs: 'column', sm: 'row' }}
+                                                spacing={1}
+                                                justifyContent='center'
+                                                alignItems='center'
+                                            >
+                                                {row.sandboxStatus === "Getting Ready" || row.sandboxStatus === "Stopping" ? (
+                                                    <CircularProgress size={20} />
+                                                ) : null
+                                                }
+                                                <Typography variant="body2">{row.sandboxStatus}</Typography>
                                             </Stack>
                                         </StyledTableCell>
                                         <StyledTableCell key='2'>
-                                            <Tooltip title={"Generate Deployment Package"}>
-                                                <span>
-                                                    <Button
-                                                        startIcon={<UnarchiveOutlined />}
-                                                        onClick={() => {
-                                                            // console.log('Button clicked for', row.name || row.id);
-                                                            handleBuildDeploymentPackage(row.id);
-                                                        }}
-                                                    >
-                                                    </Button>
-                                                </span>
-                                            </Tooltip>
+
+                                            <Stack
+                                                direction={{ xs: 'column', sm: 'row' }}
+                                                spacing={1}
+                                                justifyContent='center'
+                                                alignItems='center'
+                                            >
+                                                <Tooltip title={row.sandboxStatus === 'Ready' ? "Click to open Application UI" : "Sandbox is not running"}>
+                                                    <span>
+                                                        <Button
+                                                            // variant="outlined"
+                                                            // style={{ width: '20px' }}
+                                                            color={row.sandboxStatus === 'Not Running' ? 'inherit' : 'primary'}
+                                                            startIcon={<OpenInNew />}
+                                                            onClick={() => {
+                                                                // console.log('Button clicked for', row.name || row.id);
+                                                                handleOpenUrl(row.sandboxAppUrl);
+                                                            }}
+                                                            disabled={row.sandboxStatus !== 'Ready'}
+                                                        >
+                                                        </Button>
+                                                    </span>
+                                                </Tooltip>
+                                            </Stack>
                                         </StyledTableCell>
                                         <StyledTableCell key='3'>
+                                            <Stack
+                                                direction={{ xs: 'column', sm: 'row' }}
+                                                spacing={1}
+                                                justifyContent='center'
+                                                alignItems='center'
+                                            >
+                                                <Tooltip title={row.sandboxStatus === 'Ready' ? "Click to open Monitoring Dashboard" : "Sandbox is not running"}>
+                                                    <span>
+                                                        <Button
+                                                            // variant="outlined"
+                                                            // style={{ width: '20px' }}
+                                                            color={row.sandboxStatus === 'Not Running' ? 'inherit' : 'primary'}
+                                                            startIcon={<Analytics />}
+                                                            onClick={() => {
+                                                                // console.log('Button clicked for', row.name || row.id);
+                                                                handleOpenUrl(row.sandboxGrafanaUrl);
+                                                            }}
+                                                            disabled={row.sandboxStatus !== 'Ready'}
+                                                        >
+                                                        </Button>
+                                                    </span>
+                                                </Tooltip>
+                                            </Stack>
+                                        </StyledTableCell>
+                                        <StyledTableCell key='4'>
+                                            <Stack
+                                                direction={{ xs: 'column', sm: 'row' }}
+                                                spacing={1}
+                                                justifyContent='center'
+                                                alignItems='center'
+                                            >
+                                                <Tooltip title={"Generate Deployment Package"}>
+                                                    <span>
+                                                        <Button
+                                                            startIcon={<UnarchiveOutlined />}
+                                                            onClick={() => {
+                                                                // console.log('Button clicked for', row.name || row.id);
+                                                                handleBuildDeploymentPackage(row.id);
+                                                            }}
+                                                        >
+                                                        </Button>
+                                                    </span>
+                                                </Tooltip>
+                                            </Stack>
+                                        </StyledTableCell>
+                                        <StyledTableCell key='5'>
                                             <Stack
                                                 direction={{ xs: 'column', sm: 'row' }}
                                                 spacing={1}
@@ -481,8 +546,8 @@ export const FlowListTable = ({ data, images, isLoading, filterFunction, updateF
                                                 />
                                             </Stack>
                                         </StyledTableCell>
-                                        <StyledTableCell key='4'>{moment(row.updatedDate).format('MMMM Do, YYYY')}</StyledTableCell>
-                                        {userRole=='admin' && <StyledTableCell key='5'>{row.userid}</StyledTableCell>}
+                                        <StyledTableCell key='6'>{moment(row.updatedDate).format('MMMM Do, YYYY')}</StyledTableCell>
+                                        {userRole == 'admin' && <StyledTableCell key='7'>{row.userid}</StyledTableCell>}
 
                                     </StyledTableRow>
                                 ))}

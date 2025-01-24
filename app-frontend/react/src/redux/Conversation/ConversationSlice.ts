@@ -114,7 +114,7 @@ export const submitDataSourceURL = createAsyncThunkWrapper(
     try {
       const body = new FormData();
       body.append("link_list", JSON.stringify(link_list));
-      const response = await client.post(DATA_PREP_URL, body);
+      const response = await client.post(`${DATA_PREP_URL}/ingest`, body);
       return response.data;
     } catch (error) {
       console.log ("error", error);
@@ -132,7 +132,7 @@ export const uploadFile = createAsyncThunkWrapper("conversation/uploadFile", asy
       message: "uploading File",
       loading: true,
     });
-    const response = await client.post(DATA_PREP_URL, body);
+    const response = await client.post(`${DATA_PREP_URL}/ingest`, body);
     return response.data;
   } catch (error) {
     throw error;

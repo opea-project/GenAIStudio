@@ -36,7 +36,7 @@ export default function DataSource({ opened, onClose }: Props) {
     try {
       setTimeout(async () => {
         const response = await client.post(
-          `${DATA_PREP_URL}/get_file`,
+          `${DATA_PREP_URL}/get`,
           {}, // Request body (if needed, replace the empty object with actual data)
           {
             headers: {
@@ -55,7 +55,7 @@ export default function DataSource({ opened, onClose }: Props) {
   const deleteFile = async (id: string) => {
     try {
       await client.post(
-        `${DATA_PREP_URL}/delete_file`,
+        `${DATA_PREP_URL}/delete`,
         { file_path: id }, // Request body (if needed, replace the empty object with actual data)
         {
           headers: {

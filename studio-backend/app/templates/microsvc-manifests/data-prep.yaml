@@ -9,8 +9,8 @@ metadata:
   name: config-{endpoint}
 data:
   HEALTHCHECK_ENDPOINT: "{tei_endpoint}"
-  TEI_ENDPOINT: "http://{tei_endpoint}"
-  EMBED_MODEL: ""
+  TEI_EMBEDDING_ENDPOINT: "http://{tei_endpoint}"
+  DATAPREP_COMPONENT_NAME: "OPEA_DATAPREP_REDIS"
   REDIS_URL: "redis://{redis_vector_store_endpoint}:{redis_vector_store_port}"
   INDEX_NAME: "rag-redis"
   KEY_INDEX_NAME: "file-keys"
@@ -34,7 +34,7 @@ spec:
   type: ClusterIP
   ports:
     - port: 6007
-      targetPort: 6007
+      targetPort: 5000
       protocol: TCP
       name: "{endpoint}"
   selector:
@@ -84,11 +84,11 @@ spec:
             runAsUser: 1000
             seccompProfile:
               type: RuntimeDefault
-          image: "${REGISTRY}/dataprep-redis:${TAG}"
+          image: "${REGISTRY}/dataprep:${TAG}"
           imagePullPolicy: Always
           ports:
             - name: data-prep
-              containerPort: 6007
+              containerPort: 5000
               protocol: TCP
           volumeMounts:
             - mountPath: /tmp

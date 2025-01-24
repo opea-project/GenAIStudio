@@ -53,6 +53,7 @@ jobs:
           fi
           sleep 5
           sudo apt install ansible -y
+          sed -i 's/value: ${TAG}/value: latest/' manifests/studio-manifest.yaml
           ansible-playbook genai-studio.yml -e "container_registry=${OPEA_IMAGE_REPO}opea" -e "container_tag=${{ inputs.tag }}" -e "mysql_host=$(hostname -I | awk '{print $1}')"
           sleep 5
           kubectl wait --for=condition=ready pod --all --namespace=studio --timeout=300s --field-selector=status.phase!=Succeeded
