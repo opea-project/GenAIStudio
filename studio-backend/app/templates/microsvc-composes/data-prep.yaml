@@ -1,5 +1,5 @@
 "{{endpoint}}":
-  image: ${REGISTRY}/dataprep-redis:${TAG}
+  image: ${REGISTRY}/dataprep:${TAG}
   container_name: "{{endpoint}}"
   depends_on:
     "{{redis_vector_store_endpoint}}":
