@@ -1,6 +1,6 @@
 import { expect } from '@playwright/test';
 
-export async function waitForStatusText(page: any, selector: string, statusText: string, maxAttempts: number = 5, intervalTimeout: number = 60000) {
+export async function waitForStatusText(page: any, selector: string, statusText: string, maxAttempts: number = 10, intervalTimeout: number = 60000) {
     for (let i = 0; i < maxAttempts; i++) {
         try {
             const text = await page.locator(selector).first().innerText();

@@ -38,6 +38,11 @@ def convert_proj_info_to_manifest(proj_info_json, output_file=None):
                 if 'app-nginx' in metadata['name'] and output_file is None:
                     continue
                 print(f"Processing {metadata['name']} service")
+
+        # Remove HF_TOKEN if hugging_face_token is 'NA'
+        if doc.get('kind') == 'ConfigMap' and 'data' in doc:
+            if 'HF_TOKEN' in doc['data'] and doc['data']['HF_TOKEN'] == 'NA':
+                del doc['data']['HF_TOKEN']
                 
         # Accumulate the YAML document in the manifest string
         manifest_string += '---\n'
@@ -81,6 +86,10 @@ def convert_proj_info_to_compose(proj_info_json, output_file=None):
 
     combined_services = {}
     for doc, service_name in (output_compose):
+        # Remove HF_TOKEN if hugging_face_token is 'NA'
+        for _, service_data in doc.items():
+            if 'environment' in service_data and 'HF_TOKEN' in service_data['environment'] and service_data['environment']['HF_TOKEN'] == 'NA':
+                del service_data['environment']['HF_TOKEN']
         combined_services.update(doc)
 
     services_data = {

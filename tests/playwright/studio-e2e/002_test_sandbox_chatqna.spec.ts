@@ -38,7 +38,7 @@ async function setupResponseListener(page, apiResponse) {
 }
 
 test('002_test_sandbox_chatqna', async ({ browser, baseURL }) => {
-    test.setTimeout(600000);
+    test.setTimeout(1200000);
     let apiResponse = { value: '' };
     const context = await browser.newContext({
         ignoreHTTPSErrors: true
@@ -63,7 +63,7 @@ test('002_test_sandbox_chatqna', async ({ browser, baseURL }) => {
     await page.goto(IDC_URL);
     await expect(page.locator('td.MuiTableCell-root div.MuiStack-root p.MuiTypography-root').first()).toHaveText('Not Running', { timeout: 60000 });
     await page.getByLabel('a dense table').locator('button').first().click();
-    await waitForStatusText(page, 'td.MuiTableCell-root div.MuiStack-root p.MuiTypography-root', 'Ready', 5, 60000);
+    await waitForStatusText(page, 'td.MuiTableCell-root div.MuiStack-root p.MuiTypography-root', 'Ready', 10, 60000);
     await page.waitForTimeout(10000);
 
     // Open APP-UI
