@@ -21,7 +21,7 @@ class OPEA_LLM_TGi {
         this.dependent_services = {
             'tgi': {
                 'modelName': '',
-                'huggingFaceToken': 'NA'
+                'huggingFaceToken': ''
             }
         }
         this.inputs = [
@@ -33,34 +33,8 @@ class OPEA_LLM_TGi {
             {
                 label: 'Model Name',
                 name: 'modelName',
-                type: 'options',
-                default: 'Intel/neural-chat-7b-v3-3',
-                options: [
-                    {
-                        name: 'Intel/neural-chat-7b-v3-3',
-                        label: 'Intel/neural-chat-7b-v3-3'
-                    },
-                    {
-                        name: 'Llama-2-7b-chat-hf',
-                        label: 'Llama-2-7b-chat-hf'
-                    },
-                    {
-                        name: 'Llama-2-70b-chat-hf',
-                        label: 'Llama-2-70b-chat-hf'
-                    },
-                    {
-                        name: 'Meta-Llama-3-8B-Instruct',
-                        label: 'Meta-Llama-3-8B-Instruct'
-                    },
-                    {
-                        name: 'Meta-Llama-3-70B-Instruct',
-                        label: 'Meta-Llama-3-70B-Instruct'
-                    },
-                    {
-                        name: 'Phi-3',
-                        label: 'Phi-3'
-                    }
-                ]
+                type: 'string',
+                default: 'Intel/neural-chat-7b-v3-3'
             },
             {
                 label: 'HuggingFace Token',

@@ -1,7 +1,7 @@
 import time
 from kubernetes.client.rest import ApiException
 
-def wait_for_pod(namespace, pod_name, core_v1_api, timeout=300):
+def wait_for_pod(namespace, pod_name, core_v1_api, timeout=600):
     start_time = time.time()
     while time.time() - start_time < timeout:
         try:
