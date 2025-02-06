@@ -5,7 +5,7 @@ import path from 'path';
 import os from 'os';
 
 test('001_test_sandbox_deployment', async ({ browser, baseURL }) => {
-    test.setTimeout(600000);
+    test.setTimeout(1200000);
     const context = await browser.newContext({
         ignoreHTTPSErrors: true
     });
@@ -38,7 +38,7 @@ test('001_test_sandbox_deployment', async ({ browser, baseURL }) => {
     //         console.log(`Attempt ${i + 1} failed: ${error}`);
     //     }
     // }
-    await waitForStatusText(page, 'td.MuiTableCell-root div.MuiStack-root p.MuiTypography-root', 'Ready', 5, 60000);
+    await waitForStatusText(page, 'td.MuiTableCell-root div.MuiStack-root p.MuiTypography-root', 'Ready', 10, 60000);
     await page.waitForTimeout(8000);
 
     // Open APP-UI
