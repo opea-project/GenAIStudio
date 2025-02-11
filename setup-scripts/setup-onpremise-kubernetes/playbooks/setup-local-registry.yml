@@ -76,7 +76,7 @@
         ports:
           - "5000:5000"
         volumes:
-          - ../registry.config.yml:/etc/docker/registry/config.yml
+          - ../registry:/etc/docker/registry/
           - /var/lib/registry:/var/lib/registry
         container_default_behavior: "compatibility"
     
