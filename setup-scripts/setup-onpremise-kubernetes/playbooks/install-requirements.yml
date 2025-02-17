@@ -66,8 +66,6 @@
 
   - name: Update apt package list
     command: apt-get update
-    args:
-      warn: false
     environment:
       http_proxy: "{{ http_proxy }}"
       https_proxy: "{{ http_proxy }}"
@@ -83,6 +81,7 @@
         - curl
         - gnupg
         - lsb-release
+        - util-linux-extra
       state: present
     environment:
       http_proxy: "{{ http_proxy }}"
