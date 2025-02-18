@@ -12,7 +12,7 @@ RUN npm install --legacy-peer-deps && npm run build
 FROM nginx:alpine
 
 # Install uuidgen in the nginx:alpine image
-RUN apk add --no-cache util-linux=2.40.1-r1
+RUN apk add --no-cache util-linux
 
 COPY --from=vite-app /usr/app/react/dist /usr/share/nginx/html
 COPY ./react/env.sh /docker-entrypoint.d/env.sh

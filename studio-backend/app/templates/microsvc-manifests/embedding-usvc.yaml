@@ -13,6 +13,8 @@ data:
   http_proxy: ""
   https_proxy: ""
   no_proxy: ""
+  TRANSFORMERS_CACHE: "/tmp/transformers_cache"
+  HF_HOME: "/tmp/.cache/huggingface"
   LOGFLAG: ""
 ---
 # Source: embedding-usvc/templates/service.yaml
