@@ -12,4 +12,6 @@
     http_proxy: ${http_proxy}
     https_proxy: ${https_proxy}
     TEI_EMBEDDING_ENDPOINT: "http://${public_host_ip}:{{tei_port}}"
+    TRANSFORMERS_CACHE: "/tmp/transformers_cache"
+    HF_HOME: "/tmp/.cache/huggingface"
   restart: unless-stopped
