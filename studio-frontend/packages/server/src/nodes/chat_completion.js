@@ -6,7 +6,7 @@ class OPEAChatCompletion {
         this.name = 'chat_completion'
         this.version = 1.0
         this.type = 'ChatCompletion'
-        this.icon = 'opea-icon-color.svg'
+        this.icon = 'controls.png'
         this.category = 'Controls'
         this.description = 'Send Chat Response to UI'
         this.baseClasses = []

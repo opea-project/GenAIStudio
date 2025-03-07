@@ -35,3 +35,17 @@
     flex-grow: 1;
     height: 100%;
 }
+
+@keyframes dash {
+    from {
+        stroke-dashoffset: 100;
+    }
+    to {
+        stroke-dashoffset: 0;
+    }
+}
+
+.react-flow__edge-path.animated {
+    stroke-dasharray: 10;
+    animation: dash 1s linear infinite;
+}

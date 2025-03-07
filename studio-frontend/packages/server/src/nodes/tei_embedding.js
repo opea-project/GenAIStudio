@@ -9,7 +9,7 @@ class OPEAEmbeddings {
         this.name = 'opea_service@embedding_tei_langchain'
         this.version = 1.0
         this.type = 'EmbedDoc'
-        this.icon = 'opea-icon-color.svg'
+        this.icon = 'embeddings.png'
         this.category = 'Embeddings'
         this.description = 'Text Embedding Inference using Langchain'
         this.baseClasses = [this.type, 'EmbeddingResponse', 'ChatCompletionRequest']
