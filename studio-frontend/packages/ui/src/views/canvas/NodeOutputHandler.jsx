@@ -9,7 +9,7 @@ import { tooltipClasses } from '@mui/material/Tooltip'
 import { flowContext } from '@/store/context/ReactFlowContext'
 import { isValidConnection } from '@/utils/genericHelper'
 import { Dropdown } from '@/ui-component/dropdown/Dropdown'
-
+import showToast from './ShowToast'
 const CustomWidthTooltip = styled(({ className, ...props }) => <Tooltip {...props} classes={{ popper: className }} />)({
     [`& .${tooltipClasses.tooltip}`]: {
         maxWidth: 500
@@ -27,7 +27,8 @@ const NodeOutputHandler = ({ outputAnchor, data, disabled = false }) => {
     const [offsetTop, setOffsetTop] = useState(0)
     const [dropdownValue, setDropdownValue] = useState(null)
     const { reactFlowInstance } = useContext(flowContext)
-
+    const [isHovered, setIsHovered] = useState(false);
+    const [isSelected, setIsSelected] = useState(false);
     const getAvailableOptions = (options = []) => {
         return options.filter((option) => !option.hidden && !option.isAnchor)
     }
@@ -76,13 +77,23 @@ const NodeOutputHandler = ({ outputAnchor, data, disabled = false }) => {
                             position={Position.Right}
                             key={outputAnchor.id}
                             id={outputAnchor.id}
-                            isValidConnection={(connection) => isValidConnection(connection, reactFlowInstance)}
-                            style={{
-                                height: 10,
-                                width: 10,
-                                backgroundColor: data.selected ? theme.palette.primary.main : theme.palette.text.secondary,
-                                top: position
+                             isValidConnection={(connection) => {
+                                const isValid = isValidConnection(connection, reactFlowInstance);
+                                if (!isValid) {
+                                    showToast("This is an invalid connection");
+                                }
+                                return isValid;
                             }}
+                            style={{
+                                height: isHovered || isSelected ? 13 : 10,
+                                width: isHovered || isSelected ? 13 : 10,
+                                backgroundColor: data.selected ? 'green' : 'orange',
+                                top: position,
+                                transition: 'all 0.3s ease',
+                            }}
+                            onMouseEnter={() => setIsHovered(true)}
+                            onMouseLeave={() => setIsHovered(false)}
+                            onClick={() => setIsSelected(!isSelected)}
                         />
                     </CustomWidthTooltip>
                     <Box sx={{ p: 2, textAlign: 'end' }}>
@@ -104,13 +115,23 @@ const NodeOutputHandler = ({ outputAnchor, data, disabled = false }) => {
                                             position={Position.Right}
                                             key={index}
                                             id={option?.id}
-                                            isValidConnection={(connection) => isValidConnection(connection, reactFlowInstance)}
+                                             isValidConnection={(connection) => {
+                                const isValid = isValidConnection(connection, reactFlowInstance);
+                                if (!isValid) {
+                                    showToast("This is an invalid connection");
+                                }
+                                return isValid;
+                            }}
                                             style={{
-                                                height: 10,
-                                                width: 10,
-                                                backgroundColor: data.selected ? theme.palette.primary.main : theme.palette.text.secondary,
-                                                top: getAnchorPosition(outputAnchor.options, index)
+                                                height: isHovered || isSelected ? 13 : 10,
+                                                width: isHovered || isSelected ? 13 : 10,
+                                                backgroundColor: data.selected ? 'green' : 'orange',
+                                                top: position,
+                                                transition: 'all 0.3s ease',
                                             }}
+                                            onMouseEnter={() => setIsHovered(true)}
+                                            onMouseLeave={() => setIsHovered(false)}
+                                            onClick={() => setIsSelected(!isSelected)}
                                         />
                                     </CustomWidthTooltip>
                                     <div style={{ flex: 1 }}></div>
@@ -137,13 +158,23 @@ const NodeOutputHandler = ({ outputAnchor, data, disabled = false }) => {
                                 position={Position.Right}
                                 key={outputAnchor.options.find((opt) => opt.name === 'returnTrue')?.id ?? ''}
                                 id={outputAnchor.options.find((opt) => opt.name === 'returnTrue')?.id ?? ''}
-                                isValidConnection={(connection) => isValidConnection(connection, reactFlowInstance)}
+                                 isValidConnection={(connection) => {
+                                const isValid = isValidConnection(connection, reactFlowInstance);
+                                if (!isValid) {
+                                    showToast("This is an invalid connection");
+                                }
+                                return isValid;
+                            }}
                                 style={{
-                                    height: 10,
-                                    width: 10,
-                                    backgroundColor: data.selected ? theme.palette.primary.main : theme.palette.text.secondary,
-                                    top: position - 25
+                                    height: isHovered || isSelected ? 13 : 10,
+                                    width: isHovered || isSelected ? 13 : 10,
+                                    backgroundColor: data.selected ? 'green' : 'orange',
+                                    top: position,
+                                    transition: 'all 0.3s ease',
                                 }}
+                                onMouseEnter={() => setIsHovered(true)}
+                                onMouseLeave={() => setIsHovered(false)}
+                                onClick={() => setIsSelected(!isSelected)}
                             />
                         </CustomWidthTooltip>
                         <div style={{ flex: 1 }}></div>
@@ -164,13 +195,23 @@ const NodeOutputHandler = ({ outputAnchor, data, disabled = false }) => {
                                 position={Position.Right}
                                 key={outputAnchor.options.find((opt) => opt.name === 'returnFalse')?.id ?? ''}
                                 id={outputAnchor.options.find((opt) => opt.name === 'returnFalse')?.id ?? ''}
-                                isValidConnection={(connection) => isValidConnection(connection, reactFlowInstance)}
+                                 isValidConnection={(connection) => {
+                                const isValid = isValidConnection(connection, reactFlowInstance);
+                                if (!isValid) {
+                                    showToast("This is an invalid connection");
+                                }
+                                return isValid;
+                            }}
                                 style={{
-                                    height: 10,
-                                    width: 10,
-                                    backgroundColor: data.selected ? theme.palette.primary.main : theme.palette.text.secondary,
-                                    top: position + 25
+                                    height: isHovered || isSelected ? 13 : 10,
+                                    width: isHovered || isSelected ? 13 : 10,
+                                    backgroundColor: data.selected ? 'green' : 'orange',
+                                    top: position,
+                                    transition: 'all 0.3s ease',
                                 }}
+                                onMouseEnter={() => setIsHovered(true)}
+                                onMouseLeave={() => setIsHovered(false)}
+                                onClick={() => setIsSelected(!isSelected)}
                             />
                         </CustomWidthTooltip>
                         <div style={{ flex: 1 }}></div>
@@ -196,13 +237,23 @@ const NodeOutputHandler = ({ outputAnchor, data, disabled = false }) => {
                                 type='source'
                                 position={Position.Right}
                                 id={outputAnchor.options.find((opt) => opt.name === data.outputs?.[outputAnchor.name])?.id ?? ''}
-                                isValidConnection={(connection) => isValidConnection(connection, reactFlowInstance)}
+                                 isValidConnection={(connection) => {
+                                const isValid = isValidConnection(connection, reactFlowInstance);
+                                if (!isValid) {
+                                    showToast("This is an invalid connection");
+                                }
+                                return isValid;
+                            }}
                                 style={{
-                                    height: 10,
-                                    width: 10,
-                                    backgroundColor: data.selected ? theme.palette.primary.main : theme.palette.text.secondary,
-                                    top: position
+                                    height: isHovered || isSelected ? 13 : 10,
+                                    width: isHovered || isSelected ? 13 : 10,
+                                    backgroundColor: data.selected ? 'green' : 'orange',
+                                    top: position,
+                                    transition: 'all 0.3s ease',
                                 }}
+                                onMouseEnter={() => setIsHovered(true)}
+                                onMouseLeave={() => setIsHovered(false)}
+                                onClick={() => setIsSelected(!isSelected)}
                             />
                         </CustomWidthTooltip>
                         <Box sx={{ p: 2, textAlign: 'end' }}>

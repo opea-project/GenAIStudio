@@ -6,7 +6,7 @@ class OPEAReranking {
         this.name = 'opea_service@reranking_tei'
         this.version = 1.0
         this.type = 'LLMParamsDoc'
-        this.icon = 'opea-icon-color.svg'
+        this.icon = 'reranking.png'
         this.category = 'Reranking'
         this.description = 'TEI Reranking'
         this.baseClasses = [this.type, 'RerankingResponse', 'ChatCompletionRequest']

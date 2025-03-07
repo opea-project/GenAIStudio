@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, useCallback, useContext } from 'react'
-import ReactFlow, { addEdge, Controls, Background, useNodesState, useEdgesState } from 'reactflow'
+import ReactFlow, { MiniMap, addEdge, Controls, Background, useNodesState, useEdgesState } from 'reactflow'
 import 'reactflow/dist/style.css'
-
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import { useDispatch, useSelector } from 'react-redux'
 import { useNavigate, useLocation } from 'react-router-dom'
 import {
@@ -611,11 +612,23 @@ const Canvas = () => {
                                         </Fab>
                                     )}
                                     {isUpsertButtonEnabled && <VectorStorePopUp chatflowid={chatflowId} />}
+                                    <MiniMap nodeStrokeWidth={3} />
                                     {/* <ChatPopUp isAgentCanvas={isAgentCanvas} isOpeaCanvas={isOpeaCanvas} chatflowid={chatflowId} /> */}
                                 </ReactFlow>
                             </div>
                         </div>
                     {/* </CanvasWrapper> */}
+                    <ToastContainer
+                        position="bottom-right"
+                        autoClose={3000}
+                        hideProgressBar={false}
+                        newestOnTop={false}
+                        closeOnClick
+                        rtl={false}
+                        pauseOnFocusLoss
+                        draggable
+                        pauseOnHover
+                    />
                 </Box>
                 <ConfirmDialog />
             </Box>
