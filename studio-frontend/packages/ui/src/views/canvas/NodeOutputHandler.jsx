@@ -28,7 +28,6 @@ const NodeOutputHandler = ({ outputAnchor, data, disabled = false }) => {
     const [dropdownValue, setDropdownValue] = useState(null)
     const { reactFlowInstance } = useContext(flowContext)
     const [isHovered, setIsHovered] = useState(false);
-    const [isSelected, setIsSelected] = useState(false);
     const getAvailableOptions = (options = []) => {
         return options.filter((option) => !option.hidden && !option.isAnchor)
     }
@@ -85,15 +84,13 @@ const NodeOutputHandler = ({ outputAnchor, data, disabled = false }) => {
                                 return isValid;
                             }}
                             style={{
-                                height: isHovered || isSelected ? 13 : 10,
-                                width: isHovered || isSelected ? 13 : 10,
-                                backgroundColor: data.selected ? 'green' : 'orange',
+                                height: isHovered? 13 : 10,
+                                width: isHovered? 13 : 10,
+                                backgroundColor: data.selected ? theme.palette.primary.main : theme.palette.text.secondary,
                                 top: position,
-                                transition: 'all 0.3s ease',
                             }}
                             onMouseEnter={() => setIsHovered(true)}
                             onMouseLeave={() => setIsHovered(false)}
-                            onClick={() => setIsSelected(!isSelected)}
                         />
                     </CustomWidthTooltip>
                     <Box sx={{ p: 2, textAlign: 'end' }}>
@@ -123,15 +120,13 @@ const NodeOutputHandler = ({ outputAnchor, data, disabled = false }) => {
                                 return isValid;
                             }}
                                             style={{
-                                                height: isHovered || isSelected ? 13 : 10,
-                                                width: isHovered || isSelected ? 13 : 10,
-                                                backgroundColor: data.selected ? 'green' : 'orange',
+                                                height: isHovered? 13 : 10,
+                                                width: isHovered? 13 : 10,
+                                                backgroundColor: data.selected ? theme.palette.primary.main : theme.palette.text.secondary,
                                                 top: position,
-                                                transition: 'all 0.3s ease',
                                             }}
                                             onMouseEnter={() => setIsHovered(true)}
                                             onMouseLeave={() => setIsHovered(false)}
-                                            onClick={() => setIsSelected(!isSelected)}
                                         />
                                     </CustomWidthTooltip>
                                     <div style={{ flex: 1 }}></div>
@@ -166,15 +161,13 @@ const NodeOutputHandler = ({ outputAnchor, data, disabled = false }) => {
                                 return isValid;
                             }}
                                 style={{
-                                    height: isHovered || isSelected ? 13 : 10,
-                                    width: isHovered || isSelected ? 13 : 10,
-                                    backgroundColor: data.selected ? 'green' : 'orange',
+                                    height: isHovered? 13 : 10,
+                                    width: isHovered? 13 : 10,
+                                    backgroundColor: data.selected ? theme.palette.primary.main : theme.palette.text.secondary,
                                     top: position,
-                                    transition: 'all 0.3s ease',
                                 }}
                                 onMouseEnter={() => setIsHovered(true)}
                                 onMouseLeave={() => setIsHovered(false)}
-                                onClick={() => setIsSelected(!isSelected)}
                             />
                         </CustomWidthTooltip>
                         <div style={{ flex: 1 }}></div>
@@ -203,15 +196,13 @@ const NodeOutputHandler = ({ outputAnchor, data, disabled = false }) => {
                                 return isValid;
                             }}
                                 style={{
-                                    height: isHovered || isSelected ? 13 : 10,
-                                    width: isHovered || isSelected ? 13 : 10,
-                                    backgroundColor: data.selected ? 'green' : 'orange',
+                                    height: isHovered? 13 : 10,
+                                    width: isHovered? 13 : 10,
+                                    backgroundColor: data.selected ? theme.palette.primary.main : theme.palette.text.secondary,
                                     top: position,
-                                    transition: 'all 0.3s ease',
                                 }}
                                 onMouseEnter={() => setIsHovered(true)}
                                 onMouseLeave={() => setIsHovered(false)}
-                                onClick={() => setIsSelected(!isSelected)}
                             />
                         </CustomWidthTooltip>
                         <div style={{ flex: 1 }}></div>
@@ -245,15 +236,13 @@ const NodeOutputHandler = ({ outputAnchor, data, disabled = false }) => {
                                 return isValid;
                             }}
                                 style={{
-                                    height: isHovered || isSelected ? 13 : 10,
-                                    width: isHovered || isSelected ? 13 : 10,
-                                    backgroundColor: data.selected ? 'green' : 'orange',
+                                    height: isHovered? 13 : 10,
+                                    width: isHovered? 13 : 10,
+                                    backgroundColor: data.selected ? theme.palette.primary.main : theme.palette.text.secondary,
                                     top: position,
-                                    transition: 'all 0.3s ease',
                                 }}
                                 onMouseEnter={() => setIsHovered(true)}
                                 onMouseLeave={() => setIsHovered(false)}
-                                onClick={() => setIsSelected(!isSelected)}
                             />
                         </CustomWidthTooltip>
                         <Box sx={{ p: 2, textAlign: 'end' }}>

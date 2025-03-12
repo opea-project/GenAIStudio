@@ -97,7 +97,6 @@ const NodeInputHandler = ({
     const [conditionDialogProps, setConditionDialogProps] = useState({})
     const [tabValue, setTabValue] = useState(0)
     const [isHovered, setIsHovered] = useState(false);
-    const [isSelected, setIsSelected] = useState(false);
     const onInputHintDialogClicked = (hint) => {
         const dialogProps = {
             ...hint
@@ -455,13 +454,11 @@ const NodeInputHandler = ({
                             style={{
                                 height: isHovered ? 13 : 10,
                                 width: isHovered ? 13 : 10,
-                                backgroundColor: data.selected ? 'red' : 'pink',
+                                backgroundColor: data.selected ? theme.palette.primary.main : theme.palette.text.secondary,
                                 top: position,
-                                transition: 'all 0.3s ease',
                             }}
                             onMouseEnter={() => setIsHovered(true)}
                             onMouseLeave={() => setIsHovered(false)}
-                            onClick={() => setIsSelected(!isSelected)}
                         />
                     </CustomWidthTooltip>
                     <Box sx={{ p: 2 }}>
@@ -491,15 +488,13 @@ const NodeInputHandler = ({
                                         return isValid;
                                     }}
                                 style={{
-                                    height: isHovered || isSelected ? 13 : 10,
-                                    width: isHovered || isSelected ? 13 : 10,
-                                    backgroundColor: data.selected ? 'red' : 'pink',
+                                    height: isHovered? 13 : 10,
+                                    width: isHovered? 13 : 10,
+                                    backgroundColor: data.selected ? theme.palette.primary.main : theme.palette.text.secondary,
                                     top: position,
-                                    transition: 'all 0.3s ease',
                                 }}
                                 onMouseEnter={() => setIsHovered(true)}
                                 onMouseLeave={() => setIsHovered(false)}
-                                onClick={() => setIsSelected(!isSelected)}
                             />
                         </CustomWidthTooltip>
                     )}
