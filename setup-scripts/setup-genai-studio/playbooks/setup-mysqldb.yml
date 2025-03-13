@@ -20,9 +20,13 @@
       register: studio_user_exists
       ignore_errors: yes
 
+    - name: Debug MySQL user check result
+      debug:
+        var: studio_user_exists
+
     - name: End playbook if MySQL user 'studio' exists
       meta: end_play
-      when: studio_user_exists.changed == false
+      when: studio_user_exists.changed == false and studio_user_exists.failed == false
 
     - name: Install MySQL server
       apt:
