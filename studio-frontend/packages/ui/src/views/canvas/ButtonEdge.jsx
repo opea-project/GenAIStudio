@@ -1,37 +1,77 @@
-import { getBezierPath, EdgeText } from 'reactflow'
-import PropTypes from 'prop-types'
-import { useDispatch } from 'react-redux'
-import { useContext } from 'react'
-import { SET_DIRTY } from '@/store/actions'
-import { flowContext } from '@/store/context/ReactFlowContext'
+import { useState, useEffect } from 'react';
+import { getBezierPath, EdgeText } from 'reactflow';
+import PropTypes from 'prop-types';
+import { useDispatch } from 'react-redux';
+import { useContext } from 'react';
+import { SET_DIRTY } from '@/store/actions';
+import { flowContext } from '@/store/context/ReactFlowContext';
+import './index.css';
 
-import './index.css'
+const foreignObjectSize = 40;
 
-const foreignObjectSize = 40
+const ButtonEdge = ({
+    id,
+    sourceX,
+    sourceY,
+    targetX,
+    targetY,
+    sourcePosition,
+    targetPosition,
+    style = {},
+    data,
+}) => {
+    const [isAnimating, setIsAnimating] = useState(true);
 
-const ButtonEdge = ({ id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, style = {}, data, markerEnd }) => {
+    useEffect(() => {
+        const timeout = setTimeout(() => {
+            setIsAnimating(false);
+        }, 1000);
+        return () => clearTimeout(timeout);
+    }, []);
+
     const [edgePath, edgeCenterX, edgeCenterY] = getBezierPath({
         sourceX,
         sourceY,
         sourcePosition,
         targetX,
         targetY,
-        targetPosition
-    })
+        targetPosition,
+    });
 
-    const { deleteEdge } = useContext(flowContext)
-
-    const dispatch = useDispatch()
+    const { deleteEdge } = useContext(flowContext);
+    const dispatch = useDispatch();
 
     const onEdgeClick = (evt, id) => {
-        evt.stopPropagation()
-        deleteEdge(id)
-        dispatch({ type: SET_DIRTY })
-    }
+        evt.stopPropagation();
+        deleteEdge(id);
+        dispatch({ type: SET_DIRTY });
+    };
 
+    const markerEnd = 'url(#arrow)';
     return (
         <>
-            <path id={id} style={style} className='react-flow__edge-path' d={edgePath} markerEnd={markerEnd} />
+            <defs>
+                <marker
+                    id="arrow"
+                    markerWidth="10"
+                    markerHeight="10"
+                    refX="9"
+                    refY="3"
+                    orient="auto"
+                    markerUnits="strokeWidth"
+                >
+                    <path d="M0,0 L0,6 L9,3 z" fill="#000" />
+                </marker>
+            </defs>
+
+            <path
+                id={id}
+                style={style}
+                className={`react-flow__edge-path ${isAnimating ? 'animated' : ''}`}
+                d={edgePath}
+                markerEnd={markerEnd}
+            />
+
             {data && data.label && (
                 <EdgeText
                     x={sourceX + 10}
@@ -43,6 +83,7 @@ const ButtonEdge = ({ id, sourceX, sourceY, targetX, targetY, sourcePosition, ta
                     labelBgBorderRadius={2}
                 />
             )}
+
             <foreignObject
                 width={foreignObjectSize}
                 height={foreignObjectSize}
@@ -58,8 +99,8 @@ const ButtonEdge = ({ id, sourceX, sourceY, targetX, targetY, sourcePosition, ta
                 </div>
             </foreignObject>
         </>
-    )
-}
+    );
+};
 
 ButtonEdge.propTypes = {
     id: PropTypes.string,
@@ -71,7 +112,6 @@ ButtonEdge.propTypes = {
     targetPosition: PropTypes.any,
     style: PropTypes.object,
     data: PropTypes.object,
-    markerEnd: PropTypes.any
-}
+};
 
-export default ButtonEdge
+export default ButtonEdge;
