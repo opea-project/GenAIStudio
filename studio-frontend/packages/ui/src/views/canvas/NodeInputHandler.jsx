@@ -37,7 +37,7 @@ import PromptLangsmithHubDialog from '@/ui-component/dialog/PromptLangsmithHubDi
 import ManageScrapedLinksDialog from '@/ui-component/dialog/ManageScrapedLinksDialog'
 import CredentialInputHandler from './CredentialInputHandler'
 import InputHintDialog from '@/ui-component/dialog/InputHintDialog'
-
+import showToast from './ShowToast'
 // utils
 import { getInputVariables, getCustomConditionOutputs, isValidConnection, getAvailableNodesForVariable } from '@/utils/genericHelper'
 
@@ -96,7 +96,7 @@ const NodeInputHandler = ({
     const [showConditionDialog, setShowConditionDialog] = useState(false)
     const [conditionDialogProps, setConditionDialogProps] = useState({})
     const [tabValue, setTabValue] = useState(0)
-
+    const [isHovered, setIsHovered] = useState(false);
     const onInputHintDialogClicked = (hint) => {
         const dialogProps = {
             ...hint
@@ -444,13 +444,21 @@ const NodeInputHandler = ({
                             position={Position.Left}
                             key={inputAnchor.id}
                             id={inputAnchor.id}
-                            isValidConnection={(connection) => isValidConnection(connection, reactFlowInstance)}
-                            style={{
-                                height: 10,
-                                width: 10,
-                                backgroundColor: data.selected ? theme.palette.primary.main : theme.palette.text.secondary,
-                                top: position
+                            isValidConnection={(connection) => {
+                                const isValid = isValidConnection(connection, reactFlowInstance);
+                                if (!isValid) {
+                                    showToast("This is an invalid connection");
+                                }
+                                return isValid;
                             }}
+                            style={{
+                                height: isHovered ? 13 : 10,
+                                width: isHovered ? 13 : 10,
+                                backgroundColor: data.selected ? theme.palette.primary.main : theme.palette.text.secondary,
+                                top: position,
+                            }}
+                            onMouseEnter={() => setIsHovered(true)}
+                            onMouseLeave={() => setIsHovered(false)}
                         />
                     </CustomWidthTooltip>
                     <Box sx={{ p: 2 }}>
@@ -472,13 +480,21 @@ const NodeInputHandler = ({
                                 position={Position.Left}
                                 key={inputParam.id}
                                 id={inputParam.id}
-                                isValidConnection={(connection) => isValidConnection(connection, reactFlowInstance)}
+                                    isValidConnection={(connection) => {
+                                        const isValid = isValidConnection(connection, reactFlowInstance);
+                                        if (!isValid) {
+                                            showToast("This is an invalid connection");
+                                        }
+                                        return isValid;
+                                    }}
                                 style={{
-                                    height: 10,
-                                    width: 10,
+                                    height: isHovered? 13 : 10,
+                                    width: isHovered? 13 : 10,
                                     backgroundColor: data.selected ? theme.palette.primary.main : theme.palette.text.secondary,
-                                    top: position
+                                    top: position,
                                 }}
+                                onMouseEnter={() => setIsHovered(true)}
+                                onMouseLeave={() => setIsHovered(false)}
                             />
                         </CustomWidthTooltip>
                     )}

@@ -12,7 +12,7 @@ class OPEA_LLM_TGi {
         this.name = 'opea_service@llm_tgi'
         this.version = 1.0
         this.type = 'GeneratedDoc'
-        this.icon = 'opea-icon-color.svg'
+        this.icon = 'llm.png'
         this.category = 'LLM'
         this.description = 'LLM Text Generation Inference'
         this.baseClasses = [this.type, 'StreamingResponse', 'ChatCompletion']

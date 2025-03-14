@@ -6,7 +6,7 @@ class OPEAChatInput {
         this.name = 'chat_input'
         this.version = 1.0
         this.type = 'ChatCompletionRequest'
-        this.icon = 'opea-icon-color.svg'
+        this.icon = 'controls.png'
         this.category = 'Controls'
         this.description = 'User Input from Chat Window'
         this.baseClasses = [this.type]
