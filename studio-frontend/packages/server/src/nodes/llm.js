@@ -19,7 +19,8 @@ class OPEA_LLM_TGi {
         this.tags = ['OPEA']
         this.inMegaservice = true
         this.dependent_services = {
-            'tgi': {
+            'llm': {
+                'engine': '',
                 'modelName': '',
                 'huggingFaceToken': ''
             }
