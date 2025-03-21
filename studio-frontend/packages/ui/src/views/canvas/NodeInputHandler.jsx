@@ -75,6 +75,7 @@ const NodeInputHandler = ({
     disablePadding = false,
     onHideNodeInfoDialog
 }) => {
+    // console.log (inputAnchor)
     const theme = useTheme()
     const customization = useSelector((state) => state.customization)
     const ref = useRef(null)
