@@ -8,14 +8,14 @@ kind: ConfigMap
 metadata:
   name: config-{endpoint}
 data:
-  HEALTHCHECK_ENDPOINT: "{tei_endpoint}"
-  TEI_EMBEDDING_ENDPOINT: "http://{tei_endpoint}"
+  HEALTHCHECK_ENDPOINT: "{tei_endpoint}:{tei_port}"
+  TEI_EMBEDDING_ENDPOINT: "http://{tei_endpoint}:{tei_port}"
   DATAPREP_COMPONENT_NAME: "OPEA_DATAPREP_REDIS"
   REDIS_URL: "redis://{redis_vector_store_endpoint}:{redis_vector_store_port}"
   INDEX_NAME: "rag-redis"
   KEY_INDEX_NAME: "file-keys"
   SEARCH_BATCH_SIZE: "10"
-  HUGGINGFACEHUB_API_TOKEN: "{tei_huggingFaceToken}"
+  HUGGINGFACEHUB_API_TOKEN: "{huggingFaceToken}"
   HF_HOME: "/tmp/.cache/huggingface"
   http_proxy: ""
   https_proxy: ""
@@ -33,7 +33,7 @@ metadata:
 spec:
   type: ClusterIP
   ports:
-    - port: 6007
+    - port: "{port}"
       targetPort: 5000
       protocol: TCP
       name: "{endpoint}"

@@ -2,7 +2,7 @@
   image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.5
   container_name: "{{endpoint}}"
   ports:
-    - "{{port}}:80"
+    - "{{port_key}}:80"
   volumes:
     - "./data:/data"
   shm_size: 1g

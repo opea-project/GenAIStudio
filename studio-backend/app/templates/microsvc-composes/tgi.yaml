@@ -2,7 +2,7 @@
   image: ghcr.io/huggingface/text-generation-inference:2.4.0-intel-cpu
   container_name: "{{endpoint}}"
   ports:
-    - "{{port}}:80"
+    - "{{port_key}}:80"
   volumes:
     - "./data:/data"
   shm_size: 1g

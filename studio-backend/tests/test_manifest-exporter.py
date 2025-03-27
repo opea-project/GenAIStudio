@@ -7,12 +7,13 @@ import pytest
 import json
 
 from app.services.exporter_service import convert_proj_info_to_manifest
+from app.services.workflow_info_service import WorkflowInfo
 
 @pytest.fixture
 def setup_and_teardown():
     test_dir = os.path.dirname(os.path.abspath(__file__))
     # Paths for the `mega.yaml` and output file
-    proj_info_file = os.path.join(test_dir, "flowise-pipeline-translator", "workflow-info.json")
+    proj_info_file = os.path.join(test_dir, "flowise-pipeline-inputs", "agentqna-tgi.json")
     output_file = os.path.join(test_dir, "exporter-groundtruth", "app-manifest.yaml")
     gt_file = os.path.join(test_dir, "exporter-groundtruth", "gt_app-manifest.yaml")
     gt_nginx_file = os.path.join(test_dir, "exporter-groundtruth", "gt_app-manifest-with-nginx.yaml")    
@@ -20,7 +21,7 @@ def setup_and_teardown():
     yield proj_info_file, output_file, gt_file, gt_nginx_file
 
     if os.path.isfile(output_file):
-        os.unlink(output_file)    
+        os.unlink(output_file)
 
 def test_convert_chatqna_proj_info_to_manifest_obj(setup_and_teardown):
     proj_info_file, output_file, gt_file, _ = setup_and_teardown
@@ -29,7 +30,8 @@ def test_convert_chatqna_proj_info_to_manifest_obj(setup_and_teardown):
         proj_info = json.load(file)
 
     # Call the function directly
-    output_manifest = convert_proj_info_to_manifest(proj_info)
+    workflow_info = WorkflowInfo(proj_info)
+    output_manifest = convert_proj_info_to_manifest(json.loads(workflow_info.export_to_json()))
     
     # Function to create a set of unique identifiers for the documents
     def create_identifiers_set(documents):
@@ -43,7 +45,8 @@ def test_convert_chatqna_proj_info_to_manifest_obj(setup_and_teardown):
     output_identifiers = create_identifiers_set(manifest_dict)
 
     with open(output_file, "w") as f:
-        yaml.dump_all(manifest_dict, f)
+        f.write(output_manifest)
+        # yaml.dump_all(manifest_dict, f)
 
     # Load the documents from the gt manifest
     with open(gt_file, 'r') as f:
@@ -62,7 +65,8 @@ def test_convert_chatqna_proj_info_to_manifest_file(setup_and_teardown):
         proj_info = json.load(file)
 
     # Call the function directly
-    convert_proj_info_to_manifest(proj_info, output_file)
+    workflow_info = WorkflowInfo(proj_info)
+    convert_proj_info_to_manifest(json.loads(workflow_info.export_to_json()), output_file)
     
     # Function to create a set of unique identifiers for the documents
     def create_identifiers_set(documents):

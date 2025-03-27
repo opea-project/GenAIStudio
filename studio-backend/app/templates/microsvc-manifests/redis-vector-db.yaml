@@ -11,11 +11,11 @@ spec:
   type: ClusterIP
   ports:
       - port: "{port}"
-        targetPort: "{port}"
+        targetPort: 6379
         protocol: TCP
         name: "{endpoint}"
       - port: "{port_insight}"
-        targetPort: "{port_insight}"
+        targetPort: 8001
         protocol: TCP
         name: insight-{endpoint}
   selector:
@@ -66,14 +66,14 @@ spec:
               name: tmp
           ports:
             - name: redis-service
-              containerPort: "{port}"
+              containerPort: 6379
               protocol: TCP
             - name: redis-insight
-              containerPort: "{port_insight}"
+              containerPort: 8001
               protocol: TCP
           startupProbe:
             tcpSocket:
-              port: "{port}" # Probe the Redis port
+              port: 6379 # Probe the Redis port
             initialDelaySeconds: 5
             periodSeconds: 5
             failureThreshold: 120

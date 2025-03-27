@@ -69,6 +69,9 @@ def replace_dynamic_manifest_placeholder(value_str, service_info, proj_info_json
         ui_nginx_config_info_str = ""
         backend_workflow_info_str = ""
         for key, value in service_info['ui_config_info'].items():
+            if 'agent' in key:
+                continue
+            
             # For __UI_CONFIG_INFO_ENV_PLACEHOLDER__
             url_name = value['url_name']
             endpoint_path = value['endpoint_path']
@@ -90,6 +93,9 @@ def replace_dynamic_manifest_placeholder(value_str, service_info, proj_info_json
             indented_location_block = textwrap.indent(location_block, indent_str)
             ui_nginx_config_info_str += indented_location_block
 
+        # For __PORTS_INFO_JSON_PLACEHOLDER__
+        ports_info_str = "\n    ".join([f'{key}={value}' for key, value in service_info['ports_info'].items()])
+        
         # For __BACKEND_PROJECT_INFO_JSON_PLACEHOLDER__
         backend_workflow_info_str = json.dumps(proj_info_json, indent=4)
 
@@ -100,9 +106,12 @@ def replace_dynamic_manifest_placeholder(value_str, service_info, proj_info_json
         # Replace the unique placeholders with the actual strings
         final_config = value_str.replace("__UI_CONFIG_INFO_ENV_PLACEHOLDER__", ui_env_config_info_str.strip()).replace(
             "__UI_CONFIG_INFO_NGINX_PLACEHOLDER__", ui_nginx_config_info_str.strip()).replace(
+            "__PORTS_INFO_JSON_PLACEHOLDER__", ports_info_str.strip()).replace(
             "__BACKEND_PROJECT_INFO_JSON_PLACEHOLDER__", backend_workflow_info_str.replace(f"\n", f"\n{indent_str}")).replace(
             "__APP_FRONTEND_IMAGE__", app_frontend_image).replace(
             "__APP_BACKEND_IMAGE__", app_backend_image)
+
+        print(final_config)
     
     else:
         final_config = value_str

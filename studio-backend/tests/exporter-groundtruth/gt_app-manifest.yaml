@@ -8,11 +8,11 @@ metadata:
 spec:
   type: ClusterIP
   ports:
-  - port: 6379
+  - port: 9001
     targetPort: 6379
     protocol: TCP
     name: redis-vector-store-0
-  - port: 8001
+  - port: 9002
     targetPort: 8001
     protocol: TCP
     name: insight-redis-vector-store-0
@@ -89,8 +89,7 @@ metadata:
   name: config-tei-0
 data:
   MODEL_ID: BAAI/bge-large-en-v1.5
-  PORT: '2081'
-  HF_TOKEN: NA
+  PORT: '9003'
   http_proxy: ''
   https_proxy: ''
   no_proxy: ''
@@ -108,8 +107,8 @@ metadata:
 spec:
   type: ClusterIP
   ports:
-  - port: 80
-    targetPort: 2081
+  - port: 9003
+    targetPort: 9003
     protocol: TCP
     name: tei-0
   selector:
@@ -153,7 +152,7 @@ spec:
           name: tmp
         ports:
         - name: http
-          containerPort: 2081
+          containerPort: 9003
           protocol: TCP
         livenessProbe:
           failureThreshold: 24
@@ -180,9 +179,8 @@ spec:
         resources: {}
       volumes:
       - name: model-volume
-        hostPath:
-          path: /mnt/opea-models
-          type: Directory
+        persistentVolumeClaim:
+          claimName: model-pvc
       - name: shm
         emptyDir:
           medium: Memory
@@ -198,9 +196,8 @@ kind: ConfigMap
 metadata:
   name: config-tgi-0
 data:
-  MODEL_ID: Intel/neural-chat-7b-v3-3
-  PORT: '3081'
-  HF_TOKEN: NA
+  MODEL_ID: meta-llama/Meta-Llama-3.1-70B-Instruct
+  PORT: '9004'
   http_proxy: ''
   https_proxy: ''
   no_proxy: ''
@@ -208,6 +205,8 @@ data:
   NUMBA_CACHE_DIR: /tmp
   HF_HOME: /tmp/.cache/huggingface
   CUDA_GRAPHS: '0'
+  HF_HUB_DISABLE_PROGRESS_BARS: '1'
+  HF_HUB_ENABLE_HF_TRANSFER: '0'
 ---
 # Copyright (C) 2024 Intel Corporation
 # SPDX-License-Identifier: Apache-2.0
@@ -218,8 +217,8 @@ metadata:
 spec:
   type: ClusterIP
   ports:
-  - port: 80
-    targetPort: 3081
+  - port: 9004
+    targetPort: 9004
     protocol: TCP
     name: tgi-0
   selector:
@@ -260,7 +259,7 @@ spec:
           name: tmp
         ports:
         - name: http
-          containerPort: 3081
+          containerPort: 9004
           protocol: TCP
         livenessProbe:
           failureThreshold: 24
@@ -285,9 +284,8 @@ spec:
         resources: {}
       volumes:
       - name: model-volume
-        hostPath:
-          path: /mnt/opea-models
-          type: Directory
+        persistentVolumeClaim:
+          claimName: model-pvc
       - name: shm
         emptyDir:
           medium: Memory
@@ -304,8 +302,7 @@ metadata:
   name: config-tei-1
 data:
   MODEL_ID: BAAI/bge-reranker-base
-  PORT: '2082'
-  HF_TOKEN: NA
+  PORT: '9005'
   http_proxy: ''
   https_proxy: ''
   no_proxy: ''
@@ -323,8 +320,8 @@ metadata:
 spec:
   type: ClusterIP
   ports:
-  - port: 80
-    targetPort: 2082
+  - port: 9005
+    targetPort: 9005
     protocol: TCP
     name: tei-1
   selector:
@@ -368,7 +365,7 @@ spec:
           name: tmp
         ports:
         - name: http
-          containerPort: 2082
+          containerPort: 9005
           protocol: TCP
         livenessProbe:
           failureThreshold: 24
@@ -395,9 +392,8 @@ spec:
         resources: {}
       volumes:
       - name: model-volume
-        hostPath:
-          path: /mnt/opea-models
-          type: Directory
+        persistentVolumeClaim:
+          claimName: model-pvc
       - name: shm
         emptyDir:
           medium: Memory
@@ -414,8 +410,7 @@ metadata:
   name: config-tei-2
 data:
   MODEL_ID: BAAI/bge-base-en-v1.5
-  PORT: '2083'
-  HF_TOKEN: NA
+  PORT: '9006'
   http_proxy: ''
   https_proxy: ''
   no_proxy: ''
@@ -433,8 +428,8 @@ metadata:
 spec:
   type: ClusterIP
   ports:
-  - port: 80
-    targetPort: 2083
+  - port: 9006
+    targetPort: 9006
     protocol: TCP
     name: tei-2
   selector:
@@ -478,7 +473,7 @@ spec:
           name: tmp
         ports:
         - name: http
-          containerPort: 2083
+          containerPort: 9006
           protocol: TCP
         livenessProbe:
           failureThreshold: 24
@@ -505,9 +500,8 @@ spec:
         resources: {}
       volumes:
       - name: model-volume
-        hostPath:
-          path: /mnt/opea-models
-          type: Directory
+        persistentVolumeClaim:
+          claimName: model-pvc
       - name: shm
         emptyDir:
           medium: Memory
@@ -523,10 +517,13 @@ kind: ConfigMap
 metadata:
   name: config-embedding-tei-langchain-0
 data:
-  TEI_EMBEDDING_ENDPOINT: http://tei-0
+  HEALTHCHECK_ENDPOINT: tei-0:9003
+  TEI_EMBEDDING_ENDPOINT: http://tei-0:9003
   http_proxy: ''
   https_proxy: ''
   no_proxy: ''
+  TRANSFORMERS_CACHE: /tmp/transformers_cache
+  HF_HOME: /tmp/.cache/huggingface
   LOGFLAG: ''
 ---
 # Copyright (C) 2024 Intel Corporation
@@ -538,7 +535,7 @@ metadata:
 spec:
   type: ClusterIP
   ports:
-  - port: 6000
+  - port: 9007
     targetPort: 6000
     protocol: TCP
     name: embedding-tei-langchain-0
@@ -564,6 +561,16 @@ spec:
         app: embedding-tei-langchain-0
     spec:
       securityContext: {}
+      initContainers:
+      - name: wait-for-remote-service
+        image: busybox
+        command:
+        - sh
+        - -c
+        - until nc -z -v -w30 $HEALTHCHECK_ENDPOINT 80; do echo "Waiting for remote service..."; sleep 5; done
+        envFrom:
+        - configMapRef:
+            name: config-embedding-tei-langchain-0
       containers:
       - name: embedding-usvc
         envFrom:
@@ -618,110 +625,12 @@ spec:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: config-llm-tgi-0
-data:
-  TGI_LLM_ENDPOINT: http://tgi-0
-  HUGGINGFACEHUB_API_TOKEN: NA
-  HF_HOME: /tmp/.cache/huggingface
-  http_proxy: ''
-  https_proxy: ''
-  no_proxy: ''
-  LOGFLAG: ''
----
-# Copyright (C) 2024 Intel Corporation
-# SPDX-License-Identifier: Apache-2.0
-apiVersion: v1
-kind: Service
-metadata:
-  name: llm-tgi-0
-spec:
-  type: ClusterIP
-  ports:
-  - port: 9000
-    targetPort: 9000
-    protocol: TCP
-    name: llm-tgi-0
-  selector:
-    app: llm-tgi-0
----
-# Copyright (C) 2024 Intel Corporation
-# SPDX-License-Identifier: Apache-2.0
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: llm-tgi-0
-  labels:
-    app: llm-tgi-0
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: llm-tgi-0
-  template:
-    metadata:
-      labels:
-        app: llm-tgi-0
-    spec:
-      securityContext: {}
-      containers:
-      - name: llm-uservice
-        envFrom:
-        - configMapRef:
-            name: config-llm-tgi-0
-        securityContext:
-          allowPrivilegeEscalation: false
-          capabilities:
-            drop:
-            - ALL
-          readOnlyRootFilesystem: false
-          runAsNonRoot: true
-          runAsUser: 1000
-          seccompProfile:
-            type: RuntimeDefault
-        image: opea/llm-textgen:latest
-        imagePullPolicy: Always
-        ports:
-        - name: llm-uservice
-          containerPort: 9000
-          protocol: TCP
-        volumeMounts:
-        - mountPath: /tmp
-          name: tmp
-        livenessProbe:
-          failureThreshold: 24
-          httpGet:
-            path: v1/health_check
-            port: llm-uservice
-          initialDelaySeconds: 5
-          periodSeconds: 5
-        readinessProbe:
-          httpGet:
-            path: v1/health_check
-            port: llm-uservice
-          initialDelaySeconds: 5
-          periodSeconds: 5
-        startupProbe:
-          failureThreshold: 120
-          httpGet:
-            path: v1/health_check
-            port: llm-uservice
-          initialDelaySeconds: 5
-          periodSeconds: 5
-        resources: {}
-      volumes:
-      - name: tmp
-        emptyDir: {}
----
-# Copyright (C) 2024 Intel Corporation
-# SPDX-License-Identifier: Apache-2.0
-apiVersion: v1
-kind: ConfigMap
-metadata:
   name: config-prepare-doc-redis-prep-0
 data:
-  TEI_ENDPOINT: http://tei-0
-  EMBED_MODEL: ''
-  REDIS_URL: redis://redis-vector-store-0:6379
+  HEALTHCHECK_ENDPOINT: tei-0:9003
+  TEI_EMBEDDING_ENDPOINT: http://tei-0:9003
+  DATAPREP_COMPONENT_NAME: OPEA_DATAPREP_REDIS
+  REDIS_URL: redis://redis-vector-store-0:9001
   INDEX_NAME: rag-redis
   KEY_INDEX_NAME: file-keys
   SEARCH_BATCH_SIZE: '10'
@@ -741,8 +650,8 @@ metadata:
 spec:
   type: ClusterIP
   ports:
-  - port: 6007
-    targetPort: 6007
+  - port: 9008
+    targetPort: 5000
     protocol: TCP
     name: prepare-doc-redis-prep-0
   selector:
@@ -767,6 +676,16 @@ spec:
         app: prepare-doc-redis-prep-0
     spec:
       securityContext: {}
+      initContainers:
+      - name: wait-for-remote-service
+        image: busybox
+        command:
+        - sh
+        - -c
+        - until nc -z -v -w30 $HEALTHCHECK_ENDPOINT 80; do echo "Waiting for remote service..."; sleep 5; done
+        envFrom:
+        - configMapRef:
+            name: config-prepare-doc-redis-prep-0
       containers:
       - name: data-prep
         envFrom:
@@ -786,7 +705,7 @@ spec:
         imagePullPolicy: Always
         ports:
         - name: data-prep
-          containerPort: 6007
+          containerPort: 5000
           protocol: TCP
         volumeMounts:
         - mountPath: /tmp
@@ -821,9 +740,104 @@ spec:
 apiVersion: v1
 kind: ConfigMap
 metadata:
+  name: config-rag-agent-0
+data:
+  no_proxy: ''
+  http_proxy: ''
+  https_proxy: ''
+  llm_engine: tgi
+  strategy: rag_agent_llama
+  recursion_limit: '10.0'
+  model: meta-llama/Meta-Llama-3.1-70B-Instruct
+  temperature: '0.1'
+  max_new_tokens: '8192.0'
+  stream: 'false'
+  tools: /home/user/tools/worker_agent_tools.yaml
+  require_human_feedback: 'false'
+  llm_endpoint_url: http://tgi-0:9004
+  RETRIEVAL_TOOL_URL: http://app-backend:8888/v1/app-backend/rag_agent_0
+  port: 9095
+  OPENAI_API_KEY: NA
+---
+# Copyright (C) 2024 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+apiVersion: v1
+kind: Service
+metadata:
+  name: rag-agent-0
+spec:
+  selector:
+    app: rag-agent
+  ports:
+  - protocol: TCP
+    port: 9009
+    targetPort: 9095
+---
+# Copyright (C) 2024 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rag-agent-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rag-agent
+  template:
+    metadata:
+      labels:
+        app: rag-agent
+    spec:
+      initContainers:
+      - name: agentqna-tools
+        image: curlimages/curl:latest
+        command:
+        - /bin/sh
+        - -c
+        args:
+        - |
+          TOOLS_GIT_URL="https://github.com/opea-project/GenAIExamples/tree/main/AgentQnA/tools"
+          OWNER=$(echo ${TOOLS_GIT_URL} | sed -E 's|https://github.com/([^/]+)/([^/]+)/tree/([^/]+)/.*|\1|')
+          REPO=$(echo ${TOOLS_GIT_URL} | sed -E 's|https://github.com/([^/]+)/([^/]+)/tree/([^/]+)/.*|\2|')
+          BRANCH=$(echo ${TOOLS_GIT_URL} | sed -E 's|https://github.com/[^/]+/[^/]+/tree/([^/]+)/.*|\1|')
+          TOOLS_DIR=$(echo ${TOOLS_GIT_URL} | sed -E 's|https://github.com/[^/]+/[^/]+/tree/[^/]+/(.*?)/?$|\1|')
+          if [[ "${TOOLS_DIR: -1}" == "/" ]]; then TOOLS_DIR="${TOOLS_DIR%/}"; fi
+          DOWNLOAD_URL="https://codeload.github.com/${OWNER}/${REPO}/tar.gz/${BRANCH}"
+          curl "${DOWNLOAD_URL}" | tar -xz --strip-components= -C /home/user/tools/ "${REPO}-${BRANCH}/${TOOLS_DIR}"
+        envFrom:
+        - configMapRef:
+            name: studio-config
+        volumeMounts:
+        - name: agent-tools
+          mountPath: /home/user/tools/
+        securityContext:
+          runAsUser: 0
+          runAsGroup: 0
+      containers:
+      - name: rag-agent-container
+        image: opea/agent:latest
+        ports:
+        - containerPort: 9095
+        volumeMounts:
+        - name: agent-tools
+          mountPath: /home/user/tools/
+        envFrom:
+        - configMapRef:
+            name: rag-agent-config
+      volumes:
+      - name: agent-tools
+        emptyDir: {}
+---
+# Copyright (C) 2024 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+apiVersion: v1
+kind: ConfigMap
+metadata:
   name: config-reranking-tei-0
 data:
-  TEI_RERANKING_ENDPOINT: http://tei-1
+  HEALTHCHECK_ENDPOINT: tei-1:9005
+  TEI_RERANKING_ENDPOINT: http://tei-1:9005
   http_proxy: ''
   https_proxy: ''
   no_proxy: ''
@@ -838,7 +852,7 @@ metadata:
 spec:
   type: ClusterIP
   ports:
-  - port: 8000
+  - port: 9010
     targetPort: 8000
     protocol: TCP
     name: reranking-tei-0
@@ -864,6 +878,16 @@ spec:
         app: reranking-tei-0
     spec:
       securityContext: {}
+      initContainers:
+      - name: wait-for-remote-service
+        image: busybox
+        command:
+        - sh
+        - -c
+        - until nc -z -v -w30 $HEALTHCHECK_ENDPOINT 80; do echo "Waiting for remote service..."; sleep 5; done
+        envFrom:
+        - configMapRef:
+            name: config-reranking-tei-0
       containers:
       - name: reranking-usvc
         envFrom:
@@ -920,9 +944,10 @@ kind: ConfigMap
 metadata:
   name: config-retriever-redis-0
 data:
-  TEI_EMBEDDING_ENDPOINT: http://tei-2
+  HEALTHCHECK_ENDPOINT: tei-2:9006
+  TEI_EMBEDDING_ENDPOINT: http://tei-2:9006
   EMBED_MODEL: ''
-  REDIS_URL: redis://redis-vector-store-0:6379
+  REDIS_URL: redis://redis-vector-store-0:9001
   INDEX_NAME: rag-redis
   EASYOCR_MODULE_PATH: /tmp/.EasyOCR
   http_proxy: ''
@@ -931,6 +956,7 @@ data:
   HF_HOME: /tmp/.cache/huggingface
   HUGGINGFACEHUB_API_TOKEN: NA
   LOGFLAG: ''
+  RETRIEVER_COMPONENT_NAME: OPEA_RETRIEVER_REDIS
 ---
 # Copyright (C) 2024 Intel Corporation
 # SPDX-License-Identifier: Apache-2.0
@@ -941,7 +967,7 @@ metadata:
 spec:
   type: ClusterIP
   ports:
-  - port: 7000
+  - port: 9011
     targetPort: 7000
     protocol: TCP
     name: retriever-redis-0
@@ -967,8 +993,23 @@ spec:
         app: retriever-redis-0
     spec:
       securityContext: {}
+      initContainers:
+      - name: wait-for-remote-service
+        image: busybox
+        command:
+        - sh
+        - -c
+        - until nc -z -v -w30 $HEALTHCHECK_ENDPOINT 80; do echo "Waiting for remote service..."; sleep 5; done
+        envFrom:
+        - configMapRef:
+            name: config-retriever-redis-0
       containers:
       - name: retriever-usvc
+        command:
+        - /bin/sh
+        - -c
+        args:
+        - sed '/^from integrations/ { /from integrations.redis import OpeaRedisRetriever/! s/^/#/ }' opea_retrievers_microservice.py > /tmp/tmp_opea_retrievers_microservice.py && python /tmp/tmp_opea_retrievers_microservice.py
         envFrom:
         - configMapRef:
             name: config-retriever-redis-0
@@ -1021,6 +1062,212 @@ spec:
 apiVersion: v1
 kind: ConfigMap
 metadata:
+  name: config-sql-agent-0
+data:
+  no_proxy: ''
+  http_proxy: ''
+  https_proxy: ''
+  llm_engine: tgi
+  strategy: sql_agent_llama
+  db_name: ''
+  db_path: ''
+  recursion_limit: '10.0'
+  model: meta-llama/Meta-Llama-3.1-70B-Instruct
+  temperature: '0.1'
+  max_new_tokens: '8192.0'
+  stream: 'false'
+  tools: /home/user/tools/worker_agent_tools.yaml
+  require_human_feedback: 'false'
+  llm_endpoint_url: http://tgi-0:9004
+  port: 9096
+  OPENAI_API_KEY: NA
+---
+# Copyright (C) 2024 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+apiVersion: v1
+kind: Service
+metadata:
+  name: sql-agent-0
+spec:
+  selector:
+    app: sql-agent
+  ports:
+  - protocol: TCP
+    port: 9012
+    targetPort: 9096
+---
+# Copyright (C) 2024 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sql-agent-0
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sql-agent
+  template:
+    metadata:
+      labels:
+        app: sql-agent
+    spec:
+      initContainers:
+      - name: agentqna-tools
+        image: curlimages/curl:latest
+        command:
+        - /bin/sh
+        - -c
+        args:
+        - |
+          TOOLS_GIT_URL="https://github.com/opea-project/GenAIExamples/tree/main/AgentQnA/tools"
+          OWNER=$(echo ${TOOLS_GIT_URL} | sed -E 's|https://github.com/([^/]+)/([^/]+)/tree/([^/]+)/.*|\1|')
+          REPO=$(echo ${TOOLS_GIT_URL} | sed -E 's|https://github.com/([^/]+)/([^/]+)/tree/([^/]+)/.*|\2|')
+          BRANCH=$(echo ${TOOLS_GIT_URL} | sed -E 's|https://github.com/[^/]+/[^/]+/tree/([^/]+)/.*|\1|')
+          TOOLS_DIR=$(echo ${TOOLS_GIT_URL} | sed -E 's|https://github.com/[^/]+/[^/]+/tree/[^/]+/(.*?)/?$|\1|')
+          if [[ "${TOOLS_DIR: -1}" == "/" ]]; then TOOLS_DIR="${TOOLS_DIR%/}"; fi
+          DOWNLOAD_URL="https://codeload.github.com/${OWNER}/${REPO}/tar.gz/${BRANCH}"
+          curl "${DOWNLOAD_URL}" | tar -xz --strip-components= -C /home/user/tools/ "${REPO}-${BRANCH}/${TOOLS_DIR}"
+        envFrom:
+        - configMapRef:
+            name: studio-config
+        volumeMounts:
+        - name: agent-tools
+          mountPath: /home/user/tools/
+        securityContext:
+          runAsUser: 0
+          runAsGroup: 0
+      containers:
+      - name: sql-agent-container
+        image: opea/agent:latest
+        ports:
+        - containerPort: 9096
+        volumeMounts:
+        - name: agent-tools
+          mountPath: /home/user/tools/
+        envFrom:
+        - configMapRef:
+            name: sql-agent-config
+      volumes:
+      - name: agent-tools
+        emptyDir: {}
+---
+# Copyright (C) 2024 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-supervisor-agent-0
+data:
+  no_proxy: ''
+  http_proxy: ''
+  https_proxy: ''
+  llm_engine: tgi
+  strategy: react_llama
+  recursion_limit: '10.0'
+  model: meta-llama/Meta-Llama-3.1-70B-Instruct
+  temperature: '0.1'
+  max_new_tokens: '8192.0'
+  stream: 'false'
+  tools: /home/user/tools/supervisor_agent_tools.yaml
+  require_human_feedback: 'false'
+  llm_endpoint_url: http://tgi-0:9004
+  WORKER_AGENT_URL: http://rag-agent-0:9009
+  SQL_AGENT_URL: http://sql-agent-0:9012
+  port: 9090
+  OPENAI_API_KEY: NA
+---
+# Copyright (C) 2024 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+apiVersion: v1
+kind: Service
+metadata:
+  name: supervisor-agent-0
+spec:
+  selector:
+    app: supervisor-agent
+  ports:
+  - protocol: TCP
+    port: 9013
+    targetPort: 9090
+---
+# Copyright (C) 2024 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: supervisor-agent-0
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: supervisor-agent
+  template:
+    metadata:
+      labels:
+        app: supervisor-agent
+    spec:
+      initContainers:
+      - name: agentqna-tools
+        image: curlimages/curl:latest
+        command:
+        - /bin/sh
+        - -c
+        args:
+        - |
+          TOOLS_GIT_URL="https://github.com/opea-project/GenAIExamples/tree/main/AgentQnA/tools"
+          OWNER=$(echo ${TOOLS_GIT_URL} | sed -E 's|https://github.com/([^/]+)/([^/]+)/tree/([^/]+)/.*|\1|')
+          REPO=$(echo ${TOOLS_GIT_URL} | sed -E 's|https://github.com/([^/]+)/([^/]+)/tree/([^/]+)/.*|\2|')
+          BRANCH=$(echo ${TOOLS_GIT_URL} | sed -E 's|https://github.com/[^/]+/[^/]+/tree/([^/]+)/.*|\1|')
+          TOOLS_DIR=$(echo ${TOOLS_GIT_URL} | sed -E 's|https://github.com/[^/]+/[^/]+/tree/[^/]+/(.*?)/?$|\1|')
+          if [[ "${TOOLS_DIR: -1}" == "/" ]]; then TOOLS_DIR="${TOOLS_DIR%/}"; fi
+          DOWNLOAD_URL="https://codeload.github.com/${OWNER}/${REPO}/tar.gz/${BRANCH}"
+          curl "${DOWNLOAD_URL}" | tar -xz --strip-components= -C /home/user/tools/ "${REPO}-${BRANCH}/${TOOLS_DIR}"
+        envFrom:
+        - configMapRef:
+            name: studio-config
+        volumeMounts:
+        - name: agent-tools
+          mountPath: /home/user/tools/
+        securityContext:
+          runAsUser: 0
+          runAsGroup: 0
+      containers:
+      - name: supervisor-agent-container
+        image: opea/agent:latest
+        ports:
+        - containerPort: 9090
+        volumeMounts:
+        - name: agent-tools
+          mountPath: /home/user/tools/
+        envFrom:
+        - configMapRef:
+            name: supervisor-agent-config
+      volumes:
+      - name: agent-tools
+        emptyDir: {}
+---
+# Copyright (C) 2024 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-backend-ports-env
+data:
+  .env: |
+    embedding_tei_langchain_0_port=9007
+    prepare_doc_redis_prep_0_port=9008
+    rag_agent_0_port=9009
+    reranking_tei_0_port=9010
+    retriever_redis_0_port=9011
+    sql_agent_0_port=9012
+    supervisor_agent_0_port=9013
+---
+# Copyright (C) 2024 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+apiVersion: v1
+kind: ConfigMap
+metadata:
   name: app-backend-config
 data:
   workflow-info.json: |
@@ -1034,19 +1281,18 @@ data:
             "doc_input_ids": [
                 "doc_input_0"
             ],
-            "id": "ec1105d1-69ad-41de-9c8b-737bc5975397",
-            "name": "ChatQnA Flow 4",
+            "id": "06cf7bca-2bb4-404e-8b9f-781d8784774c",
+            "name": "AgentQnA",
             "nodes": {
                 "chat_completion_0": {
                     "category": "Controls",
                     "connected_from": [
-                        "opea_service@llm_tgi_0"
+                        "opea_service@supervisor_agent_0"
                     ],
                     "connected_to": [],
                     "hideOutput": true,
                     "id": "chat_completion_0",
                     "inMegaservice": false,
-                    "inference_params": {},
                     "name": "chat_completion",
                     "params": {},
                     "version": 1
@@ -1055,11 +1301,10 @@ data:
                     "category": "Controls",
                     "connected_from": [],
                     "connected_to": [
-                        "opea_service@embedding_tei_langchain_0"
+                        "opea_service@supervisor_agent_0"
                     ],
                     "id": "chat_input_0",
                     "inMegaservice": false,
-                    "inference_params": {},
                     "name": "chat_input",
                     "params": {},
                     "version": 1
@@ -1072,7 +1317,6 @@ data:
                     ],
                     "id": "doc_input_0",
                     "inMegaservice": false,
-                    "inference_params": {},
                     "name": "doc_input",
                     "params": {},
                     "version": 1
@@ -1080,56 +1324,20 @@ data:
                 "opea_service@embedding_tei_langchain_0": {
                     "category": "Embeddings",
                     "connected_from": [
-                        "chat_input_0"
+                        "opea_service@rag_agent_0"
                     ],
                     "connected_to": [
                         "opea_service@retriever_redis_0"
                     ],
                     "dependent_services": {
                         "tei": {
-                            "endpoint": "tei-0",
-                            "port": 2081,
                             "huggingFaceToken": "NA",
                             "modelName": "BAAI/bge-large-en-v1.5"
                         }
                     },
                     "id": "opea_service@embedding_tei_langchain_0",
                     "inMegaservice": true,
-                    "inference_params": {},
                     "name": "opea_service@embedding_tei_langchain",
-                    "params": {},
-                    "version": 1
-                },
-                "opea_service@llm_tgi_0": {
-                    "category": "LLM",
-                    "connected_from": [
-                        "opea_service@reranking_tei_0"
-                    ],
-                    "connected_to": [
-                        "chat_completion_0"
-                    ],
-                    "dependent_services": {
-                        "tgi": {
-                            "endpoint": "tgi-0",
-                            "port": 3081,
-                            "huggingFaceToken": "NA",
-                            "modelName": "Intel/neural-chat-7b-v3-3"
-                        }
-                    },
-                    "id": "opea_service@llm_tgi_0",
-                    "inMegaservice": true,
-                    "inference_params": {
-                        "chat_template": "### You are a helpful, respectful and honest assistant to help the user with questions.\n### Context: {context}\n### Question: {question}\n### Answer:",
-                        "frequency_penalty": "",
-                        "max_tokens": 17,
-                        "presence_penalty": 1.03,
-                        "streaming": true,
-                        "temperature": 0.01,
-                        "top_k": 10,
-                        "top_p": 0.95,
-                        "typical_p": 0.95
-                    },
-                    "name": "opea_service@llm_tgi",
                     "params": {},
                     "version": 1
                 },
@@ -1143,17 +1351,41 @@ data:
                     ],
                     "dependent_services": {
                         "tei": {
-                            "endpoint": "tei-0",
-                            "port": 2081,
                             "huggingFaceToken": "NA",
                             "modelName": "BAAI/bge-large-en-v1.5"
                         }
                     },
                     "id": "opea_service@prepare_doc_redis_prep_0",
                     "inMegaservice": false,
-                    "inference_params": {},
                     "name": "opea_service@prepare_doc_redis_prep",
                     "params": {},
+                    "version": 1
+                },
+                "opea_service@rag_agent_0": {
+                    "category": "Agent",
+                    "connected_from": [
+                        "opea_service@supervisor_agent_0",
+                        "opea_service@reranking_tei_0"
+                    ],
+                    "connected_to": [
+                        "opea_service@embedding_tei_langchain_0"
+                    ],
+                    "dependent_services": {
+                        "tgi": {
+                            "huggingFaceToken": "NA",
+                            "modelName": "meta-llama/Meta-Llama-3.1-70B-Instruct"
+                        }
+                    },
+                    "id": "opea_service@rag_agent_0",
+                    "inMegaservice": true,
+                    "name": "opea_service@rag_agent",
+                    "params": {
+                        "llmEngine": "tgi",
+                        "maxNewToken": 8192.0,
+                        "openaiApiKey": "NA",
+                        "recursionLimit": 10.0,
+                        "temperature": 0.1
+                    },
                     "version": 1
                 },
                 "opea_service@reranking_tei_0": {
@@ -1162,27 +1394,24 @@ data:
                         "opea_service@retriever_redis_0"
                     ],
                     "connected_to": [
-                        "opea_service@llm_tgi_0"
+                        "opea_service@rag_agent_0"
                     ],
                     "dependent_services": {
                         "tei": {
-                            "endpoint": "tei-1",
-                            "port": 2082,
                             "huggingFaceToken": "NA",
                             "modelName": "BAAI/bge-reranker-base"
                         }
                     },
                     "id": "opea_service@reranking_tei_0",
                     "inMegaservice": true,
-                    "inference_params": {
-                        "top_n": 1
-                    },
                     "name": "opea_service@reranking_tei",
-                    "params": {},
+                    "params": {
+                        "top_n": 1.0
+                    },
                     "version": 1
                 },
                 "opea_service@retriever_redis_0": {
-                    "category": "Retreiver",
+                    "category": "Retriever",
                     "connected_from": [
                         "opea_service@embedding_tei_langchain_0",
                         "redis_vector_store_0"
@@ -1192,19 +1421,70 @@ data:
                     ],
                     "dependent_services": {
                         "tei": {
-                            "endpoint": "tei-2",
-                            "port": 2083,
                             "huggingFaceToken": "NA",
                             "modelName": "BAAI/bge-base-en-v1.5"
                         }
                     },
                     "id": "opea_service@retriever_redis_0",
                     "inMegaservice": true,
-                    "inference_params": {
+                    "name": "opea_service@retriever_redis",
+                    "params": {
                         "search_type": "similarity"
                     },
-                    "name": "opea_service@retriever_redis",
-                    "params": {},
+                    "version": 1
+                },
+                "opea_service@sql_agent_0": {
+                    "category": "Agent",
+                    "connected_from": [
+                        "opea_service@supervisor_agent_0"
+                    ],
+                    "connected_to": [],
+                    "dependent_services": {
+                        "tgi": {
+                            "huggingFaceToken": "NA",
+                            "modelName": "meta-llama/Meta-Llama-3.1-70B-Instruct"
+                        }
+                    },
+                    "id": "opea_service@sql_agent_0",
+                    "inMegaservice": true,
+                    "name": "opea_service@sql_agent",
+                    "params": {
+                        "db_name": "",
+                        "db_path": "",
+                        "llmEngine": "tgi",
+                        "maxNewToken": 8192.0,
+                        "openaiApiKey": "NA",
+                        "recursionLimit": 10.0,
+                        "temperature": 0.1
+                    },
+                    "version": 1
+                },
+                "opea_service@supervisor_agent_0": {
+                    "category": "Agent",
+                    "connected_from": [
+                        "chat_input_0"
+                    ],
+                    "connected_to": [
+                        "opea_service@rag_agent_0",
+                        "opea_service@sql_agent_0",
+                        "chat_completion_0"
+                    ],
+                    "dependent_services": {
+                        "tgi": {
+                            "huggingFaceToken": "NA",
+                            "modelName": "meta-llama/Meta-Llama-3.1-70B-Instruct"
+                        }
+                    },
+                    "id": "opea_service@supervisor_agent_0",
+                    "inMegaservice": true,
+                    "name": "opea_service@supervisor_agent",
+                    "params": {
+                        "llmEngine": "tgi",
+                        "maxNewToken": 8192.0,
+                        "openaiApiKey": "NA",
+                        "recursionLimit": 10.0,
+                        "temperature": 0.1
+                    },
                     "version": 1
                 },
                 "redis_vector_store_0": {
@@ -1217,7 +1497,6 @@ data:
                     ],
                     "id": "redis_vector_store_0",
                     "inMegaservice": true,
-                    "inference_params": {},
                     "name": "redis_vector_store",
                     "params": {},
                     "version": 1
@@ -1288,6 +1567,9 @@ spec:
         - mountPath: /home/user/config/workflow-info.json
           name: workflow-info-volume
           subPath: workflow-info.json
+        - mountPath: /home/user/config/.env
+          name: ports-env
+          subPath: .env
         ports:
         - name: app-backend
           containerPort: 8888
@@ -1299,6 +1581,9 @@ spec:
       - name: workflow-info-volume
         configMap:
           name: app-backend-config
+      - name: ports-env
+        configMap:
+          name: app-backend-ports-env
 ---
 # Copyright (C) 2024 Intel Corporation
 # SPDX-License-Identifier: Apache-2.0
@@ -1338,17 +1623,15 @@ spec:
       containers:
       - name: app-frontend
         env:
-        - name: APP_BACKEND_SERVICE_URL
+        - name: VITE_APP_BACKEND_SERVICE_URL
           value: /v1/app-backend
-        - name: APP_EMBEDDINGS_SERVICE_URL
+        - name: VITE_APP_EMBEDDINGS_SERVICE_URL
           value: /v1/embeddings
-        - name: APP_CHAT_COMPLETEION_SERVICE_URL
-          value: /v1/chat/completions
-        - name: APP_DATA_PREP_SERVICE_URL
+        - name: VITE_APP_DATA_PREP_SERVICE_URL
           value: /v1/dataprep
-        - name: APP_RERANKING_SERVICE_URL
+        - name: VITE_APP_RERANKING_SERVICE_URL
           value: /v1/reranking
-        - name: APP_RETRIEVAL_SERVICE_URL
+        - name: VITE_APP_RETRIEVAL_SERVICE_URL
           value: /v1/retrieval
         securityContext: {}
         image: opea/app-frontend:latest

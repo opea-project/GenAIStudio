@@ -1,0 +1,88 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-{endpoint}
+data:
+  # ip_address: "${public_host_ip}"
+  no_proxy: "${NO_PROXY}"
+  http_proxy: "${HTTP_PROXY}"
+  https_proxy: "${HTTP_PROXY}"
+  llm_engine: "{llmEngine}"
+  strategy: "react_llama"
+  recursion_limit: "{recursionLimit}"
+  model: "{modelName}"
+  temperature: "{temperature}"
+  max_new_tokens: "{maxNewToken}"
+  stream: "false"
+  tools: "/home/user/tools/supervisor_agent_tools.yaml"
+  require_human_feedback: "false"
+  llm_endpoint_url: "http://{llm_endpoint}:{llm_port}"
+  WORKER_AGENT_URL: "http://{rag_agent_endpoint}:{rag_agent_port}"
+  SQL_AGENT_URL: "http://{sql_agent_endpoint}:{sql_agent_port}"
+  port: "9090"
+  OPENAI_API_KEY: "{openaiApiKey}"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: "{endpoint}"
+spec:
+  selector:
+    app: supervisor-agent
+  ports:
+    - protocol: TCP
+      port: "{port}"
+      targetPort: 9090
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: "{endpoint}"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: supervisor-agent
+  template:
+    metadata:
+      labels:
+        app: supervisor-agent
+    spec:
+      initContainers:
+        - name: agentqna-tools
+          image: curlimages/curl:latest
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              TOOLS_GIT_URL="https://github.com/opea-project/GenAIExamples/tree/main/AgentQnA/tools"
+              OWNER=$(echo ${TOOLS_GIT_URL} | sed -E 's|https://github.com/([^/]+)/([^/]+)/tree/([^/]+)/.*|\1|')
+              REPO=$(echo ${TOOLS_GIT_URL} | sed -E 's|https://github.com/([^/]+)/([^/]+)/tree/([^/]+)/.*|\2|')
+              BRANCH=$(echo ${TOOLS_GIT_URL} | sed -E 's|https://github.com/[^/]+/[^/]+/tree/([^/]+)/.*|\1|')
+              TOOLS_DIR=$(echo ${TOOLS_GIT_URL} | sed -E 's|https://github.com/[^/]+/[^/]+/tree/[^/]+/(.*?)/?$|\1|')
+              if [[ "${TOOLS_DIR: -1}" == "/" ]]; then TOOLS_DIR="${TOOLS_DIR%/}"; fi
+              DOWNLOAD_URL="https://codeload.github.com/${OWNER}/${REPO}/tar.gz/${BRANCH}"
+              curl "${DOWNLOAD_URL}" | tar -xz --strip-components= -C /home/user/tools/ "${REPO}-${BRANCH}/${TOOLS_DIR}"
+          envFrom:
+            - configMapRef:
+                name: studio-config
+          volumeMounts:
+            - name: agent-tools
+              mountPath: /home/user/tools/
+          securityContext:
+            runAsUser: 0
+            runAsGroup: 0
+      containers:
+        - name: supervisor-agent-container
+          image: ${REGISTRY}/agent:${TAG}
+          ports:
+            - containerPort: 9090
+          volumeMounts:
+            - name: agent-tools
+              mountPath: /home/user/tools/
+          envFrom:
+            - configMapRef:
+                name: supervisor-agent-config
+      volumes:
+        - name: agent-tools
+          emptyDir: {}

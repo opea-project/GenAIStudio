@@ -6,6 +6,7 @@ from app.main import app
 import os
 import json
 import pytest
+import time
 
 from app.models.pipeline_model import PipelineFlow
 from app.services.dashboard_service import delete_dashboard
@@ -14,7 +15,7 @@ from app.services.dashboard_service import delete_dashboard
 def setup_and_teardown():
      # Prepare the JSON payload with the YAML content
     test_dir = os.path.dirname(os.path.abspath(__file__))
-    flowise_pipeline_file = os.path.join(test_dir, "flowise-pipeline-translator", "flowise_pipeline.json")
+    flowise_pipeline_file = os.path.join(test_dir, "flowise-pipeline-inputs", "agentqna-tgi.json")
 
     with open(flowise_pipeline_file, "r") as file:
         payload = json.load(file)
@@ -60,6 +61,7 @@ def test_deploy_sandbox_api(setup_and_teardown):
    # Simulate a POST request to the /deploy-sandbox endpoint with the JSON payload
     test_client = TestClient(app)
     response = test_client.post("/studio-backend/deploy-sandbox", content=json.dumps(payload))
+    time.sleep(6000)
 
     # Check that the response is successful
     assert response.status_code == 200
