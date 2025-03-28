@@ -1,7 +1,7 @@
 {
-    "id": "665cde4d-a37a-4a9a-ace3-96debfb08821",
+    "id": "a30346d2-b3b7-4fef-9f7c-48ea343a36eb",
     "name": "AgentQnA",
-    "userid": "",
+    "userid": "test_automation@gmail.com",
     "flowData": {
         "nodes": [
             {
@@ -300,8 +300,8 @@
                     "modelName": "Intel/neural-chat-7b-v3-3",
                     "huggingFaceToken": "",
                     "openaiApiKey": "",
-                    "db_path": "",
-                    "db_name": "",
+                    "db_path": "mysql+mysqlconnector://admin:xxx@xxxx.rds.amazonaws.com:3306/easydata",
+                    "db_name": "easydata",
                     "temperature": 0.1,
                     "maxNewToken": 8192,
                     "recursionLimit": 10
@@ -770,9 +770,9 @@
     "speechToText": null,
     "category": null,
     "type": "OPEA",
-    "sandboxStatus": null,
+    "sandboxStatus": "Error",
     "sandboxAppUrl": null,
     "sandboxGrafanaUrl": null,
-    "createdDate": "2025-03-28T02:20:28.000Z",
-    "updatedDate": "2025-03-28T02:20:28.000Z"
+    "createdDate": "2025-03-28T07:46:59.515Z",
+    "updatedDate": "2025-03-28T07:47:16.000Z"
 }

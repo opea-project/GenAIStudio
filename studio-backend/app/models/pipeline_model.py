@@ -46,6 +46,7 @@ class Node(BaseModel):
     version: int
     category: str
     inMegaservice: bool
+    megaserviceClient: Optional[bool] = False
     inputAnchors: List[InputAnchor]
     inputParams: List[InputParam]
     inputs: Dict[str, str]

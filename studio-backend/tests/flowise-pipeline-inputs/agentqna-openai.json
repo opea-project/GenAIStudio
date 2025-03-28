@@ -1,7 +1,7 @@
 {
-    "id": "06cf7bca-2bb4-404e-8b9f-781d8784774c",
+    "id": "a30346d2-b3b7-4fef-9f7c-48ea343a36eb",
     "name": "AgentQnA",
-    "userid": "",
+    "userid": "test_automation@gmail.com",
     "flowData": {
         "nodes": [
             {
@@ -141,7 +141,8 @@
                 "name": "opea_service@rag_agent",
                 "version": 1,
                 "category": "Agent",
-                "inMegaservice": true,
+                "inMegaservice": false,
+                "megaserviceClient": true,
                 "dependent_services": {
                     "tgi": {
                         "modelName": "",
@@ -278,7 +279,7 @@
                 "name": "opea_service@sql_agent",
                 "version": 1,
                 "category": "Agent",
-                "inMegaservice": true,
+                "inMegaservice": false,
                 "dependent_services": {
                     "tgi": {
                         "modelName": "",
@@ -299,8 +300,8 @@
                     "modelName": "Intel/neural-chat-7b-v3-3",
                     "huggingFaceToken": "",
                     "openaiApiKey": "",
-                    "db_path": "",
-                    "db_name": "",
+                    "db_path": "mysql+mysqlconnector://admin:xxx@xxxx.rds.amazonaws.com:3306/easydata",
+                    "db_name": "easydata",
                     "temperature": 0.1,
                     "maxNewToken": 8192,
                     "recursionLimit": 10
@@ -413,6 +414,26 @@
                 "id": "opea_service@sql_agent_0"
             },
             {
+                "name": "chat_input",
+                "version": 1,
+                "category": "Controls",
+                "inMegaservice": false,
+                "inputAnchors": [],
+                "inputParams": [],
+                "inputs": {},
+                "outputs": {},
+                "outputAnchors": [
+                    {
+                        "id": "chat_input_0-output-chat_input-ChatCompletionRequest",
+                        "name": "chat_input",
+                        "label": "ChatCompletionRequest",
+                        "description": "User Input from Chat Window",
+                        "type": "ChatCompletionRequest"
+                    }
+                ],
+                "id": "chat_input_0"
+            },
+            {
                 "name": "chat_completion",
                 "version": 1,
                 "category": "Controls",
@@ -433,26 +454,6 @@
                 "outputs": {},
                 "outputAnchors": [],
                 "id": "chat_completion_0"
-            },
-            {
-                "name": "chat_input",
-                "version": 1,
-                "category": "Controls",
-                "inMegaservice": false,
-                "inputAnchors": [],
-                "inputParams": [],
-                "inputs": {},
-                "outputs": {},
-                "outputAnchors": [
-                    {
-                        "id": "chat_input_0-output-chat_input-ChatCompletionRequest",
-                        "name": "chat_input",
-                        "label": "ChatCompletionRequest",
-                        "description": "User Input from Chat Window",
-                        "type": "ChatCompletionRequest"
-                    }
-                ],
-                "id": "chat_input_0"
             },
             {
                 "name": "doc_input",
@@ -769,9 +770,9 @@
     "speechToText": null,
     "category": null,
     "type": "OPEA",
-    "sandboxStatus": null,
+    "sandboxStatus": "Error",
     "sandboxAppUrl": null,
     "sandboxGrafanaUrl": null,
-    "createdDate": "2025-03-26T02:15:48.000Z",
-    "updatedDate": "2025-03-26T02:17:03.000Z"
+    "createdDate": "2025-03-28T07:46:59.515Z",
+    "updatedDate": "2025-03-28T07:47:16.000Z"
 }
