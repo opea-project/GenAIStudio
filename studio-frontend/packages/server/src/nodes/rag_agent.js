@@ -11,13 +11,18 @@ class OPEARedisRetreiver {
         this.description = 'RAG Agent built on Langchain/Langgraph framework'
         this.baseClasses = [this.type, 'ChatCompletionRequest']
         this.tags = ['OPEA']
-        this.inMegaservice = true
+        this.inMegaservice = false
+        this.megaserviceClient = true
         this.dependent_services = {
-            'llm': {
-                'engine': '',
+            'tgi': {
                 'modelName': '',
                 'huggingFaceToken': ''
-            }
+            },
+            // 'vllm': {
+            //     'modelName': '',
+            //     'huggingFaceToken': '',
+            //     'gaudi': ''
+            // }
         }
         this.outputs = [
             {
@@ -37,7 +42,7 @@ class OPEARedisRetreiver {
             {
                 label: 'Search Query',
                 name: 'query',
-                type: 'ChatCompletionRequest|AgentQuery'
+                type: 'ChatCompletionRequest|RagAgent'
             },
             {
                 label: 'Retrieval Response',
@@ -48,18 +53,18 @@ class OPEARedisRetreiver {
                 label: 'LLM Engine',
                 name: 'llmEngine',
                 type: 'options',
-                default: 'TGI',
+                default: 'tgi',
                 options: [
                     {
-                        name: 'TGI',
+                        name: 'tgi',
                         label: 'TGI'
                     },
                     // {
-                    //     name: 'vLLM',
+                    //     name: 'vllm',
                     //     label: 'vLLM',
                     // },
                     {
-                        name:'OpenAI',
+                        name:'openai',
                         label: 'OpenAI'
                     }
                 ],
@@ -68,7 +73,7 @@ class OPEARedisRetreiver {
                 label: 'Model Name',
                 name: 'modelName',
                 type: 'string',
-                default: 'meta-llama/Meta-Llama-3.1-70B-Instruct'
+                default: 'Intel/neural-chat-7b-v3-3'
             },
             {
                 label: 'HuggingFace Token',

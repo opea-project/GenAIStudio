@@ -13,17 +13,27 @@ class OPEARedisRetreiver {
         this.tags = ['OPEA']
         this.inMegaservice = true
         this.dependent_services = {
-            'llm': {
-                'engine': '',
+            'tgi': {
                 'modelName': '',
                 'huggingFaceToken': ''
-            }
+            },
+            // 'vllm': {
+            //     'modelName': '',
+            //     'huggingFaceToken': '',
+            //     'gaudi': ''
+            // }
         }
         this.outputs = [
             {
-                label: 'AgentQuery',
-                name: 'AgentQuery',
-                type: 'AgentQuery',
+                label: 'RagAgent',
+                name: 'RagAgent',
+                type: 'RagAgent',
+                isAnchor: true
+            },
+            {
+                label: 'SqlAgent',
+                name: 'SqlAgent',
+                type: 'SqlAgent',
                 isAnchor: true
             }, 
             {
@@ -43,18 +53,18 @@ class OPEARedisRetreiver {
                 label: 'LLM Engine',
                 name: 'llmEngine',
                 type: 'options',
-                default: 'TGI',
+                default: 'tgi',
                 options: [
                     {
-                        name: 'TGI',
+                        name: 'tgi',
                         label: 'TGI'
                     },
                     // {
-                    //     name: 'vLLM',
+                    //     name: 'vllm',
                     //     label: 'vLLM',
                     // },
                     {
-                        name:'OpenAI',
+                        name:'openai',
                         label: 'OpenAI'
                     }
                 ],
@@ -63,7 +73,7 @@ class OPEARedisRetreiver {
                 label: 'Model Name',
                 name: 'modelName',
                 type: 'string',
-                default: 'meta-llama/Meta-Llama-3.1-70B-Instruct'
+                default: 'Intel/neural-chat-7b-v3-3'
             },
             {
                 label: 'HuggingFace Token',
