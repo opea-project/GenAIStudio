@@ -18,7 +18,7 @@ data:
   require_human_feedback: "false"
   llm_endpoint_url: "http://{llm_endpoint}:{llm_port}"
   RETRIEVAL_TOOL_URL: "http://{megasvc_endpoint}/{rag_name}"
-  port: "9095"
+  PORT: "9095"
   OPENAI_API_KEY: "{openaiApiKey}"
 
 ---
@@ -28,7 +28,7 @@ metadata:
   name: "{endpoint}"
 spec:
   selector:
-    app: rag-agent
+    app: "{endpoint}"
   ports:
     - protocol: TCP
       port: "{port}"
@@ -38,16 +38,16 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: rag-agent-deployment
+  name: "{endpoint}"
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: rag-agent
+      app: "{endpoint}"
   template:
     metadata:
       labels:
-        app: rag-agent
+        app: "{endpoint}"
     spec:
       initContainers:
         - name: agentqna-tools
@@ -62,10 +62,18 @@ spec:
               TOOLS_DIR=$(echo ${TOOLS_GIT_URL} | sed -E 's|https://github.com/[^/]+/[^/]+/tree/[^/]+/(.*?)/?$|\1|')
               if [[ "${TOOLS_DIR: -1}" == "/" ]]; then TOOLS_DIR="${TOOLS_DIR%/}"; fi
               DOWNLOAD_URL="https://codeload.github.com/${OWNER}/${REPO}/tar.gz/${BRANCH}"
-              curl "${DOWNLOAD_URL}" | tar -xz --strip-components= -C /home/user/tools/ "${REPO}-${BRANCH}/${TOOLS_DIR}"
+              curl "${DOWNLOAD_URL}" | tar -xz --strip-components=3 -C /home/user/tools/ "${REPO}-${BRANCH}/${TOOLS_DIR}"
+
+              # Conditional wait for remote service based on llm_engine
+              if [ "$llm_engine" = "tgi" ]; then
+                until nc -z -v -w30 ${llm_endpoint_url#http://} 80; do
+                  echo "Waiting for remote service...";
+                  sleep 5;
+                done
+              fi
           envFrom:
             - configMapRef:
-                name: studio-config
+                name: config-{endpoint}
           volumeMounts:
             - name: agent-tools
               mountPath: /home/user/tools/
@@ -75,6 +83,15 @@ spec:
       containers:
         - name: rag-agent-container
           image: ${REGISTRY}/agent:${TAG}
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              export port=$(echo ${PORT} | awk '{print int($1)}')
+              export temperature=$(printf "%.6f" "${temperature}")
+              export recursion_limit=$(echo ${recursion_limit} | awk '{print int($1)}')
+              export max_new_tokens=$(echo ${max_new_tokens} | awk '{print int($1)}')
+
+              python agent.py
           ports:
             - containerPort: 9095
           volumeMounts:
@@ -82,7 +99,7 @@ spec:
               mountPath: /home/user/tools/
           envFrom:
             - configMapRef:
-                name: rag-agent-config
+                name: config-{endpoint}
       volumes:
         - name: agent-tools
           emptyDir: {}

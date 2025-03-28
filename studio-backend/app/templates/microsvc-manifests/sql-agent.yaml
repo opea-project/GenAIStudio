@@ -19,7 +19,7 @@ data:
   tools: "/home/user/tools/worker_agent_tools.yaml"
   require_human_feedback: "false"
   llm_endpoint_url: "http://{llm_endpoint}:{llm_port}"
-  port: "9096"
+  PORT: "9096"
   OPENAI_API_KEY: "{openaiApiKey}"
 ---
 apiVersion: v1
@@ -28,7 +28,7 @@ metadata:
   name: "{endpoint}"
 spec:
   selector:
-    app: sql-agent
+    app: "{endpoint}"
   ports:
     - protocol: TCP
       port: "{port}"
@@ -42,11 +42,11 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      app: sql-agent
+      app: "{endpoint}"
   template:
     metadata:
       labels:
-        app: sql-agent
+        app: "{endpoint}"
     spec:
       initContainers:
         - name: agentqna-tools
@@ -61,10 +61,18 @@ spec:
               TOOLS_DIR=$(echo ${TOOLS_GIT_URL} | sed -E 's|https://github.com/[^/]+/[^/]+/tree/[^/]+/(.*?)/?$|\1|')
               if [[ "${TOOLS_DIR: -1}" == "/" ]]; then TOOLS_DIR="${TOOLS_DIR%/}"; fi
               DOWNLOAD_URL="https://codeload.github.com/${OWNER}/${REPO}/tar.gz/${BRANCH}"
-              curl "${DOWNLOAD_URL}" | tar -xz --strip-components= -C /home/user/tools/ "${REPO}-${BRANCH}/${TOOLS_DIR}"
+              curl "${DOWNLOAD_URL}" | tar -xz --strip-components=3 -C /home/user/tools/ "${REPO}-${BRANCH}/${TOOLS_DIR}"
+
+              # Conditional wait for remote service based on llm_engine
+              if [ "$llm_engine" = "tgi" ]; then
+                until nc -z -v -w30 ${llm_endpoint_url#http://} 80; do
+                  echo "Waiting for remote service...";
+                  sleep 5;
+                done
+              fi
           envFrom:
             - configMapRef:
-                name: studio-config
+                name: config-{endpoint}
           volumeMounts:
             - name: agent-tools
               mountPath: /home/user/tools/
@@ -74,6 +82,15 @@ spec:
       containers:
         - name: sql-agent-container
           image: ${REGISTRY}/agent:${TAG}
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              export port=$(echo ${PORT} | awk '{print int($1)}')
+              export temperature=$(printf "%.6f" "${temperature}")
+              export recursion_limit=$(echo ${recursion_limit} | awk '{print int($1)}')
+              export max_new_tokens=$(echo ${max_new_tokens} | awk '{print int($1)}')
+
+              python agent.py
           ports:
             - containerPort: 9096
           volumeMounts:
@@ -81,7 +98,7 @@ spec:
               mountPath: /home/user/tools/
           envFrom:
             - configMapRef:
-                name: sql-agent-config
+                name: config-{endpoint}
       volumes:
         - name: agent-tools
           emptyDir: {}

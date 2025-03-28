@@ -75,7 +75,7 @@ class WorkflowInfo:
                     
                     inputParamObject = [p for p in node_data['inputParams'] if p['name'] == input_key][0]
                     if inputParamObject.get('type') == 'number':
-                        input_value = 0 if input_value == '' else float(input_value)
+                        input_value = 0 if input_value == '' else input_value
                         node_data['inputs'][input_key] = input_value
 
                     # Handle llmEngine specific logic

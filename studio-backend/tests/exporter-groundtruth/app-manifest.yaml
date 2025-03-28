@@ -747,16 +747,16 @@ data:
   https_proxy: ''
   llm_engine: tgi
   strategy: rag_agent_llama
-  recursion_limit: '10.0'
+  recursion_limit: '10'
   model: Intel/neural-chat-7b-v3-3
   temperature: '0.1'
-  max_new_tokens: '8192.0'
+  max_new_tokens: '8192'
   stream: 'false'
   tools: /home/user/tools/worker_agent_tools.yaml
   require_human_feedback: 'false'
   llm_endpoint_url: http://tgi-0:9004
   RETRIEVAL_TOOL_URL: http://app-backend:8888/v1/app-backend/rag_agent_0
-  port: 9095
+  PORT: '9095'
   OPENAI_API_KEY: NA
 ---
 # Copyright (C) 2024 Intel Corporation
@@ -767,7 +767,7 @@ metadata:
   name: rag-agent-0
 spec:
   selector:
-    app: rag-agent
+    app: rag-agent-0
   ports:
   - protocol: TCP
     port: 9009
@@ -778,16 +778,16 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: rag-agent-deployment
+  name: rag-agent-0
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: rag-agent
+      app: rag-agent-0
   template:
     metadata:
       labels:
-        app: rag-agent
+        app: rag-agent-0
     spec:
       initContainers:
       - name: agentqna-tools
@@ -804,10 +804,18 @@ spec:
           TOOLS_DIR=$(echo ${TOOLS_GIT_URL} | sed -E 's|https://github.com/[^/]+/[^/]+/tree/[^/]+/(.*?)/?$|\1|')
           if [[ "${TOOLS_DIR: -1}" == "/" ]]; then TOOLS_DIR="${TOOLS_DIR%/}"; fi
           DOWNLOAD_URL="https://codeload.github.com/${OWNER}/${REPO}/tar.gz/${BRANCH}"
-          curl "${DOWNLOAD_URL}" | tar -xz --strip-components= -C /home/user/tools/ "${REPO}-${BRANCH}/${TOOLS_DIR}"
+          curl "${DOWNLOAD_URL}" | tar -xz --strip-components=3 -C /home/user/tools/ "${REPO}-${BRANCH}/${TOOLS_DIR}"
+
+          # Conditional wait for remote service based on llm_engine
+          if [ "$llm_engine" = "tgi" ]; then
+            until nc -z -v -w30 ${llm_endpoint_url#http://} 80; do
+              echo "Waiting for remote service...";
+              sleep 5;
+            done
+          fi
         envFrom:
         - configMapRef:
-            name: studio-config
+            name: config-rag-agent-0
         volumeMounts:
         - name: agent-tools
           mountPath: /home/user/tools/
@@ -817,6 +825,17 @@ spec:
       containers:
       - name: rag-agent-container
         image: opea/agent:latest
+        command:
+        - /bin/sh
+        - -c
+        args:
+        - |
+          export port=$(echo ${PORT} | awk '{print int($1)}')
+          export temperature=$(printf "%.6f" "${temperature}")
+          export recursion_limit=$(echo ${recursion_limit} | awk '{print int($1)}')
+          export max_new_tokens=$(echo ${max_new_tokens} | awk '{print int($1)}')
+
+          python agent.py
         ports:
         - containerPort: 9095
         volumeMounts:
@@ -824,7 +843,7 @@ spec:
           mountPath: /home/user/tools/
         envFrom:
         - configMapRef:
-            name: rag-agent-config
+            name: config-rag-agent-0
       volumes:
       - name: agent-tools
         emptyDir: {}
@@ -1071,15 +1090,15 @@ data:
   strategy: sql_agent_llama
   db_name: ''
   db_path: ''
-  recursion_limit: '10.0'
+  recursion_limit: '10'
   model: Intel/neural-chat-7b-v3-3
   temperature: '0.1'
-  max_new_tokens: '8192.0'
+  max_new_tokens: '8192'
   stream: 'false'
   tools: /home/user/tools/worker_agent_tools.yaml
   require_human_feedback: 'false'
   llm_endpoint_url: http://tgi-0:9004
-  port: 9096
+  PORT: '9096'
   OPENAI_API_KEY: NA
 ---
 # Copyright (C) 2024 Intel Corporation
@@ -1090,7 +1109,7 @@ metadata:
   name: sql-agent-0
 spec:
   selector:
-    app: sql-agent
+    app: sql-agent-0
   ports:
   - protocol: TCP
     port: 9012
@@ -1106,11 +1125,11 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      app: sql-agent
+      app: sql-agent-0
   template:
     metadata:
       labels:
-        app: sql-agent
+        app: sql-agent-0
     spec:
       initContainers:
       - name: agentqna-tools
@@ -1127,10 +1146,18 @@ spec:
           TOOLS_DIR=$(echo ${TOOLS_GIT_URL} | sed -E 's|https://github.com/[^/]+/[^/]+/tree/[^/]+/(.*?)/?$|\1|')
           if [[ "${TOOLS_DIR: -1}" == "/" ]]; then TOOLS_DIR="${TOOLS_DIR%/}"; fi
           DOWNLOAD_URL="https://codeload.github.com/${OWNER}/${REPO}/tar.gz/${BRANCH}"
-          curl "${DOWNLOAD_URL}" | tar -xz --strip-components= -C /home/user/tools/ "${REPO}-${BRANCH}/${TOOLS_DIR}"
+          curl "${DOWNLOAD_URL}" | tar -xz --strip-components=3 -C /home/user/tools/ "${REPO}-${BRANCH}/${TOOLS_DIR}"
+
+          # Conditional wait for remote service based on llm_engine
+          if [ "$llm_engine" = "tgi" ]; then
+            until nc -z -v -w30 ${llm_endpoint_url#http://} 80; do
+              echo "Waiting for remote service...";
+              sleep 5;
+            done
+          fi
         envFrom:
         - configMapRef:
-            name: studio-config
+            name: config-sql-agent-0
         volumeMounts:
         - name: agent-tools
           mountPath: /home/user/tools/
@@ -1140,6 +1167,17 @@ spec:
       containers:
       - name: sql-agent-container
         image: opea/agent:latest
+        command:
+        - /bin/sh
+        - -c
+        args:
+        - |
+          export port=$(echo ${PORT} | awk '{print int($1)}')
+          export temperature=$(printf "%.6f" "${temperature}")
+          export recursion_limit=$(echo ${recursion_limit} | awk '{print int($1)}')
+          export max_new_tokens=$(echo ${max_new_tokens} | awk '{print int($1)}')
+
+          python agent.py
         ports:
         - containerPort: 9096
         volumeMounts:
@@ -1147,7 +1185,7 @@ spec:
           mountPath: /home/user/tools/
         envFrom:
         - configMapRef:
-            name: sql-agent-config
+            name: config-sql-agent-0
       volumes:
       - name: agent-tools
         emptyDir: {}
@@ -1164,17 +1202,17 @@ data:
   https_proxy: ''
   llm_engine: tgi
   strategy: react_llama
-  recursion_limit: '10.0'
+  recursion_limit: '10'
   model: Intel/neural-chat-7b-v3-3
   temperature: '0.1'
-  max_new_tokens: '8192.0'
+  max_new_tokens: '8192'
   stream: 'false'
   tools: /home/user/tools/supervisor_agent_tools.yaml
   require_human_feedback: 'false'
   llm_endpoint_url: http://tgi-0:9004
   WORKER_AGENT_URL: http://rag-agent-0:9009
   SQL_AGENT_URL: http://sql-agent-0:9012
-  port: 9090
+  PORT: '9090'
   OPENAI_API_KEY: NA
 ---
 # Copyright (C) 2024 Intel Corporation
@@ -1185,7 +1223,7 @@ metadata:
   name: supervisor-agent-0
 spec:
   selector:
-    app: supervisor-agent
+    app: supervisor-agent-0
   ports:
   - protocol: TCP
     port: 9013
@@ -1201,11 +1239,11 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      app: supervisor-agent
+      app: supervisor-agent-0
   template:
     metadata:
       labels:
-        app: supervisor-agent
+        app: supervisor-agent-0
     spec:
       initContainers:
       - name: agentqna-tools
@@ -1222,10 +1260,18 @@ spec:
           TOOLS_DIR=$(echo ${TOOLS_GIT_URL} | sed -E 's|https://github.com/[^/]+/[^/]+/tree/[^/]+/(.*?)/?$|\1|')
           if [[ "${TOOLS_DIR: -1}" == "/" ]]; then TOOLS_DIR="${TOOLS_DIR%/}"; fi
           DOWNLOAD_URL="https://codeload.github.com/${OWNER}/${REPO}/tar.gz/${BRANCH}"
-          curl "${DOWNLOAD_URL}" | tar -xz --strip-components= -C /home/user/tools/ "${REPO}-${BRANCH}/${TOOLS_DIR}"
+          curl "${DOWNLOAD_URL}" | tar -xz --strip-components=3 -C /home/user/tools/ "${REPO}-${BRANCH}/${TOOLS_DIR}"
+
+          # Conditional wait for remote service based on llm_engine
+          if [ "$llm_engine" = "tgi" ]; then
+            until nc -z -v -w30 ${llm_endpoint_url#http://} 80; do
+              echo "Waiting for remote service...";
+              sleep 5;
+            done
+          fi
         envFrom:
         - configMapRef:
-            name: studio-config
+            name: config-supervisor-agent-0
         volumeMounts:
         - name: agent-tools
           mountPath: /home/user/tools/
@@ -1235,6 +1281,17 @@ spec:
       containers:
       - name: supervisor-agent-container
         image: opea/agent:latest
+        command:
+        - /bin/sh
+        - -c
+        args:
+        - |
+          export port=$(echo ${PORT} | awk '{print int($1)}')
+          export temperature=$(printf "%.6f" "${temperature}")
+          export recursion_limit=$(echo ${recursion_limit} | awk '{print int($1)}')
+          export max_new_tokens=$(echo ${max_new_tokens} | awk '{print int($1)}')
+
+          python agent.py
         ports:
         - containerPort: 9090
         volumeMounts:
@@ -1242,7 +1299,7 @@ spec:
           mountPath: /home/user/tools/
         envFrom:
         - configMapRef:
-            name: supervisor-agent-config
+            name: config-supervisor-agent-0
       volumes:
       - name: agent-tools
         emptyDir: {}
@@ -1281,7 +1338,7 @@ data:
             "doc_input_ids": [
                 "doc_input_0"
             ],
-            "id": "06cf7bca-2bb4-404e-8b9f-781d8784774c",
+            "id": "665cde4d-a37a-4a9a-ace3-96debfb08821",
             "name": "AgentQnA",
             "nodes": {
                 "chat_completion_0": {
@@ -1377,13 +1434,14 @@ data:
                         }
                     },
                     "id": "opea_service@rag_agent_0",
-                    "inMegaservice": true,
+                    "inMegaservice": false,
+                    "megaserviceClient": true,
                     "name": "opea_service@rag_agent",
                     "params": {
                         "llmEngine": "tgi",
-                        "maxNewToken": 8192.0,
+                        "maxNewToken": 8192,
                         "openaiApiKey": "NA",
-                        "recursionLimit": 10.0,
+                        "recursionLimit": 10,
                         "temperature": 0.1
                     },
                     "version": 1
@@ -1406,7 +1464,7 @@ data:
                     "inMegaservice": true,
                     "name": "opea_service@reranking_tei",
                     "params": {
-                        "top_n": 1.0
+                        "top_n": 1
                     },
                     "version": 1
                 },
@@ -1446,15 +1504,15 @@ data:
                         }
                     },
                     "id": "opea_service@sql_agent_0",
-                    "inMegaservice": true,
+                    "inMegaservice": false,
                     "name": "opea_service@sql_agent",
                     "params": {
                         "db_name": "",
                         "db_path": "",
                         "llmEngine": "tgi",
-                        "maxNewToken": 8192.0,
+                        "maxNewToken": 8192,
                         "openaiApiKey": "NA",
-                        "recursionLimit": 10.0,
+                        "recursionLimit": 10,
                         "temperature": 0.1
                     },
                     "version": 1
@@ -1480,9 +1538,9 @@ data:
                     "name": "opea_service@supervisor_agent",
                     "params": {
                         "llmEngine": "tgi",
-                        "maxNewToken": 8192.0,
+                        "maxNewToken": 8192,
                         "openaiApiKey": "NA",
-                        "recursionLimit": 10.0,
+                        "recursionLimit": 10,
                         "temperature": 0.1
                     },
                     "version": 1
@@ -1647,134 +1705,6 @@ spec:
       volumes:
       - name: tmp
         emptyDir: {}
----
-# Copyright (C) 2024 Intel Corporation
-# SPDX-License-Identifier: Apache-2.0
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: app-nginx-config
-data:
-  default.conf: |
-    # Copyright (C) 2024 Intel Corporation
-    # SPDX-License-Identifier: Apache-2.0
-
-    server {
-        listen       80;
-        listen  [::]:80;
-
-        proxy_connect_timeout 600;
-        proxy_send_timeout 600;
-        proxy_read_timeout 600;
-        send_timeout 600;
-
-        client_max_body_size 10G;
-
-        location /home {
-            alias  /usr/share/nginx/html/index.html;
-        }
-
-        location / {
-            proxy_pass http://app-frontend:5175;
-            proxy_set_header Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto $scheme;
-        }
-
-        location /v1/app-backend {
-            proxy_pass http://app-backend:8888;
-            proxy_set_header Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto $scheme;
-
-            # Disable buffering for SSE
-            proxy_buffering off;
-            proxy_cache off;
-            proxy_http_version 1.1;
-            proxy_set_header Connection '';
-            chunked_transfer_encoding off;
-        }
-
-        location /v1/embeddings {
-            proxy_pass http://embedding-tei-langchain-0:9007;
-            proxy_set_header Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto $scheme;
-        }
-
-        location /v1/dataprep {
-            proxy_pass http://prepare-doc-redis-prep-0:9008;
-            proxy_set_header Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto $scheme;
-        }
-
-        location /v1/reranking {
-            proxy_pass http://reranking-tei-0:9010;
-            proxy_set_header Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto $scheme;
-        }
-
-        location /v1/retrieval {
-            proxy_pass http://retriever-redis-0:9011;
-            proxy_set_header Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto $scheme;
-        }
-    }
----
-# Copyright (C) 2024 Intel Corporation
-# SPDX-License-Identifier: Apache-2.0
-apiVersion: v1
-kind: Service
-metadata:
-  name: app-nginx
-spec:
-  ports:
-  - port: 80
-    protocol: TCP
-    targetPort: 80
-  selector:
-    app: app-nginx
-  type: NodePort
----
-# Copyright (C) 2024 Intel Corporation
-# SPDX-License-Identifier: Apache-2.0
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: app-nginx
-  labels:
-    app: app-nginx
-spec:
-  selector:
-    matchLabels:
-      app: app-nginx
-  template:
-    metadata:
-      labels:
-        app: app-nginx
-    spec:
-      containers:
-      - image: nginx:1.27.1
-        imagePullPolicy: IfNotPresent
-        name: nginx
-        volumeMounts:
-        - mountPath: /etc/nginx/conf.d
-          name: nginx-config-volume
-      securityContext: {}
-      volumes:
-      - configMap:
-          defaultMode: 420
-          name: app-nginx-config
-        name: nginx-config-volume
 ---
 # Copyright (C) 2024 Intel Corporation
 # SPDX-License-Identifier: Apache-2.0

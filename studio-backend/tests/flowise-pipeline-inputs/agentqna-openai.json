@@ -21,7 +21,7 @@
                 "inputs": {
                     "query": "{{chat_input_0.data.instance}}",
                     "llmEngine": "openai",
-                    "modelName": "meta-llama/Meta-Llama-3.1-70B-Instruct",
+                    "modelName": "Intel/neural-chat-7b-v3-3",
                     "huggingFaceToken": "",
                     "openaiApiKey": "",
                     "temperature": 0.1,
@@ -58,7 +58,7 @@
                         "label": "Model Name",
                         "name": "modelName",
                         "type": "string",
-                        "default": "meta-llama/Meta-Llama-3.1-70B-Instruct",
+                        "default": "Intel/neural-chat-7b-v3-3",
                         "id": "opea_service@supervisor_agent_0-input-modelName-string"
                     },
                     {
@@ -160,7 +160,7 @@
                     "query": "{{opea_service@supervisor_agent_0.data.instance}}",
                     "retrievalResponse": "{{opea_service@reranking_tei_0.data.instance}}",
                     "llmEngine": "openai",
-                    "modelName": "meta-llama/Meta-Llama-3.1-70B-Instruct",
+                    "modelName": "Intel/neural-chat-7b-v3-3",
                     "huggingFaceToken": "",
                     "openaiApiKey": "",
                     "temperature": 0.1,
@@ -203,7 +203,7 @@
                         "label": "Model Name",
                         "name": "modelName",
                         "type": "string",
-                        "default": "meta-llama/Meta-Llama-3.1-70B-Instruct",
+                        "default": "Intel/neural-chat-7b-v3-3",
                         "id": "opea_service@rag_agent_0-input-modelName-string"
                     },
                     {
@@ -296,7 +296,7 @@
                 "inputs": {
                     "query": "{{opea_service@supervisor_agent_0.data.instance}}",
                     "llmEngine": "openai",
-                    "modelName": "meta-llama/Meta-Llama-3.1-70B-Instruct",
+                    "modelName": "Intel/neural-chat-7b-v3-3",
                     "huggingFaceToken": "",
                     "openaiApiKey": "",
                     "db_path": "",
@@ -335,7 +335,7 @@
                         "label": "Model Name",
                         "name": "modelName",
                         "type": "string",
-                        "default": "meta-llama/Meta-Llama-3.1-70B-Instruct",
+                        "default": "Intel/neural-chat-7b-v3-3",
                         "id": "opea_service@sql_agent_0-input-modelName-string"
                     },
                     {

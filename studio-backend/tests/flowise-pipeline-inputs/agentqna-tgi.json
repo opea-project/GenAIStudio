@@ -1,5 +1,5 @@
 {
-    "id": "06cf7bca-2bb4-404e-8b9f-781d8784774c",
+    "id": "665cde4d-a37a-4a9a-ace3-96debfb08821",
     "name": "AgentQnA",
     "userid": "",
     "flowData": {
@@ -21,7 +21,7 @@
                 "inputs": {
                     "query": "{{chat_input_0.data.instance}}",
                     "llmEngine": "tgi",
-                    "modelName": "meta-llama/Meta-Llama-3.1-70B-Instruct",
+                    "modelName": "Intel/neural-chat-7b-v3-3",
                     "huggingFaceToken": "",
                     "openaiApiKey": "",
                     "temperature": 0.1,
@@ -58,7 +58,7 @@
                         "label": "Model Name",
                         "name": "modelName",
                         "type": "string",
-                        "default": "meta-llama/Meta-Llama-3.1-70B-Instruct",
+                        "default": "Intel/neural-chat-7b-v3-3",
                         "id": "opea_service@supervisor_agent_0-input-modelName-string"
                     },
                     {
@@ -141,7 +141,8 @@
                 "name": "opea_service@rag_agent",
                 "version": 1,
                 "category": "Agent",
-                "inMegaservice": true,
+                "inMegaservice": false,
+                "megaserviceClient": true,
                 "dependent_services": {
                     "tgi": {
                         "modelName": "",
@@ -160,7 +161,7 @@
                     "query": "{{opea_service@supervisor_agent_0.data.instance}}",
                     "retrievalResponse": "{{opea_service@reranking_tei_0.data.instance}}",
                     "llmEngine": "tgi",
-                    "modelName": "meta-llama/Meta-Llama-3.1-70B-Instruct",
+                    "modelName": "Intel/neural-chat-7b-v3-3",
                     "huggingFaceToken": "",
                     "openaiApiKey": "",
                     "temperature": 0.1,
@@ -203,7 +204,7 @@
                         "label": "Model Name",
                         "name": "modelName",
                         "type": "string",
-                        "default": "meta-llama/Meta-Llama-3.1-70B-Instruct",
+                        "default": "Intel/neural-chat-7b-v3-3",
                         "id": "opea_service@rag_agent_0-input-modelName-string"
                     },
                     {
@@ -278,7 +279,7 @@
                 "name": "opea_service@sql_agent",
                 "version": 1,
                 "category": "Agent",
-                "inMegaservice": true,
+                "inMegaservice": false,
                 "dependent_services": {
                     "tgi": {
                         "modelName": "",
@@ -296,7 +297,7 @@
                 "inputs": {
                     "query": "{{opea_service@supervisor_agent_0.data.instance}}",
                     "llmEngine": "tgi",
-                    "modelName": "meta-llama/Meta-Llama-3.1-70B-Instruct",
+                    "modelName": "Intel/neural-chat-7b-v3-3",
                     "huggingFaceToken": "",
                     "openaiApiKey": "",
                     "db_path": "",
@@ -335,7 +336,7 @@
                         "label": "Model Name",
                         "name": "modelName",
                         "type": "string",
-                        "default": "meta-llama/Meta-Llama-3.1-70B-Instruct",
+                        "default": "Intel/neural-chat-7b-v3-3",
                         "id": "opea_service@sql_agent_0-input-modelName-string"
                     },
                     {
@@ -413,6 +414,26 @@
                 "id": "opea_service@sql_agent_0"
             },
             {
+                "name": "chat_input",
+                "version": 1,
+                "category": "Controls",
+                "inMegaservice": false,
+                "inputAnchors": [],
+                "inputParams": [],
+                "inputs": {},
+                "outputs": {},
+                "outputAnchors": [
+                    {
+                        "id": "chat_input_0-output-chat_input-ChatCompletionRequest",
+                        "name": "chat_input",
+                        "label": "ChatCompletionRequest",
+                        "description": "User Input from Chat Window",
+                        "type": "ChatCompletionRequest"
+                    }
+                ],
+                "id": "chat_input_0"
+            },
+            {
                 "name": "chat_completion",
                 "version": 1,
                 "category": "Controls",
@@ -433,26 +454,6 @@
                 "outputs": {},
                 "outputAnchors": [],
                 "id": "chat_completion_0"
-            },
-            {
-                "name": "chat_input",
-                "version": 1,
-                "category": "Controls",
-                "inMegaservice": false,
-                "inputAnchors": [],
-                "inputParams": [],
-                "inputs": {},
-                "outputs": {},
-                "outputAnchors": [
-                    {
-                        "id": "chat_input_0-output-chat_input-ChatCompletionRequest",
-                        "name": "chat_input",
-                        "label": "ChatCompletionRequest",
-                        "description": "User Input from Chat Window",
-                        "type": "ChatCompletionRequest"
-                    }
-                ],
-                "id": "chat_input_0"
             },
             {
                 "name": "doc_input",
@@ -772,6 +773,6 @@
     "sandboxStatus": null,
     "sandboxAppUrl": null,
     "sandboxGrafanaUrl": null,
-    "createdDate": "2025-03-26T02:15:48.000Z",
-    "updatedDate": "2025-03-26T02:17:03.000Z"
+    "createdDate": "2025-03-28T02:20:28.000Z",
+    "updatedDate": "2025-03-28T02:20:28.000Z"
 }

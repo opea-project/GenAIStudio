@@ -196,7 +196,7 @@ kind: ConfigMap
 metadata:
   name: config-tgi-0
 data:
-  MODEL_ID: meta-llama/Meta-Llama-3.1-70B-Instruct
+  MODEL_ID: Intel/neural-chat-7b-v3-3
   PORT: '9004'
   http_proxy: ''
   https_proxy: ''
@@ -748,7 +748,7 @@ data:
   llm_engine: tgi
   strategy: rag_agent_llama
   recursion_limit: '10.0'
-  model: meta-llama/Meta-Llama-3.1-70B-Instruct
+  model: Intel/neural-chat-7b-v3-3
   temperature: '0.1'
   max_new_tokens: '8192.0'
   stream: 'false'
@@ -1072,7 +1072,7 @@ data:
   db_name: ''
   db_path: ''
   recursion_limit: '10.0'
-  model: meta-llama/Meta-Llama-3.1-70B-Instruct
+  model: Intel/neural-chat-7b-v3-3
   temperature: '0.1'
   max_new_tokens: '8192.0'
   stream: 'false'
@@ -1165,7 +1165,7 @@ data:
   llm_engine: tgi
   strategy: react_llama
   recursion_limit: '10.0'
-  model: meta-llama/Meta-Llama-3.1-70B-Instruct
+  model: Intel/neural-chat-7b-v3-3
   temperature: '0.1'
   max_new_tokens: '8192.0'
   stream: 'false'
@@ -1373,7 +1373,7 @@ data:
                     "dependent_services": {
                         "tgi": {
                             "huggingFaceToken": "NA",
-                            "modelName": "meta-llama/Meta-Llama-3.1-70B-Instruct"
+                            "modelName": "Intel/neural-chat-7b-v3-3"
                         }
                     },
                     "id": "opea_service@rag_agent_0",
@@ -1442,7 +1442,7 @@ data:
                     "dependent_services": {
                         "tgi": {
                             "huggingFaceToken": "NA",
-                            "modelName": "meta-llama/Meta-Llama-3.1-70B-Instruct"
+                            "modelName": "Intel/neural-chat-7b-v3-3"
                         }
                     },
                     "id": "opea_service@sql_agent_0",
@@ -1472,7 +1472,7 @@ data:
                     "dependent_services": {
                         "tgi": {
                             "huggingFaceToken": "NA",
-                            "modelName": "meta-llama/Meta-Llama-3.1-70B-Instruct"
+                            "modelName": "Intel/neural-chat-7b-v3-3"
                         }
                     },
                     "id": "opea_service@supervisor_agent_0",

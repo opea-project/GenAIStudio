@@ -20,8 +20,8 @@ def setup_and_teardown():
 
     yield proj_info_file, output_file, gt_file, gt_nginx_file
 
-    if os.path.isfile(output_file):
-        os.unlink(output_file)
+    # if os.path.isfile(output_file):
+    #     os.unlink(output_file)
 
 def test_convert_chatqna_proj_info_to_manifest_obj(setup_and_teardown):
     proj_info_file, output_file, gt_file, _ = setup_and_teardown
