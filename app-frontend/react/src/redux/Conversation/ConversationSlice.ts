@@ -240,8 +240,9 @@ export const doConversation = (conversationRequest: ConversationRequest) => {
       },
       onmessage(msg) {
         if (msg?.data !== "[DONE]") {
+          // console.log ( "check is json", isJsonParsable(msg.data) )
           if (isJsonParsable(msg.data)) {
-            isAgent = true;
+
             store.dispatch(setIsAgent(true));
             const currentMsg = JSON.parse(msg.data);
             if (currentMsg.tool || currentMsg.source || currentMsg.content) {
@@ -262,19 +263,24 @@ export const doConversation = (conversationRequest: ConversationRequest) => {
             console.log("source", source);
             console.log("content", content);
           } else {
+            // isAgent 
             try {
-              const match = msg.data.match(/b'([^']*)'/);
-              if (match && match[1] !== "</s>") {
-                const extractedText = match[1];
-                if (extractedText.includes("\\x")) {
-                  const decodedText = decodeEscapedBytes(extractedText);
-                  result += decodedText;
-                } else {
-                  result += extractedText;
-                }
-              } else if (!match) {
-                result += msg?.data;
-              }
+              // const match = msg.data.match(/b'([^']*)'/);
+              // if (match && match[1] !== "</s>") {
+              //   const extractedText = match[1];
+              //   if (extractedText.includes("\\x")) {
+              //     const decodedText = decodeEscapedBytes(extractedText);
+              //     result += decodedText;
+              //   } else {
+              //     result += extractedText;
+              //   }
+              // } else if (!match) {
+              //   result += msg?.data;
+              // }
+              // store.dispatch(setIsAgent(false));
+
+              result += msg?.data;
+
               if (result) {
                 store.dispatch(setOnGoingResult(result));
               }
@@ -307,8 +313,8 @@ export const doConversation = (conversationRequest: ConversationRequest) => {
           }),
         );
         currentAgentSteps = []; // Clear steps for the next message
-        isAgent = false;
-        store.dispatch(setIsAgent(false));
+        // isAgent = false;
+        // store.dispatch(setIsAgent(false));
       },
     });
   } catch (err) {
@@ -316,12 +322,12 @@ export const doConversation = (conversationRequest: ConversationRequest) => {
   }
 };
 
-function decodeEscapedBytes(str: string): string {
-  const byteArray: number[] = str
-    .split("\\x")
-    .slice(1)
-    .map((byte: string) => parseInt(byte, 16));
-  return new TextDecoder("utf-8").decode(new Uint8Array(byteArray));
-}
+// function decodeEscapedBytes(str: string): string {
+//   const byteArray: number[] = str
+//     .split("\\x")
+//     .slice(1)
+//     .map((byte: string) => parseInt(byte, 16));
+//   return new TextDecoder("utf-8").decode(new Uint8Array(byteArray));
+// }
 
 export const getCurrentAgentSteps = () => currentAgentSteps; // Export for use in Conversation.tsx

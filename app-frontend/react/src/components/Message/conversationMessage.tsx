@@ -7,7 +7,9 @@ import { Badge, Card, Loader, Text, Tooltip, Button, Collapse, Flex } from "@man
 import { DateTime } from "luxon";
 import { useState } from 'react';
 import { IconChevronDown, IconChevronUp } from '@tabler/icons-react';
-import { AgentStep } from '../../redux/Conversation/ConversationSlice';
+import { AgentStep, isAgentSelector } from '../../redux/Conversation/ConversationSlice';
+import { useAppSelector } from '../../redux/store';
+
 
 export interface ConversationMessageProps {
   message: string;
@@ -25,6 +27,7 @@ export function ConversationMessage({ human, message, date, elapsedTime, tokenCo
   };
 
   const [showThoughts, setShowThoughts] = useState<boolean>(true);
+  const isAgent = useAppSelector(isAgentSelector);
 
   return (
     <div className={style.conversationMessage}>
@@ -41,7 +44,7 @@ export function ConversationMessage({ human, message, date, elapsedTime, tokenCo
         </div>
       </Flex>
 
-      {!human && (
+      {!human && isAgent && (
         <div style={{ marginLeft: 34 }}>
           <Button
             variant="light"
@@ -76,12 +79,12 @@ export function ConversationMessage({ human, message, date, elapsedTime, tokenCo
                   </Card.Section>
                   {step.content.length > 0 && (
                     <Text size="sm" c="gray.6" mt="xs">
-                      Content: {step.content.join(", ")}
+                      {step.content.join(", ")}
                     </Text>
                   )}
                   {step.source.length > 0 && (
                     <Text size="sm" c="gray.6" mt="xs">
-                      Source: {step.source.join(", ")}
+                      {step.source.join(", ")}
                     </Text>
                   )}
                 </Card>
