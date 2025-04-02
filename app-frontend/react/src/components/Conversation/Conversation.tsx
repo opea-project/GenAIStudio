@@ -1,7 +1,11 @@
+// Copyright (C) 2024 Intel Corporation
+// SPDX-License-Identifier: Apache-2.0
+
 import { KeyboardEventHandler, SyntheticEvent, useEffect, useRef, useState } from 'react';
 import styleClasses from "./conversation.module.scss";
-import { ActionIcon, Group, rem, Slider, Stack, Text, Textarea, Title, Tooltip } from '@mantine/core';
-import { IconArrowRight, IconFilePlus, IconMessagePlus } from '@tabler/icons-react';
+import { ActionIcon, Button, Collapse, Group, rem, Slider, Stack, Text, Textarea, Title, Tooltip } from '@mantine/core';
+import { IconArrowRight, IconChevronDown, IconChevronUp, IconFilePlus, IconMessagePlus } from '@tabler/icons-react';
+
 import { conversationSelector, doConversation, newConversation, isAgentSelector, getCurrentAgentSteps } from '../../redux/Conversation/ConversationSlice';
 import { ConversationMessage } from '../Message/conversationMessage';
 import { useAppDispatch, useAppSelector } from '../../redux/store';
@@ -36,6 +40,7 @@ const Conversation = ({ title, enabledUiFeatures }: ConversationProps) => {
   const [currentMessageIndex, setCurrentMessageIndex] = useState<number>(-1);
   const [startTime, setStartTime] = useState<number | null>(null);
   const [isAssistantTyping, setIsAssistantTyping] = useState<boolean>(false);
+  const [showInferenceParams, setShowInferenceParams] = useState<boolean>(true);
 
   const toSend = "Enter";
 
@@ -207,6 +212,17 @@ const Conversation = ({ title, enabledUiFeatures }: ConversationProps) => {
           </div>
 
           <div className={styleClasses.conversatioSliders}>
+          <Button
+            variant="light"
+            size="xs"
+            radius="xl"
+            onClick={() => setShowInferenceParams(!showInferenceParams)}
+            rightSection={showInferenceParams ? <IconChevronDown size={14} /> : <IconChevronUp size={14} />}
+            mb="xs"
+          >
+            {showInferenceParams ? "Hide Inference Settings" : "Show Inference Settings"}
+          </Button>
+          <Collapse in={showInferenceParams} mb="md">
             <Stack style={{ marginLeft: '10px' }}>
               <Title size="sm">Inference Settings</Title>
               <Text size="sm">Token Limit: {tokenLimit}</Text>
@@ -222,7 +238,9 @@ const Conversation = ({ title, enabledUiFeatures }: ConversationProps) => {
                 mb="sm"
               />
             </Stack>
-          </div>
+          </Collapse>
+        </div>
+
 
           <div className={styleClasses.conversationActions}>
             <Tooltip

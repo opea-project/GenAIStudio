@@ -251,12 +251,8 @@ export const doConversation = (conversationRequest: ConversationRequest) => {
                 source: currentMsg.source || [],
               });
             }
-            if (currentMsg.tool) {
-              currentTool = currentMsg.tool;
-            }
-            if (currentMsg.source) {
-              source = currentMsg.source;
-            }
+            currentTool = currentMsg.tool? currentMsg.tool: "";
+            source = currentMsg.source? currentMsg.source: "";
             if (currentMsg.content) {
               content = [...content, ...currentMsg.content];
               result = currentMsg.content[0];
