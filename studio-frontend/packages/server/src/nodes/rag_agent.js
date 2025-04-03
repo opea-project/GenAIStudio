@@ -87,23 +87,23 @@ class OPEARedisRetreiver {
                 type: 'password',
                 optional: true,
             },
-            // {
-            //     label: 'Strategy',
-            //     name: 'strategy',
-            //     type: 'options',
-            //     default: 'react_agent_llama',
-            //     options: [
-            //         {
-            //             name: 'rag_agent',
-            //             label: 'rag_agent'
-            //         },
-            //         {
-            //             name:'rag_agent_llama',
-            //             label: 'rag_agent_llama'
-            //         }
-            //     ],
-            //     additionalParams: true
-            // },
+            {
+                label: 'Strategy',
+                name: 'strategy',
+                type: 'options',
+                default: 'rag_agent_llama',
+                options: [
+                    {
+                        name: 'rag_agent',
+                        label: 'rag_agent'
+                    },
+                    {
+                        name:'rag_agent_llama',
+                        label: 'rag_agent_llama'
+                    }
+                ],
+                additionalParams: true
+            },
             {
                 label: 'Temperature',
                 name: 'temperature',

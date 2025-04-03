@@ -87,23 +87,23 @@ class OPEARedisRetreiver {
                 type: 'string',
                 optional: true
             },
-            // {
-            //     label: 'Strategy',
-            //     name: 'strategy',
-            //     type: 'options',
-            //     default: 'sql_agent_llama',
-            //     options: [
-            //         {
-            //             name: 'sql_agent',
-            //             label: 'sql_agent'
-            //         },
-            //         {
-            //             name:'sql_agent_llama',
-            //             label: 'sql_agent_llama'
-            //         }
-            //     ],
-            //     additionalParams: true
-            // },
+            {
+                label: 'Strategy',
+                name: 'strategy',
+                type: 'options',
+                default: 'sql_agent_llama',
+                options: [
+                    {
+                        name: 'sql_agent',
+                        label: 'sql_agent'
+                    },
+                    {
+                        name:'sql_agent_llama',
+                        label: 'sql_agent_llama'
+                    }
+                ],
+                additionalParams: true
+            },
             {
                 label: 'Temperature',
                 name: 'temperature',

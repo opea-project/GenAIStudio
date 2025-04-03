@@ -8,7 +8,7 @@ data:
   http_proxy: "${HTTP_PROXY}"
   https_proxy: "${HTTP_PROXY}"
   llm_engine: "{llmEngine}"
-  strategy: "react_llama"
+  strategy: "{strategy}"
   recursion_limit: "{recursionLimit}"
   model: "{modelName}"
   temperature: "{temperature}"

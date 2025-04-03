@@ -87,27 +87,27 @@ class OPEARedisRetreiver {
                 type: 'password',
                 optional: true,
             },
-            // {
-            //     label: 'Strategy',
-            //     name: 'strategy',
-            //     type: 'options',
-            //     default: 'react_llama',
-            //     options: [
-            //         {
-            //             name: 'react_langchain',
-            //             label: 'react_langchain'
-            //         },
-            //         // {
-            //         //     name: 'react_langgrapgh',
-            //         //     label: 'react_langgraph',
-            //         // },
-            //         {
-            //             name:'react_llama',
-            //             label: 'react_llama'
-            //         }
-            //     ],
-            //     additionalParams: true
-            // },
+            {
+                label: 'Strategy',
+                name: 'strategy',
+                type: 'options',
+                default: 'react_llama',
+                options: [
+                    {
+                        name: 'react_langchain',
+                        label: 'react_langchain'
+                    },
+                    // {
+                    //     name: 'react_langgrapgh',
+                    //     label: 'react_langgraph',
+                    // },
+                    {
+                        name:'react_llama',
+                        label: 'react_llama'
+                    }
+                ],
+                additionalParams: true
+            },
             {
                 label: 'Temperature',
                 name: 'temperature',
