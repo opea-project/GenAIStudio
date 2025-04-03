@@ -17,8 +17,8 @@ data:
   tools: "/home/user/tools/supervisor_agent_tools.yaml"
   require_human_feedback: "false"
   llm_endpoint_url: "http://{llm_endpoint}:{llm_port}"
-  WORKER_AGENT_URL: "http://{rag_agent_endpoint}:{rag_agent_port}"
-  SQL_AGENT_URL: "http://{sql_agent_endpoint}:{sql_agent_port}"
+  WORKER_AGENT_URL: "http://{rag_agent_endpoint}:{rag_agent_port}/v1/chat/completions"
+  SQL_AGENT_URL: "http://{sql_agent_endpoint}:{sql_agent_port}/v1/chat/completions"
   PORT: "9090"
   OPENAI_API_KEY: "{openaiApiKey}"
 ---
