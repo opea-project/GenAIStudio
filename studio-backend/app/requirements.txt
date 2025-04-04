@@ -5,3 +5,4 @@ requests==2.32.3
 pydantic==1.10.18
 starlette==0.41.2
 websockets==10.3
+clickhouse-driver==0.2.9

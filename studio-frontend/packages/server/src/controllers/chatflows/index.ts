@@ -202,7 +202,8 @@ const deployChatflowSandbox = async (req: Request, res: Response, next: NextFunc
                 const newData = {
                     sandboxStatus: deployResponse.status,
                     sandboxAppUrl: deployResponse.sandbox_app_url,
-                    sandboxGrafanaUrl: deployResponse.sandbox_grafana_url
+                    sandboxGrafanaUrl: deployResponse.sandbox_grafana_url,
+                    sandboxTracerUrl: deployResponse.sandbox_tracer_url
                 }
                 const updateChatflowObj = new ChatFlow()
                 Object.assign(updateChatflowObj, newData)
@@ -234,7 +235,8 @@ const stopChatflowSandbox = async (req: Request, res: Response, next: NextFuncti
                 const newData = {
                     sandboxStatus: stopResponse.status,
                     sandboxAppUrl: '',
-                    sandboxGrafanaUrl: ''
+                    sandboxGrafanaUrl: '',
+                    sandboxTracerUrl: '',
                 }
                 const updateChatflowObj = new ChatFlow()
                 Object.assign(updateChatflowObj, newData)

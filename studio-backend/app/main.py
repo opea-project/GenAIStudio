@@ -26,8 +26,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-from .routers import user_router, download_router, sandbox_router
+from .routers import user_router, download_router, sandbox_router, llmtraces_router
 
 app.include_router(user_router.router, prefix="/studio-backend")
 app.include_router(download_router.router, prefix="/studio-backend")
 app.include_router(sandbox_router.router, prefix="/studio-backend")
+app.include_router(llmtraces_router.router, prefix="/studio-backend")

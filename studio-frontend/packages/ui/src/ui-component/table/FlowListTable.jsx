@@ -30,7 +30,8 @@ import {
     StopCircleOutlined,
     Analytics,
     PlayCircleOutline,
-    UnarchiveOutlined
+    UnarchiveOutlined,
+    ViewTimelineOutlined
 } from '@mui/icons-material'
 
 import BuildDeploymentPackageDialog from '../dialog/BuildDeploymentPackageDialog'
@@ -125,8 +126,8 @@ export const FlowListTable = ({ data, images, isLoading, filterFunction, updateF
                 if (data.status === 'Ready' || data.status === 'Error' || data.status === 'Not Running') {
                     ws.close();
                     openConnections.splice(openConnections.indexOf(ws), 1);
-                    updateSandboxStatus(id, data.status, data.sandbox_app_url, data.sandbox_grafana_url);
-                    updateFlowToServerApi(id, { sandboxStatus: data.status, sandboxAppUrl: data.sandbox_app_url, sandboxGrafanaUrl: data.sandbox_grafana_url });
+                    updateSandboxStatus(id, data.status, data.sandbox_app_url, data.sandbox_grafana_url, data.sandbox_tracer_url);
+                    updateFlowToServerApi(id, { sandboxStatus: data.status, sandboxAppUrl: data.sandbox_app_url, sandboxGrafanaUrl: data.sandbox_grafana_url, sandboxTracerUrl: data.sandbox_tracer_url });
                 }
             };
             ws.onclose = () => {
@@ -147,10 +148,10 @@ export const FlowListTable = ({ data, images, isLoading, filterFunction, updateF
         };
     }, [sortedData]);
 
-    const updateSandboxStatus = (id, newStatus, sandboxAppUrl = null, sandboxGrafanaUrl = null) => {
+    const updateSandboxStatus = (id, newStatus, sandboxAppUrl = null, sandboxGrafanaUrl = null, sandboxTracerUrl = null) => {
         setSortedData((prevData) =>
             prevData.map((row) =>
-                row.id === id ? { ...row, sandboxStatus: newStatus, sandboxAppUrl: sandboxAppUrl || row.sandboxAppUrl, sandboxGrafanaUrl: sandboxGrafanaUrl || row.sandboxGrafanaUrl } : row
+                row.id === id ? { ...row, sandboxStatus: newStatus, sandboxAppUrl: sandboxAppUrl || row.sandboxAppUrl, sandboxGrafanaUrl: sandboxGrafanaUrl || row.sandboxGrafanaUrl, sandboxTracerUrl: sandboxTracerUrl || row.sandboxTracerUrl } : row
             )
         );
     };
@@ -158,7 +159,7 @@ export const FlowListTable = ({ data, images, isLoading, filterFunction, updateF
     const handleRunSandbox = async (id) => {
         updateSandboxStatus(id, 'Sending Request');
         const res = await chatflowsApi.deploySandbox(id)
-        updateSandboxStatus(id, res.data?.sandboxStatus || 'Error', res.data?.sandboxAppUrl, res.data?.sandboxGrafanaUrl)
+        updateSandboxStatus(id, res.data?.sandboxStatus || 'Error', res.data?.sandboxAppUrl, res.data?.sandboxGrafanaUrl, res.data?.sandboxTracerUrl)
     }
 
     const handleStopSandbox = async (id) => {
@@ -289,7 +290,16 @@ export const FlowListTable = ({ data, images, isLoading, filterFunction, updateF
                                     Launch Monitoring Dashboard
                                 </Stack>
                             </StyledTableCell>
-                            <StyledTableCell style={{ width: '5%' }} key='4'>
+                            <StyledTableCell style={{ width: '30%' }} key='4'>
+                                <Stack
+                                    direction={{ xs: 'column', sm: 'row' }}
+                                    spacing={1}
+                                    justifyContent='center'
+                                >
+                                    Launch Tracer
+                                </Stack>
+                            </StyledTableCell>
+                            <StyledTableCell style={{ width: '5%' }} key='5'>
                                 <Stack
                                     direction={{ xs: 'column', sm: 'row' }}
                                     spacing={1}
@@ -298,7 +308,7 @@ export const FlowListTable = ({ data, images, isLoading, filterFunction, updateF
                                     Deployment Package Generation
                                 </Stack>
                             </StyledTableCell>
-                            <StyledTableCell style={{ width: '25%' }} key='5'>
+                            <StyledTableCell style={{ width: '25%' }} key='6'>
                                 <Stack
                                     direction={{ xs: 'column', sm: 'row' }}
                                     spacing={1}
@@ -307,7 +317,7 @@ export const FlowListTable = ({ data, images, isLoading, filterFunction, updateF
                                     Actions
                                 </Stack>
                             </StyledTableCell>
-                            <StyledTableCell style={{ width: '25%' }} key='6'>
+                            <StyledTableCell style={{ width: '25%' }} key='7'>
                                 <TableSortLabel
                                     active={orderBy === 'updatedDate'}
                                     direction={order}
@@ -317,7 +327,7 @@ export const FlowListTable = ({ data, images, isLoading, filterFunction, updateF
                                 </TableSortLabel>
                             </StyledTableCell>
                             {userRole === 'admin' &&
-                                <StyledTableCell style={{ width: '25%' }} key='7'>
+                                <StyledTableCell style={{ width: '25%' }} key='8'>
                                     <Stack
                                         direction={{ xs: 'column', sm: 'row' }}
                                         spacing={1}
@@ -493,12 +503,9 @@ export const FlowListTable = ({ data, images, isLoading, filterFunction, updateF
                                                 <Tooltip title={row.sandboxStatus === 'Ready' ? "Click to open Monitoring Dashboard" : "Sandbox is not running"}>
                                                     <span>
                                                         <Button
-                                                            // variant="outlined"
-                                                            // style={{ width: '20px' }}
                                                             color={row.sandboxStatus === 'Not Running' ? 'inherit' : 'primary'}
                                                             startIcon={<Analytics />}
                                                             onClick={() => {
-                                                                // console.log('Button clicked for', row.name || row.id);
                                                                 handleOpenUrl(row.sandboxGrafanaUrl);
                                                             }}
                                                             disabled={row.sandboxStatus !== 'Ready'}
@@ -515,12 +522,33 @@ export const FlowListTable = ({ data, images, isLoading, filterFunction, updateF
                                                 justifyContent='center'
                                                 alignItems='center'
                                             >
+                                                <Tooltip title={row.sandboxStatus === 'Ready' ? "Click to open Tracer" : "Sandbox is not running"}>
+                                                    <span>
+                                                        <Button
+                                                            color={row.sandboxStatus === 'Not Running' ? 'inherit' : 'primary'}
+                                                            startIcon={<ViewTimelineOutlined sx={{ transform: 'scaleX(-1)' }}/>}
+                                                            onClick={() => {
+                                                                handleOpenUrl(row.sandboxTracerUrl); // Replace with appropriate URL if needed
+                                                            }}
+                                                            disabled={row.sandboxStatus !== 'Ready'}
+                                                        >
+                                                        </Button>
+                                                    </span>
+                                                </Tooltip>
+                                            </Stack>
+                                        </StyledTableCell>
+                                        <StyledTableCell key='5'>
+                                            <Stack
+                                                direction={{ xs: 'column', sm: 'row' }}
+                                                spacing={1}
+                                                justifyContent='center'
+                                                alignItems='center'
+                                            >
                                                 <Tooltip title={"Generate Deployment Package"}>
                                                     <span>
                                                         <Button
                                                             startIcon={<UnarchiveOutlined />}
                                                             onClick={() => {
-                                                                // console.log('Button clicked for', row.name || row.id);
                                                                 handleBuildDeploymentPackage(row.id);
                                                             }}
                                                         >
@@ -529,7 +557,7 @@ export const FlowListTable = ({ data, images, isLoading, filterFunction, updateF
                                                 </Tooltip>
                                             </Stack>
                                         </StyledTableCell>
-                                        <StyledTableCell key='5'>
+                                        <StyledTableCell key='6'>
                                             <Stack
                                                 direction={{ xs: 'column', sm: 'row' }}
                                                 spacing={1}
@@ -546,8 +574,8 @@ export const FlowListTable = ({ data, images, isLoading, filterFunction, updateF
                                                 />
                                             </Stack>
                                         </StyledTableCell>
-                                        <StyledTableCell key='6'>{moment(row.updatedDate).format('MMMM Do, YYYY')}</StyledTableCell>
-                                        {userRole == 'admin' && <StyledTableCell key='7'>{row.userid}</StyledTableCell>}
+                                        <StyledTableCell key='7'>{moment(row.updatedDate).format('MMMM Do, YYYY')}</StyledTableCell>
+                                        {userRole == 'admin' && <StyledTableCell key='8'>{row.userid}</StyledTableCell>}
 
                                     </StyledTableRow>
                                 ))}

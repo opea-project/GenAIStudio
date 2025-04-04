@@ -52,6 +52,9 @@ export class ChatFlow implements IChatFlow {
     @Column({nullable: true, type: 'text'})
     sandboxGrafanaUrl?: string
 
+    @Column({nullable: true, type: 'text'})
+    sandboxTracerUrl?: string
+
     @Column({ type: 'timestamp' })
     @CreateDateColumn()
     createdDate: Date
