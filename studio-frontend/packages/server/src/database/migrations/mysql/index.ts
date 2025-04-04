@@ -26,6 +26,9 @@ import { AddActionToChatMessage1721078251523 } from './1721078251523-AddActionTo
 import { LongTextColumn1722301395521 } from './1722301395521-LongTextColumn'
 import { AddCustomTemplate1725629836652 } from './1725629836652-AddCustomTemplate'
 import { AddArtifactsToChatMessage1726156258465 } from './1726156258465-AddArtifactsToChatMessage'
+import { AddStudioFieldsToChatFlow1733282099772 } from './1733282099772-AddStudioFieldsToChatFlow'
+import { AddSandboxTracerUrlToChatFlow1743740099772 } from './1743740099772-AddSandboxTracerUrlToChatFlow'
+
 
 export const mysqlMigrations = [
     Init1693840429259,
@@ -55,5 +58,7 @@ export const mysqlMigrations = [
     AddActionToChatMessage1721078251523,
     LongTextColumn1722301395521,
     AddCustomTemplate1725629836652,
-    AddArtifactsToChatMessage1726156258465
+    AddArtifactsToChatMessage1726156258465,
+    AddStudioFieldsToChatFlow1733282099772,
+    AddSandboxTracerUrlToChatFlow1743740099772
 ]

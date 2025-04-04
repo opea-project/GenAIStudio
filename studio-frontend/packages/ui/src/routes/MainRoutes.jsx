@@ -7,6 +7,9 @@ import Loadable from '@/ui-component/loading/Loadable'
 // chatflows routing
 const Opeaflows = Loadable(lazy(() => import('@/views/opeaflows')))
 
+// tracer routing
+const Tracer = Loadable(lazy(() => import('@/views/tracer')))
+
 // chatflows routing
 const Chatflows = Loadable(lazy(() => import('@/views/chatflows')))
 
@@ -52,6 +55,10 @@ const MainRoutes = {
         {
             path: '/opeaflows',
             element: <Opeaflows />
+        },
+        {
+            path:'/tracer/:ns',
+            element: <Tracer />
         },
         {
             path: '/chatflows',
