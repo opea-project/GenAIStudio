@@ -8,7 +8,7 @@ The genai-studio playbook script will:
  
 2. Deploy a customized monitoring stack based on prometheus-community/kube-prometheus-stack (which contains both Prometheus and Grafana) in the monitoring namespace with a local-path-provisioner in local-path-storage namespace, for dynamic Persistent Volumes (PVs) provisioning.
  
-3. Deploy Keycloak, studio-backend, studio-frontend, and studio-nginx within the studio namespace. A self-signed certificate will be generated for Keycloak usage and stored as secrets within the studio namespace. Additionally, the client SSL certificates generated during the MySQL server installation process will also be stored as secrets in the studio namespace to ensure encrypted communication to the MySQL database.
+3. Deploy Keycloak, studio-backend, studio-frontend, and studio-nginx within the studio namespace. Also include local-path-provisioner for sandbox's dynamic Persistent Volumes (PVs) provisioning in case not running deploy-monitoring playbook. A self-signed certificate will be generated for Keycloak usage and stored as secrets within the studio namespace. Additionally, the client SSL certificates generated during the MySQL server installation process will also be stored as secrets in the studio namespace to ensure encrypted communication to the MySQL database.
 
 ## Pre-requisite
 

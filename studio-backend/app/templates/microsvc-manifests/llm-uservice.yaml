@@ -8,9 +8,9 @@ kind: ConfigMap
 metadata:
   name: config-{endpoint}
 data:
-  HEALTHCHECK_ENDPOINT: "{tgi_endpoint}"
-  LLM_ENDPOINT: "http://{tgi_endpoint}"
-  HUGGINGFACEHUB_API_TOKEN: "{tgi_huggingFaceToken}"
+  HEALTHCHECK_ENDPOINT: "{llm_endpoint}:{llm_port}"
+  LLM_ENDPOINT: "http://{llm_endpoint}:{llm_port}"
+  HUGGINGFACEHUB_API_TOKEN: "{huggingFaceToken}"
   HF_HOME: "/tmp/.cache/huggingface"
   http_proxy: "${HTTP_PROXY}"
   https_proxy: "${HTTP_PROXY}"
@@ -28,7 +28,7 @@ metadata:
 spec:
   type: ClusterIP
   ports:
-    - port: 9000
+    - port: "{port}"
       targetPort: 9000
       protocol: TCP
       name: "{endpoint}"

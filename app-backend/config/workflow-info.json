@@ -8,20 +8,18 @@
     "doc_input_ids": [
         "doc_input_0"
     ],
-    "id": "ec1105d1-69ad-41de-9c8b-737bc5975397",
-    "name": "ChatQnA Flow 4",
+    "id": "665cde4d-a37a-4a9a-ace3-96debfb08821",
+    "name": "AgentQnA",
     "nodes": {
         "chat_completion_0": {
             "category": "Controls",
             "connected_from": [
-                "opea_service@llm_tgi_0"
+                "opea_service@supervisor_agent_0"
             ],
             "connected_to": [],
-            "dependent_services": null,
             "hideOutput": true,
             "id": "chat_completion_0",
             "inMegaservice": false,
-            "inference_params": {},
             "name": "chat_completion",
             "params": {},
             "version": 1
@@ -30,13 +28,10 @@
             "category": "Controls",
             "connected_from": [],
             "connected_to": [
-                "opea_service@embedding_tei_langchain_0"
+                "opea_service@supervisor_agent_0"
             ],
-            "dependent_services": null,
-            "hideOutput": null,
             "id": "chat_input_0",
             "inMegaservice": false,
-            "inference_params": {},
             "name": "chat_input",
             "params": {},
             "version": 1
@@ -47,11 +42,8 @@
             "connected_to": [
                 "opea_service@prepare_doc_redis_prep_0"
             ],
-            "dependent_services": null,
-            "hideOutput": null,
             "id": "doc_input_0",
             "inMegaservice": false,
-            "inference_params": {},
             "name": "doc_input",
             "params": {},
             "version": 1
@@ -59,58 +51,20 @@
         "opea_service@embedding_tei_langchain_0": {
             "category": "Embeddings",
             "connected_from": [
-                "chat_input_0"
+                "opea_service@rag_agent_0"
             ],
             "connected_to": [
                 "opea_service@retriever_redis_0"
             ],
             "dependent_services": {
                 "tei": {
-                    "endpoint": "tei-0",
-                    "port": 2081,
                     "huggingFaceToken": "NA",
                     "modelName": "BAAI/bge-large-en-v1.5"
                 }
             },
-            "hideOutput": null,
             "id": "opea_service@embedding_tei_langchain_0",
             "inMegaservice": true,
-            "inference_params": {},
             "name": "opea_service@embedding_tei_langchain",
-            "params": {},
-            "version": 1
-        },
-        "opea_service@llm_tgi_0": {
-            "category": "LLM",
-            "connected_from": [
-                "opea_service@reranking_tei_0"
-            ],
-            "connected_to": [
-                "chat_completion_0"
-            ],
-            "dependent_services": {
-                "tgi": {
-                    "endpoint": "tgi-0",
-                    "port": 3081,
-                    "huggingFaceToken": "NA",
-                    "modelName": "Intel/neural-chat-7b-v3-3"
-                }
-            },
-            "hideOutput": null,
-            "id": "opea_service@llm_tgi_0",
-            "inMegaservice": true,
-            "inference_params": {
-                "chat_template": "### You are a helpful, respectful and honest assistant to help the user with questions.\n### Context: {context}\n### Question: {question}\n### Answer:",
-                "frequency_penalty": 0,
-                "max_tokens": 17.0,
-                "presence_penalty": 1.03,
-                "streaming": "True",
-                "temperature": 0.01,
-                "top_k": 10.0,
-                "top_p": 0.95,
-                "typical_p": 0.95
-            },
-            "name": "opea_service@llm_tgi",
             "params": {},
             "version": 1
         },
@@ -124,18 +78,42 @@
             ],
             "dependent_services": {
                 "tei": {
-                    "endpoint": "tei-0",
-                    "port": 2081,
                     "huggingFaceToken": "NA",
                     "modelName": "BAAI/bge-large-en-v1.5"
                 }
             },
-            "hideOutput": null,
             "id": "opea_service@prepare_doc_redis_prep_0",
             "inMegaservice": false,
-            "inference_params": {},
             "name": "opea_service@prepare_doc_redis_prep",
             "params": {},
+            "version": 1
+        },
+        "opea_service@rag_agent_0": {
+            "category": "Agent",
+            "connected_from": [
+                "opea_service@supervisor_agent_0",
+                "opea_service@reranking_tei_0"
+            ],
+            "connected_to": [
+                "opea_service@embedding_tei_langchain_0"
+            ],
+            "dependent_services": {
+                "tgi": {
+                    "huggingFaceToken": "NA",
+                    "modelName": "Intel/neural-chat-7b-v3-3"
+                }
+            },
+            "id": "opea_service@rag_agent_0",
+            "inMegaservice": false,
+            "megaserviceClient": true,
+            "name": "opea_service@rag_agent",
+            "params": {
+                "llmEngine": "tgi",
+                "maxNewToken": 8192,
+                "openaiApiKey": "NA",
+                "recursionLimit": 10,
+                "temperature": 0.1
+            },
             "version": 1
         },
         "opea_service@reranking_tei_0": {
@@ -144,28 +122,24 @@
                 "opea_service@retriever_redis_0"
             ],
             "connected_to": [
-                "opea_service@llm_tgi_0"
+                "opea_service@rag_agent_0"
             ],
             "dependent_services": {
                 "tei": {
-                    "endpoint": "tei-1",
-                    "port": 2082,
                     "huggingFaceToken": "NA",
                     "modelName": "BAAI/bge-reranker-base"
                 }
             },
-            "hideOutput": null,
             "id": "opea_service@reranking_tei_0",
             "inMegaservice": true,
-            "inference_params": {
-                "top_n": 1.0
-            },
             "name": "opea_service@reranking_tei",
-            "params": {},
+            "params": {
+                "top_n": 1
+            },
             "version": 1
         },
         "opea_service@retriever_redis_0": {
-            "category": "Retreiver",
+            "category": "Retriever",
             "connected_from": [
                 "opea_service@embedding_tei_langchain_0",
                 "redis_vector_store_0"
@@ -175,20 +149,70 @@
             ],
             "dependent_services": {
                 "tei": {
-                    "endpoint": "tei-2",
-                    "port": 2083,
                     "huggingFaceToken": "NA",
                     "modelName": "BAAI/bge-base-en-v1.5"
                 }
             },
-            "hideOutput": null,
             "id": "opea_service@retriever_redis_0",
             "inMegaservice": true,
-            "inference_params": {
+            "name": "opea_service@retriever_redis",
+            "params": {
                 "search_type": "similarity"
             },
-            "name": "opea_service@retriever_redis",
-            "params": {},
+            "version": 1
+        },
+        "opea_service@sql_agent_0": {
+            "category": "Agent",
+            "connected_from": [
+                "opea_service@supervisor_agent_0"
+            ],
+            "connected_to": [],
+            "dependent_services": {
+                "tgi": {
+                    "huggingFaceToken": "NA",
+                    "modelName": "Intel/neural-chat-7b-v3-3"
+                }
+            },
+            "id": "opea_service@sql_agent_0",
+            "inMegaservice": false,
+            "name": "opea_service@sql_agent",
+            "params": {
+                "db_name": "easydata",
+                "db_path": "mysql+mysqlconnector://admin:password@sql-db.ceptxp9hvnxa.us-east-1.rds.amazonaws.com:3306/easydata",
+                "llmEngine": "tgi",
+                "maxNewToken": 8192,
+                "openaiApiKey": "NA",
+                "recursionLimit": 10,
+                "temperature": 0.1
+            },
+            "version": 1
+        },
+        "opea_service@supervisor_agent_0": {
+            "category": "Agent",
+            "connected_from": [
+                "chat_input_0"
+            ],
+            "connected_to": [
+                "opea_service@rag_agent_0",
+                "opea_service@sql_agent_0",
+                "chat_completion_0"
+            ],
+            "dependent_services": {
+                "tgi": {
+                    "huggingFaceToken": "NA",
+                    "modelName": "Intel/neural-chat-7b-v3-3"
+                }
+            },
+            "id": "opea_service@supervisor_agent_0",
+            "inMegaservice": true,
+            "name": "opea_service@supervisor_agent",
+            "params": {
+                "llmEngine": "tgi",
+                "maxNewToken": 8192,
+                "openaiApiKey": "NA",
+                "recursionLimit": 10,
+                "temperature": 0.1
+            },
             "version": 1
         },
         "redis_vector_store_0": {
@@ -199,11 +223,8 @@
             "connected_to": [
                 "opea_service@retriever_redis_0"
             ],
-            "dependent_services": null,
-            "hideOutput": null,
             "id": "redis_vector_store_0",
             "inMegaservice": true,
-            "inference_params": {},
             "name": "redis_vector_store",
             "params": {},
             "version": 1

@@ -50,7 +50,6 @@ class WorkflowInfo:
             node['connected_from'] = []
             node['connected_to'] = []
             node['params'] = {}
-            node['inference_params'] = {}
             dag_nodes[node['id']] = node  # Collect other nodes
 
         # Print information about collected nodes
@@ -65,24 +64,43 @@ class WorkflowInfo:
                             node_data['connected_from'].append(connected_from_id)
                             dag_nodes[connected_from_id]['connected_to'].append(id)
                             continue
+
                     if input_key == 'huggingFaceToken' and not input_value:
                         # If huggingFaceToken is empty, set it to 'NA'
                         input_value = 'NA'
-                        
-                    # Check if input is for dependent_services
-                    for service_type, service_params in node_data['dependent_services'].items():
-                        if input_key in service_params:
-                            node_data['dependent_services'][service_type][input_key] = input_value
-                            continue
+
+                    if input_key == 'openaiApiKey' and not input_value:
+                        # If openaiApiKey is empty, set it to 'NA'
+                        input_value = 'NA'
                     
                     inputParamObject = [p for p in node_data['inputParams'] if p['name'] == input_key][0]
-                    # Check if input is for inference_params
-                    # Check for numerical input values
                     if inputParamObject.get('type') == 'number':
-                        input_value = 0 if input_value == '' else float(input_value)
+                        input_value = 0 if input_value == '' else input_value
                         node_data['inputs'][input_key] = input_value
-                    if inputParamObject.get('additionalParams'):
-                        node_data['inference_params'][input_key] = input_value
+
+                    # Handle llmEngine specific logic
+                    llm_engine = node_data['inputs'].get('llmEngine')
+                    node_data['params'][input_key] = input_value
+                    if llm_engine == "openai":
+                        node_data['dependent_services'] = {}
+                        continue
+                    else:
+                        for service_type, service_params in list(node_data['dependent_services'].items()):
+                            if llm_engine:
+                                if llm_engine == service_type:
+                                    if input_key in service_params:
+                                        node_data['dependent_services'][service_type][input_key] = input_value
+                                        node_data['params'].pop(input_key, None)
+                                        continue
+                                else:
+                                    node_data['dependent_services'].pop(service_type, None)
+                                    continue
+                            else:
+                                if input_key in service_params:
+                                    node_data['dependent_services'][service_type][input_key] = input_value
+                                    node_data['params'].pop(input_key, None)
+                                    continue
+
                 del node_data['inputParams']
                 del node_data['inputs']
                 del node_data['outputs']

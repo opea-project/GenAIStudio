@@ -431,6 +431,7 @@ const deployChatflowSandboxService = async (chatflowId: string) => {
         const chatflow = await generatePipelineJson(chatflowId)
         const studioServerUrl = STUDIO_SERVER_URL
         const deploySandboxEndpoint = 'studio-backend/deploy-sandbox'
+        console.log('chatflow', JSON.stringify(chatflow))
         console.log('studioServerUrl', studioServerUrl)
         console.log('deploySandboxEndpoint', deploySandboxEndpoint)
         const response = await axios.post(`${studioServerUrl}/${deploySandboxEndpoint}`, JSON.stringify(chatflow), { 
@@ -478,6 +479,7 @@ const buildDeploymentPackageService = async (chatflowId: string, deploymentConfi
         const chatflow = await generatePipelineJson(chatflowId)
         const studioServerUrl = STUDIO_SERVER_URL
         const buildDeploymentPackageEndpoint = 'studio-backend/download-zip'
+        console.log('chatflow', JSON.stringify(chatflow))
         console.log('studioServerUrl', studioServerUrl)
         console.log('buildDeploymentPackageEndpoint', buildDeploymentPackageEndpoint)
         const response = await axios.post(`${studioServerUrl}/${buildDeploymentPackageEndpoint}`, JSON.stringify(chatflow), { 

@@ -7,7 +7,7 @@
     "{{tei_endpoint}}":
       condition: service_healthy
   ports:
-    - 7009:7000
+    - "{{port_key}}:7000"
   ipc: host
   entrypoint: /bin/sh -c "sed '/^from integrations/ { /from integrations.redis import OpeaRedisRetriever/! s/^/#/ }' opea_retrievers_microservice.py > /tmp/tmp_opea_retrievers_microservice.py && python /tmp/tmp_opea_retrievers_microservice.py"
   environment:
@@ -17,7 +17,7 @@
     REDIS_URL: "redis://${public_host_ip}:{{redis_vector_store_port}}"
     INDEX_NAME: "rag-redis"
     TEI_EMBEDDING_ENDPOINT: "http://${public_host_ip}:{{tei_port}}"
-    HUGGINGFACEHUB_API_TOKEN: "{{tei_huggingFaceToken}}"
+    HUGGINGFACEHUB_API_TOKEN: "{{huggingFaceToken}}"
     LOGFLAG: ${LOGFLAG}
     RETRIEVER_COMPONENT_NAME: "OPEA_RETRIEVER_REDIS"
   restart: unless-stopped

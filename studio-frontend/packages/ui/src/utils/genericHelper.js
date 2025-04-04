@@ -89,7 +89,8 @@ export const initNode = (nodeData, newNodeId) => {
             for (let j = 0; j < nodeData.outputs.length; j += 1) {
                 let baseClasses = ''
                 let type = ''
-
+                let id = ''
+                
                 const outputBaseClasses = nodeData.outputs[j].baseClasses ?? []
                 if (outputBaseClasses.length > 1) {
                     baseClasses = outputBaseClasses.join('|')
@@ -99,8 +100,15 @@ export const initNode = (nodeData, newNodeId) => {
                     type = outputBaseClasses[0]
                 }
 
+                if (nodeData.outputs[j].type){
+                    type = nodeData.outputs[j].type
+                    id = `${newNodeId}-output-${nodeData.outputs[j].name}-${type}`
+                } else {
+                    id = `${newNodeId}-output-${nodeData.outputs[j].name}-${baseClasses}`
+                }
+
                 const newOutputOption = {
-                    id: `${newNodeId}-output-${nodeData.outputs[j].name}-${baseClasses}`,
+                    id: id,
                     name: nodeData.outputs[j].name,
                     label: nodeData.outputs[j].label,
                     description: nodeData.outputs[j].description ?? '',
@@ -289,16 +297,25 @@ export const isValidConnection = (connection, reactFlowInstance) => {
     const targetHandle = connection.targetHandle
     const target = connection.target
 
+    console.log('sourceHandle:', sourceHandle)
+    console.log('targetHandle:', targetHandle)
+    console.log('target:', target)
+
+
     //sourceHandle: "llmChain_0-output-llmChain-BaseChain"
     //targetHandle: "mrlkAgentLLM_0-input-model-BaseLanguageModel"
 
     let sourceTypes = sourceHandle.split('-')[sourceHandle.split('-').length - 1].split('|')
     sourceTypes = sourceTypes.map((s) => s.trim())
+
+    console.log('sourceTypes:', sourceTypes)
     let targetTypes = targetHandle.split('-')[targetHandle.split('-').length - 1].split('|')
     targetTypes = targetTypes.map((t) => t.trim())
+    console.log('targetTypes:', targetTypes)
 
     if (targetTypes.some((t) => sourceTypes.includes(t))) {
         let targetNode = reactFlowInstance.getNode(target)
+        console.log ("target node", targetNode)
 
         if (!targetNode) {
             if (!reactFlowInstance.getEdges().find((e) => e.targetHandle === targetHandle)) {

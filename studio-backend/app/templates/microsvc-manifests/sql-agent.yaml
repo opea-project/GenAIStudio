@@ -1,0 +1,103 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-{endpoint}
+data:
+  # ip_address: "${public_host_ip}"
+  no_proxy: "${NO_PROXY}"
+  http_proxy: "${HTTP_PROXY}"
+  https_proxy: "${HTTP_PROXY}"
+  llm_engine: "{llmEngine}"
+  strategy: "{strategy}"
+  db_name: "{db_name}"
+  db_path: "{db_path}"
+  recursion_limit: "{recursionLimit}"
+  model: "{modelName}"
+  temperature: "{temperature}"
+  max_new_tokens: "{maxNewToken}"
+  stream: "false"
+  require_human_feedback: "false"
+  llm_endpoint_url: "http://{llm_endpoint}:{llm_port}"
+  PORT: "9096"
+  OPENAI_API_KEY: "{openaiApiKey}"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: "{endpoint}"
+spec:
+  selector:
+    app: "{endpoint}"
+  ports:
+    - protocol: TCP
+      port: "{port}"
+      targetPort: 9096
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: "{endpoint}"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: "{endpoint}"
+  template:
+    metadata:
+      labels:
+        app: "{endpoint}"
+    spec:
+      initContainers:
+        - name: agentqna-tools
+          image: curlimages/curl:latest
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              TOOLS_GIT_URL="https://github.com/wanhakim/GenAIStudio/tree/main/app-backend/templates/tools"
+              OWNER=$(echo ${TOOLS_GIT_URL} | sed -E 's|https://github.com/([^/]+)/([^/]+)/tree/([^/]+)/.*|\1|')
+              REPO=$(echo ${TOOLS_GIT_URL} | sed -E 's|https://github.com/([^/]+)/([^/]+)/tree/([^/]+)/.*|\2|')
+              BRANCH=$(echo ${TOOLS_GIT_URL} | sed -E 's|https://github.com/[^/]+/[^/]+/tree/([^/]+)/.*|\1|')
+              TOOLS_DIR=$(echo ${TOOLS_GIT_URL} | sed -E 's|https://github.com/[^/]+/[^/]+/tree/[^/]+/(.*?)/?$|\1|')
+              if [[ "${TOOLS_DIR: -1}" == "/" ]]; then TOOLS_DIR="${TOOLS_DIR%/}"; fi
+              DOWNLOAD_URL="https://codeload.github.com/${OWNER}/${REPO}/tar.gz/${BRANCH}"
+              curl "${DOWNLOAD_URL}" | tar -xz --strip-components=4 -C /home/user/tools/ "${REPO}-${BRANCH}/${TOOLS_DIR}"
+
+              # Conditional wait for remote service based on llm_engine
+              if [ "$llm_engine" = "tgi" ]; then
+                until nc -z -v -w30 ${llm_endpoint_url#http://} 80; do
+                  echo "Waiting for remote service...";
+                  sleep 5;
+                done
+              fi
+          envFrom:
+            - configMapRef:
+                name: config-{endpoint}
+          volumeMounts:
+            - name: agent-tools
+              mountPath: /home/user/tools/
+          securityContext:
+            runAsUser: 0
+            runAsGroup: 0
+      containers:
+        - name: sql-agent-container
+          image: ${REGISTRY}/agent:${TAG}
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              export port=$(echo ${PORT} | awk '{print int($1)}')
+              export temperature=$(printf "%.6f" "${temperature}")
+              export recursion_limit=$(echo ${recursion_limit} | awk '{print int($1)}')
+              export max_new_tokens=$(echo ${max_new_tokens} | awk '{print int($1)}')
+
+              python agent.py
+          ports:
+            - containerPort: 9096
+          volumeMounts:
+            - name: agent-tools
+              mountPath: /home/user/tools/
+          envFrom:
+            - configMapRef:
+                name: config-{endpoint}
+      volumes:
+        - name: agent-tools
+          emptyDir: {}

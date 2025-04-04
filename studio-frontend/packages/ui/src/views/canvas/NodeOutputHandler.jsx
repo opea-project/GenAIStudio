@@ -123,7 +123,8 @@ const NodeOutputHandler = ({ outputAnchor, data, disabled = false }) => {
                                                 height: isHovered? 13 : 10,
                                                 width: isHovered? 13 : 10,
                                                 backgroundColor: data.selected ? theme.palette.primary.main : theme.palette.text.secondary,
-                                                top: position,
+                                                // top: position,
+                                                top: getAnchorPosition(outputAnchor.options, index)
                                             }}
                                             onMouseEnter={() => setIsHovered(true)}
                                             onMouseLeave={() => setIsHovered(false)}

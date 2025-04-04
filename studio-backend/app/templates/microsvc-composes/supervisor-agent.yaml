@@ -1,0 +1,32 @@
+"{{endpoint}}":
+  image: ${REGISTRY}/agent:${TAG}
+  container_name: "{{endpoint}}"
+  depends_on:
+    - worker-rag-agent
+    - worker-sql-agent
+  volumes:
+    - ./agent-tools/:/home/user/tools/
+  ports:
+    - "{{port_key}}:9090"
+  ipc: host
+  environment:
+    ip_address: ${public_host_ip}
+    no_proxy: ${no_proxy}
+    http_proxy: ${http_proxy}
+    https_proxy: ${https_proxy}
+    llm_engine: "{{llm_engine}}" #tgi/vllm/openai *options
+    strategy: "{{strategy}}" #react_llama *option
+    recursion_limit: "{{recursion_limit}}" #integer value
+    model: "{{modelName}}"
+    temperature: "{{temperature}}"
+    max_new_tokens: "{{max_new_tokens}}"
+    stream: false
+    tools: /home/user/tools/supervisor_agent_tools.yaml
+    require_human_feedback: false
+    llm_endpoint_url: "http://${public_host_ip}:{{llm_port}}"
+    WORKER_AGENT_URL: "http://${public_host_ip}:{{agent_rag_port}}"
+    SQL_AGENT_URL: "http://${public_host_ip}:{{agent_sql_port}}"
+    port: 9090
+    # dynamic variables
+    OPENAI_API_KEY: "{{OPENAI_API_KEY}}" #if llm_engine is openai, if not will be NA or removed
+

@@ -19,11 +19,18 @@ export interface FileDataSource {
   startTime: number;
 }
 
+export interface AgentStep {
+  tool: string;
+  content: any[];
+  source: string[];
+}
+
 const initialState: ConversationReducer = {
   conversations: [],
   selectedConversationId: "",
   onGoingResult: "",
-  fileDataSources: [] as FileDataSource[], // New state for files and data sources
+  fileDataSources: [] as FileDataSource[],
+  isAgent: false,
 };
 
 export const ConversationSlice = createSlice({
@@ -34,6 +41,7 @@ export const ConversationSlice = createSlice({
       state.conversations = [];
       state.selectedConversationId = "";
       state.onGoingResult = "";
+      state.isAgent = false;
     },
     setOnGoingResult: (state, action: PayloadAction<string>) => {
       state.onGoingResult = action.payload;
@@ -43,7 +51,9 @@ export const ConversationSlice = createSlice({
       selectedConversation?.Messages?.push(action.payload);
     },
     newConversation: (state) => {
-      (state.selectedConversationId = ""), (state.onGoingResult = "");
+      state.selectedConversationId = "";
+      state.onGoingResult = "";
+      state.isAgent = false;
     },
     createNewConversation: (state, action: PayloadAction<{ title: string; id: string; message: Message }>) => {
       state.conversations.push({
@@ -73,6 +83,9 @@ export const ConversationSlice = createSlice({
         fileDataSource.status = action.payload.status;
       }
     },
+    setIsAgent: (state, action: PayloadAction<boolean>) => {
+      state.isAgent = action.payload;
+    },
   },
   extraReducers(builder) {
     builder.addCase(uploadFile.fulfilled, () => {
@@ -82,15 +95,15 @@ export const ConversationSlice = createSlice({
         loading: false,
         autoClose: 3000,
       });
-    }),
-      builder.addCase(uploadFile.rejected, () => {
-        notifications.update({
-          color: "red",
-          id: "upload-file",
-          message: "Failed to Upload file",
-          loading: false,
-        });
+    });
+    builder.addCase(uploadFile.rejected, () => {
+      notifications.update({
+        color: "red",
+        id: "upload-file",
+        message: "Failed to Upload file",
+        loading: false,
       });
+    });
     builder.addCase(submitDataSourceURL.fulfilled, () => {
       notifications.show({
         message: "Submitted Successfully",
@@ -117,11 +130,12 @@ export const submitDataSourceURL = createAsyncThunkWrapper(
       const response = await client.post(`${DATA_PREP_URL}/ingest`, body);
       return response.data;
     } catch (error) {
-      console.log ("error", error);
+      console.log("error", error);
       throw error;
     }
   },
 );
+
 export const uploadFile = createAsyncThunkWrapper("conversation/uploadFile", async ({ file }: { file: File }) => { 
   try {
     const body = new FormData();
@@ -138,6 +152,7 @@ export const uploadFile = createAsyncThunkWrapper("conversation/uploadFile", asy
     throw error;
   }
 });
+
 export const {
   logout,
   setOnGoingResult,
@@ -148,15 +163,24 @@ export const {
   addFileDataSource,
   updateFileDataSourceStatus,
   clearFileDataSources,
+  setIsAgent,
 } = ConversationSlice.actions;
+
 export const conversationSelector = (state: RootState) => state.conversationReducer;
 export const fileDataSourcesSelector = (state: RootState) => state.conversationReducer.fileDataSources;
+export const isAgentSelector = (state: RootState) => state.conversationReducer.isAgent;
+
 export default ConversationSlice.reducer;
 
+let source: string[] = [];
+let content: any[] = [];
+let currentTool: string = "";
+let isAgent: boolean = false;
+let currentAgentSteps: AgentStep[] = []; // Temporary storage for steps during streaming
+
 export const doConversation = (conversationRequest: ConversationRequest) => {
-  const { conversationId, userPrompt, messages, model, maxTokens, temperature} = conversationRequest;
+  const { conversationId, userPrompt, messages, model, maxTokens, temperature } = conversationRequest;
   if (!conversationId) {
-    // New conversation
     const id = uuidv4();
     store.dispatch(
       createNewConversation({
@@ -182,9 +206,17 @@ export const doConversation = (conversationRequest: ConversationRequest) => {
     stream: true,
   };
 
-  // Initialize token tracking
+  function isJsonParsable(str: string): boolean {
+    try {
+      JSON.parse(str);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
   let result = "";
-  // let totalTokens = 0;
+  currentAgentSteps = []; // Reset steps for this message
 
   try {
     console.log("CHAT_QNA_URL", CHAT_QNA_URL);
@@ -207,31 +239,60 @@ export const doConversation = (conversationRequest: ConversationRequest) => {
         }
       },
       onmessage(msg) {
-        if (msg?.data != "[DONE]") {
-          try {
-            const match = msg.data.match(/b'([^']*)'/);
-            if (match && match[1] != "</s>") {
-              const extractedText = match[1];
+        if (msg?.data !== "[DONE]") {
+          // console.log ( "check is json", isJsonParsable(msg.data) )
+          if (isJsonParsable(msg.data)) {
 
-              // Check for the presence of \x hexadecimal
-              if (extractedText.includes("\\x")) {
-                const decodedText = decodeEscapedBytes(extractedText);
-                result += decodedText;
-              } else {
-                result += extractedText;
-              }
-            } else if (!match) {
+            store.dispatch(setIsAgent(true));
+            const currentMsg = JSON.parse(msg.data);
+            if (currentMsg.tool || currentMsg.source || currentMsg.content) {
+              currentAgentSteps.push({
+                tool: currentMsg.tool || currentTool,
+                content: currentMsg.content || [],
+                source: currentMsg.source || [],
+              });
+            }
+            currentTool = currentMsg.tool? currentMsg.tool: "";
+            source = currentMsg.source? currentMsg.source: "";
+            if (currentMsg.content) {
+              content = [...content, ...currentMsg.content];
+              result = currentMsg.content[0];
+            }
+            console.log(currentMsg);
+            console.log("currentTool", currentTool);
+            console.log("source", source);
+            console.log("content", content);
+          } else {
+            // isAgent 
+            try {
+              // const match = msg.data.match(/b'([^']*)'/);
+              // if (match && match[1] !== "</s>") {
+              //   const extractedText = match[1];
+              //   if (extractedText.includes("\\x")) {
+              //     const decodedText = decodeEscapedBytes(extractedText);
+              //     result += decodedText;
+              //   } else {
+              //     result += extractedText;
+              //   }
+              // } else if (!match) {
+              //   result += msg?.data;
+              // }
+              // store.dispatch(setIsAgent(false));
+
               result += msg?.data;
-            }
 
-            // Update ongoing result
-            if (result) {
-              store.dispatch(setOnGoingResult(result));
+              if (result) {
+                store.dispatch(setOnGoingResult(result));
+              }
+            } catch (e) {
+              console.log("something wrong in msg", e);
+              throw e;
             }
-
-          } catch (e) {
-            console.log("something wrong in msg", e);
-            throw e;
+          }
+        } else {
+          if (isAgent) {
+            console.log("final answer:", result);
+            store.dispatch(setOnGoingResult(result));
           }
         }
       },
@@ -241,29 +302,32 @@ export const doConversation = (conversationRequest: ConversationRequest) => {
         throw err;
       },
       onclose() {
-        // Handle close
         store.dispatch(setOnGoingResult(""));
+        console.log("onclose", result);
         store.dispatch(
           addMessageToMessages({
             role: MessageRole.Assistant,
             content: result,
             time: getCurrentTimeStamp(),
-            // tokenCount: totalTokens,
-            // tokenRate: tokensPerSecond,
+            agentSteps: [...currentAgentSteps], // Store steps with this message
           }),
         );
+        currentAgentSteps = []; // Clear steps for the next message
+        // isAgent = false;
+        // store.dispatch(setIsAgent(false));
       },
     });
   } catch (err) {
     console.log(err);
   }
 };
-// decode \x hexadecimal encoding
-function decodeEscapedBytes(str: string): string {
-  // Convert the byte portion separated by \x into a byte array and decode it into a UTF-8 string
-  const byteArray: number[] = str
-    .split("\\x")
-    .slice(1)
-    .map((byte: string) => parseInt(byte, 16));
-  return new TextDecoder("utf-8").decode(new Uint8Array(byteArray));
-}
+
+// function decodeEscapedBytes(str: string): string {
+//   const byteArray: number[] = str
+//     .split("\\x")
+//     .slice(1)
+//     .map((byte: string) => parseInt(byte, 16));
+//   return new TextDecoder("utf-8").decode(new Uint8Array(byteArray));
+// }
+
+export const getCurrentAgentSteps = () => currentAgentSteps; // Export for use in Conversation.tsx

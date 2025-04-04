@@ -135,7 +135,9 @@ const AddNodes = ({ nodesData, node, isAgentCanvas }) => {
         const llmaindexNodes = nodes.filter((nd) => nd.tags && nd.tags.includes('LlamaIndex'))
         const utilitiesNodes = nodes.filter((nd) => nd.tags && nd.tags.includes('Utilities'))
         const opeaNodes = nodes.filter((nd) => nd.tags && nd.tags.includes('OPEA'))
-        const tabSequence = [opeaNodes, utilitiesNodes]
+        // const tabSequence = [opeaNodes, utilitiesNodes]
+        const tabSequence = [opeaNodes]
+
         return tabSequence[newTabValue]
         // if (newTabValue === 0) {
         //     return langchainNodes
@@ -353,7 +355,9 @@ const AddNodes = ({ nodesData, node, isAgentCanvas }) => {
                                                 onChange={handleTabChange}
                                                 aria-label='tabs'
                                             >
-                                                {['OPEA', 'Utilities'].map((item, index) => (
+                                                {/* {['OPEA', 'Utilities'].map((item, index) => ( */}
+                                                {['OPEA'].map((item, index) => (
+
                                                     <Tab
                                                         icon={
                                                             <div

@@ -9,6 +9,7 @@ export type ConversationRequest = {
   maxTokens: number;
   temperature: number;
 };
+
 export enum MessageRole {
   Assistant = "assistant",
   User = "user",
@@ -19,6 +20,7 @@ export interface Message {
   role: MessageRole;
   content: string;
   time: number;
+  agentSteps?: AgentStep[]; // Optional, only for assistant messages
 }
 
 export interface Conversation {
@@ -27,9 +29,16 @@ export interface Conversation {
   Messages: Message[];
 }
 
+export interface AgentStep {
+  tool: string;
+  content: any[];
+  source: string[];
+}
+
 export interface ConversationReducer {
   selectedConversationId: string;
   conversations: Conversation[];
   onGoingResult: string;
   fileDataSources: any;
+  isAgent: boolean;
 }

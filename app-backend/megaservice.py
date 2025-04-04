@@ -9,6 +9,7 @@ import re
 # library import
 from fastapi import Request
 from fastapi.responses import StreamingResponse
+from dotenv import load_dotenv
 
 # comps import
 from comps import MicroService, ServiceOrchestrator, ServiceRoleType, ServiceType
@@ -23,8 +24,10 @@ from comps.cores.proto.api_protocol import (
 from comps.cores.proto.docarray import LLMParams, RerankerParms, RetrieverParms
 from langchain_core.prompts import PromptTemplate
 
+
 category_params_map = {
     'LLM': LLMParams,
+    'Agent': LLMParams,
     'Reranking': RerankerParms,
     'Retreiver': RetrieverParms,
 }
@@ -61,13 +64,10 @@ class AppService:
     def __init__(self, host="0.0.0.0", port=8000):
         self.host = host
         self.port = port
-        self.megaservice = ServiceOrchestrator()
-        self.megaservice.align_inputs = self.align_inputs
-        self.megaservice.align_outputs = self.align_outputs
-        self.megaservice.align_generator = self.align_generator
         self.endpoint = "/v1/app-backend"
         with open('config/workflow-info.json', 'r') as f:
             self.workflow_info = json.load(f)
+            
         
     def import_all_microservices_from_template(self):
         template_dir = os.path.join(os.path.dirname(__file__), 'templates', 'microservices')
@@ -80,31 +80,68 @@ class AppService:
         return modules
 
     def add_remote_service(self):
+        # Load environment variables from the .env file
+        dotenv_path = os.path.join(os.path.dirname(__file__), 'config', '.env')
+        print("dotenv_path", dotenv_path)
+        if os.path.exists(dotenv_path):
+            load_dotenv(dotenv_path)
         print("add_remote_service")
+        for key, value in os.environ.items():
+            print(f"{key}: {value}")
         templates = self.import_all_microservices_from_template()
         if 'chat_input_ids' not in self.workflow_info:
             raise Exception('chat_input_ids not found in workflow_info')
-        nodes = self.workflow_info['chat_input_ids']
+        nodes = self.workflow_info['chat_input_ids'].copy()
+        self.processed_node_infos = {}
         self.services = {}
+        self.megaservices = {}
         while nodes:
+            # BFS traversal of the graph
             node_id = nodes.pop(0)
             node = self.workflow_info['nodes'][node_id]
             print('node', node)
+            print('chat_input_ids', self.workflow_info['chat_input_ids'])
+            if node.get('megaserviceClient') or node_id in self.workflow_info['chat_input_ids']:
+                print('new Megaservice', node_id)
+                if node_id in self.processed_node_infos:
+                    # Prevent infinite loop
+                    continue
+                print('start new Megaservice', node_id)
+                key = 'default' if node_id in self.workflow_info['chat_input_ids'] else node_id.split('@')[1]
+                self.megaservices[key] = ServiceOrchestrator()
+                self.megaservices[key].align_inputs = self.align_inputs
+                self.megaservices[key].align_outputs = self.align_outputs
+                self.megaservices[key].align_generator = self.align_generator
+                node['megaservices'] = [self.megaservices[key]]
+
             if node['inMegaservice']:
                 print('adding Node', node_id)
                 microservice_name = node['name'].split('@')[1]
                 service_node_ip = node_id.split('@')[1].replace('_','-') if USE_NODE_ID_AS_IP else HOST_IP
-                microservice = templates[microservice_name].get_service(host_ip=service_node_ip, node_id_as_ip=USE_NODE_ID_AS_IP)
+                microservice = templates[microservice_name].get_service(host_ip=service_node_ip, node_id_as_ip=USE_NODE_ID_AS_IP, port=os.getenv(f"{node_id.split('@')[1]}_port", None))
                 microservice.name = node_id
-                self.megaservice.add(microservice)
-                
                 self.services[node_id] = microservice
+                
+
+                megaservices = []
                 for prev_node in node['connected_from']:
-                    if prev_node in self.services:
-                        self.megaservice.flow_to(self.services[prev_node], microservice)
+                    if prev_node in self.processed_node_infos:
+                        for megaservice in self.processed_node_infos[prev_node]['megaservices']:
+                            megaservices.append(megaservice)
+                            megaservice.add(microservice)
+                            if prev_node in self.services:
+                                megaservice.flow_to(self.services[prev_node], microservice)
+                node['megaservices'] = megaservices
+    
             for next_node in node['connected_to']:
                 nodes.append(next_node)
-        
+            self.processed_node_infos[node_id] = node
+            # print("processed_node_infos", self.processed_node_infos)
+        print('\n\n\n', '-'*20, 'self.services', self.services)
+        print('\n\n\n', '-'*20, 'self.megaservices', self.megaservices)
+        print('\n\n\n', '-'*20, 'self.processed_node_infos', self.processed_node_infos)
+ 
+    
     def align_inputs(self, inputs, *args, **kwargs):
         """Override this method in megaservice definition."""
         print('\n'*2,'align_inputs')
@@ -252,6 +289,7 @@ class AppService:
         
         buffer = ""
         for line in gen:
+            print('line before decode', line)
             line = line.decode("utf-8")
             print('line', line)
             start = line.find("{")
@@ -272,22 +310,23 @@ class AppService:
                     words = buffer.split()
                     if len(words) > 1:
                         output_word = words[0] + ' '
-                        yield f"data: {repr(output_word.encode('utf-8'))}\n\n"
+                        yield f"data: {output_word}\n\n"
                         buffer = " ".join(words[1:])
                     else:
                         buffer = words[0] if words else ""
             except Exception as e:
-                yield f"data: {repr(json_str.encode('utf-8'))}\n\n"
+                yield f"data: {json_str}\n\n"
         if buffer:
-            yield f"data: {repr(buffer.encode('utf-8'))}\n\n"
+            yield f"data: {buffer}\n\n"
         yield "data: [DONE]\n\n"
 
     
-    async def handle_request(self, request: Request):
+    
+    async def handle_request(self, request: Request, megaservice):
         data = await request.json()
         print('\n'*5, '====== handle_request ======\n', data)
         if 'chat_completion_ids' in self.workflow_info:
-            prompt = handle_message(data['messages'])
+            prompt = handle_message(data.get("messages") or data.get("query") or data.get("text") or data.get("input") or data.get("inputs"))
             params = {}
             llm_parameters = None
             for id, node in self.workflow_info['nodes'].items():
@@ -302,13 +341,13 @@ class AppService:
                             # hadle special case for stream and streaming
                             if key in ['stream', 'streaming']:
                                 params_dict[key] = data.get('stream', True) and data.get('streaming', True)
-                        elif key in node['inference_params']:
-                            params_dict[key] = node['inference_params'][key]
+                        elif key in node['params']:
+                            params_dict[key] = node['params'][key]
                     params[id] = params_dict
-                if node['category'] == 'LLM':
-                    params[id]['max_new_tokens'] = params[id]['max_tokens']
+                if node['category'] in ('LLM', 'Agent'):
+                    params[id]['max_new_tokens'] = params[id].get('max_tokens', 500)
                     llm_parameters = LLMParams(**params[id])
-            result_dict, runtime_graph = await self.megaservice.schedule(
+            result_dict, runtime_graph = await megaservice.schedule(
                 initial_inputs={'query':prompt, 'text': prompt},
                 llm_parameters=llm_parameters,
                 params=params,
@@ -320,18 +359,29 @@ class AppService:
             last_node = runtime_graph.all_leaves()[-1]
             print('result_dict:', result_dict)
             print('last_node:',last_node)
-            response = result_dict[last_node]['text']
-            choices = []
-            usage = UsageInfo()
-            choices.append(
-                ChatCompletionResponseChoice(
-                    index=0,
-                    message=ChatMessage(role='assistant', content=response),
-                    finish_reason='stop',
+            last_node_info = self.workflow_info['nodes'][last_node]
+            if last_node_info['category'] in ('LLM', 'Agent'):
+                # handle the llm response
+                response = result_dict[last_node]['text']
+                choices = []
+                usage = UsageInfo()
+                choices.append(
+                    ChatCompletionResponseChoice(
+                        index=0,
+                        message=ChatMessage(role='assistant', content=response),
+                        finish_reason='stop',
+                    )
                 )
-            )
-            return ChatCompletionResponse(model='custom_app', choices=choices, usage=usage)
+                return ChatCompletionResponse(model='custom_app', choices=choices, usage=usage)
+            else:
+                # handle the non-llm response
+                return result_dict[last_node]
 
+    def create_handle_request(self, megaservice):
+        async def handle_request_wrapper(request: Request):
+            return await self.handle_request(request, megaservice)
+        return handle_request_wrapper
+    
     def start(self):
 
         self.service = MicroService(
@@ -343,8 +393,10 @@ class AppService:
             input_datatype=ChatCompletionRequest,
             output_datatype=ChatCompletionResponse,
         )
-
-        self.service.add_route(self.endpoint, self.handle_request, methods=["POST"])
+        
+        for key, megaservice in self.megaservices.items():
+            handle_request_wrapper = self.create_handle_request(megaservice)
+            self.service.add_route(self.endpoint if key == 'default' else f'{self.endpoint}/{key}', handle_request_wrapper, methods=["POST"])
         self.service.start()
 
 if __name__ == "__main__":
@@ -352,4 +404,6 @@ if __name__ == "__main__":
     app = AppService(host="0.0.0.0", port=8888)
     print('after initialize appService')
     app.add_remote_service()
+    print('after add_remote_service')
+    
     app.start()

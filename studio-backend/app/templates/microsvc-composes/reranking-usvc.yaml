@@ -5,14 +5,14 @@
     "{{tei_endpoint}}":
       condition: service_healthy
   ports:
-    - 8009:8000
+    - "{{port_key}}:8000"
   ipc: host
   environment:
     no_proxy: ${no_proxy}
     http_proxy: ${http_proxy}
     https_proxy: ${https_proxy}
     TEI_RERANKING_ENDPOINT: "http://${public_host_ip}:{{tei_port}}"
-    HUGGINGFACEHUB_API_TOKEN: "{{tei_huggingFaceToken}}"
+    HUGGINGFACEHUB_API_TOKEN: "{{huggingFaceToken}}"
     HF_HUB_DISABLE_PROGRESS_BARS: 1
     HF_HUB_ENABLE_HF_TRANSFER: 0
   restart: unless-stopped

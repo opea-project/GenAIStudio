@@ -11,10 +11,10 @@
     "test": "vitest"
   },
   "dependencies": {
-    "@mantine/charts": "7.13.4",
-    "@mantine/core": "^7.13.4",
-    "@mantine/hooks": "^7.13.4",
-    "@mantine/notifications": "^7.13.4",
+    "@mantine/charts": "7.17.2",
+    "@mantine/core": "^7.17.2",
+    "@mantine/hooks": "^7.17.2",
+    "@mantine/notifications": "^7.17.2",
     "@microsoft/fetch-event-source": "^2.0.1",
     "@reduxjs/toolkit": "^2.2.5",
     "@tabler/icons-react": "3.7.0",

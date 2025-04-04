@@ -5,7 +5,7 @@
     "{{tei_endpoint}}":
       condition: service_healthy
   ports:
-    - 6009:6000
+    - "{{port_key}}:6000"
   ipc: host
   environment:
     no_proxy: ${no_proxy}

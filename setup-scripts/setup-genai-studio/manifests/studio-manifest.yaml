@@ -328,7 +328,7 @@ spec:
         - name: REGISTRY
           value: ${REGISTRY}
         - name: TAG
-          value: ${TAG}
+          value: "${TAG}"
         - name: SBX_HTTP_PROXY
           value: ${HTTP_PROXY}
         - name: SBX_NO_PROXY

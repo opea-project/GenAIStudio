@@ -8,8 +8,8 @@ kind: ConfigMap
 metadata:
   name: config-{endpoint}
 data:
-  HEALTHCHECK_ENDPOINT: "{tei_endpoint}"
-  TEI_EMBEDDING_ENDPOINT: "http://{tei_endpoint}"
+  HEALTHCHECK_ENDPOINT: "{tei_endpoint}:{tei_port}"
+  TEI_EMBEDDING_ENDPOINT: "http://{tei_endpoint}:{tei_port}"
   http_proxy: ""
   https_proxy: ""
   no_proxy: ""
@@ -28,7 +28,7 @@ metadata:
 spec:
   type: ClusterIP
   ports:
-    - port: 6000
+    - port: "{port}"
       targetPort: 6000
       protocol: TCP
       name: "{endpoint}"

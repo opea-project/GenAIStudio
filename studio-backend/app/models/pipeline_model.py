@@ -2,12 +2,22 @@ from typing import List, Optional, Dict, Union
 from pydantic import BaseModel, Field
 from datetime import datetime
 
-class OutputAnchor(BaseModel):
+class OutputAnchorOption(BaseModel):
     id: str
     name: str
     label: str
     description: str
     type: str
+    isAnchor: bool
+
+class OutputAnchor(BaseModel):
+    id: Optional[str] = None
+    name: str
+    label: str
+    description: str
+    type: str
+    options: Optional[List[OutputAnchorOption]] = None
+    default: Optional[str] = None
 
 class InputAnchor(BaseModel):
     label: str
@@ -36,6 +46,7 @@ class Node(BaseModel):
     version: int
     category: str
     inMegaservice: bool
+    megaserviceClient: Optional[bool] = False
     inputAnchors: List[InputAnchor]
     inputParams: List[InputParam]
     inputs: Dict[str, str]
@@ -51,6 +62,7 @@ class FlowData(BaseModel):
 class PipelineFlow(BaseModel):
     id: str
     name: str
+    userid: str
     flowData: FlowData
     deployed: bool
     isPublic: bool
@@ -62,6 +74,8 @@ class PipelineFlow(BaseModel):
     category: Optional[str] = None
     type: str
     sandboxStatus: Optional[str] = None
+    sandboxAppUrl: Optional[str] = None
+    sandboxGrafanaUrl: Optional[str] = None
     createdDate: datetime
     updatedDate: datetime
 
