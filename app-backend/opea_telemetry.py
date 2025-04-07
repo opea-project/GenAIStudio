@@ -18,6 +18,13 @@ from ..mega.logger import CustomLogger
 
 logger = CustomLogger("OpeaComponent")
 
+def get_k8s_namespace():
+    try:
+        with open("/var/run/secrets/kubernetes.io/serviceaccount/namespace", "r") as f:
+            return f.read().strip()
+    except Exception:
+        return "unknown-namespace"
+
 
 def detach_ignore_err(self, token: object) -> None:
     """Resets Context to a previous value.
@@ -34,7 +41,11 @@ def detach_ignore_err(self, token: object) -> None:
 # bypass the ValueError that ContextVar context was created in a different Context from StreamingResponse
 ContextVarsRuntimeContext.detach = detach_ignore_err
 
-resource = Resource.create({SERVICE_NAME: "opea"})
+namespace_name = get_k8s_namespace()
+resource = Resource.create({
+    SERVICE_NAME: "opea",
+    "k8s.namespace.name": namespace_name
+})
 traceProvider = TracerProvider(resource=resource)
 
 ENABLE_OPEA_TELEMETRY = False
@@ -50,7 +61,6 @@ traceProvider.add_span_processor(BatchSpanProcessor(in_memory_exporter))
 trace.set_tracer_provider(traceProvider)
 
 tracer = trace.get_tracer(__name__)
-
 
 def opea_telemetry(func):
     if inspect.iscoroutinefunction(func):

@@ -103,13 +103,17 @@ def replace_dynamic_manifest_placeholder(value_str, service_info, proj_info_json
         app_frontend_image = os.getenv("APP_FRONTEND_IMAGE", "opea/app-frontend:latest")
         app_backend_image = os.getenv("APP_BACKEND_IMAGE", "opea/app-backend:latest")
 
+        # For __TELEMETRY_ENDPOINT_ENV_PLACEHOLDER__
+        telemetry_endpoint_env_str = f"- name: TELEMETRY_ENDPOINT\n{indent_str}  value: {os.getenv('TELEMETRY_ENDPOINT', '')}\n"
+
         # Replace the unique placeholders with the actual strings
         final_config = value_str.replace("__UI_CONFIG_INFO_ENV_PLACEHOLDER__", ui_env_config_info_str.strip()).replace(
             "__UI_CONFIG_INFO_NGINX_PLACEHOLDER__", ui_nginx_config_info_str.strip()).replace(
             "__PORTS_INFO_JSON_PLACEHOLDER__", ports_info_str.strip()).replace(
             "__BACKEND_PROJECT_INFO_JSON_PLACEHOLDER__", backend_workflow_info_str.replace(f"\n", f"\n{indent_str}")).replace(
             "__APP_FRONTEND_IMAGE__", app_frontend_image).replace(
-            "__APP_BACKEND_IMAGE__", app_backend_image)
+            "__APP_BACKEND_IMAGE__", app_backend_image).replace(
+            "__TELEMETRY_ENDPOINT__", telemetry_endpoint_env_str)
 
         print(final_config)
     

@@ -1,20 +1,25 @@
 from fastapi import APIRouter, HTTPException
 from clickhouse_driver import Client
+import os
 
 
 router = APIRouter()
 
 # Initialize ClickHouse client
-client = Client(host='clickhouse.clickhouse.svc.cluster.local', port=9000)
+clickhouse_host, clickhouse_port = os.getenv('CLICKHOUSE_DNS', 'clickhouse.tracing.svc.cluster.local:9000').split(':')
+clickhouse_port = int(clickhouse_port)
+client = Client(host=clickhouse_host, port=clickhouse_port)
 
 @router.get("/trace-ids/{namespace}")
 async def list_trace_ids(namespace: str):
     try:
         query = """
-        SELECT TraceId, Start, End
-        FROM otel.otel_traces_trace_id_ts
+        SELECT DISTINCT tts.TraceId, tts.Start, tts.End
+        FROM otel.otel_traces_trace_id_ts AS tts
+        INNER JOIN otel.otel_traces AS ot ON tts.TraceId = ot.TraceId
+        WHERE ot.ResourceAttributes['k8s.namespace.name'] = '%(namespace)s'
         """
-        result = client.execute(query)
+        result = client.execute(query, {'namespace': namespace})
 
         if not result:
             raise HTTPException(status_code=404, detail="No TraceIds found")

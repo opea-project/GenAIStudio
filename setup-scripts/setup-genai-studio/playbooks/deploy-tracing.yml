@@ -1,0 +1,43 @@
+---
+- name: Deploy clickhouse and otel collector for tracing
+  hosts: localhost
+  tasks:
+    - name: Check if tracing namespace exists
+      shell: kubectl get namespace tracing --ignore-not-found
+      register: namespace_check
+      ignore_errors: yes
+      changed_when: false
+
+    - name: End playbook if tracing namespace exists exists
+      meta: end_play
+      when: namespace_check.stdout != ""
+
+    - name: Add Pascaliske Helm repository
+      command: helm repo add pascaliske https://charts.pascaliske.dev
+
+    - name: Update Helm repositories
+      command: helm repo update
+
+    - name: Create 'tracing' namespace
+      command: kubectl create ns tracing
+
+    - name: Install Clickhouse Helm chart in 'tracing' namespace
+      command: helm install clickhouse pascaliske/clickhouse -n tracing --set persistentVolumeClaim.storageClassName=local-path
+
+    - name: Wait for Clickhouse pod to be ready
+      command: kubectl wait --namespace tracing --for=condition=ready pod -l app.kubernetes.io/name=clickhouse --timeout=120s
+
+    - name: Create 'otel' database in Clickhouse
+      shell: kubectl exec -n tracing $(kubectl get pod -n tracing -l app.kubernetes.io/name=clickhouse -o jsonpath="{.items[0].metadata.name}") -- clickhouse-client --query="CREATE DATABASE IF NOT EXISTS otel"
+
+    - name: Add OpenTelemetry Helm repository
+      command: helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts
+
+    - name: Update Helm repositories
+      command: helm repo update
+
+    - name: Install OpenTelemetry Collector Helm chart in 'tracing' namespace
+      command: helm install tracing open-telemetry/opentelemetry-collector -n tracing -f ../helm-values/otel-collector.yaml
+
+    - name: Wait for OpenTelemetry Collector pod to be ready
+      command: kubectl wait --namespace tracing --for=condition=ready pod -l app.kubernetes.io/name=opentelemetry-collector --timeout=120s

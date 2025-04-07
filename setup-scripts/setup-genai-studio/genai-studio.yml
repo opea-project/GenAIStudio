@@ -4,5 +4,8 @@
 - name: Deploy monitoring
   import_playbook: playbooks/deploy-monitoring.yml
 
+- name: Deploy tracing
+  import_playbook: playbooks/deploy-tracing.yml
+
 - name: Deploy studio
   import_playbook: playbooks/deploy-studio.yml
