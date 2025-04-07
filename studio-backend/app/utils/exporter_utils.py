@@ -2,7 +2,6 @@ import os
 import copy
 
 TEMPLATES_DIR = os.path.join(os.path.dirname(__file__), '..', 'templates')
-base_port = 9000
 
 manifest_map = {
         "redis_vector_store" : "microsvc-manifests/redis-vector-db.yaml",
@@ -50,7 +49,7 @@ opea_url_name = {
 }
 
 def process_opea_services(proj_info_json):
-    global base_port
+    base_port = 9000
     # Create a deep copy of the proj_info_json to avoid modifying the original data
     proj_info_copy = copy.deepcopy(proj_info_json)
 
