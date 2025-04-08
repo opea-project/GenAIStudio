@@ -416,15 +416,9 @@ spec:
         volumeMounts:
         - mountPath: /tmp
           name: tmp
-        - name: mysql-tls
-          mountPath: /etc/mysql/ssl
-          readOnly: true
       volumes:
       - name: tmp
         emptyDir: {}
-      - name: mysql-tls
-        secret:
-          secretName: mysql-tls
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -472,9 +466,6 @@ spec:
       - name: keycloak
         image: quay.io/keycloak/keycloak:latest
         volumeMounts:
-        - name: mysql-tls
-          mountPath: /etc/mysql/ssl
-          readOnly: true
         - name: app-tls
           mountPath: /etc/ssl
           readOnly: true
@@ -511,7 +502,7 @@ spec:
         - name: KC_DB
           value: "mysql"
         - name: KC_DB_URL
-          value: "jdbc:mysql://${MYSQL_HOST}:3306/keycloak?useSSL=true&requireSSL=true&clientCertificateKeyStoreUrl=file:/etc/mysql/ssl/client-keystore.p12&trustCertificateKeyStoreUrl=file:/etc/mysql/ssl/ca.pem"
+          value: "jdbc:mysql://${MYSQL_HOST}:3306/keycloak"
         - name: KC_DB_USERNAME
           value: "studio"
         - name: KC_DB_PASSWORD
@@ -538,9 +529,6 @@ spec:
       - name: app-tls
         secret:
           secretName: app-tls
-      - name: mysql-tls
-        secret:
-          secretName: mysql-tls
       - name: keycloak-themes-volume
         emptyDir: {}
       - name: keycloak-dataimport-volume

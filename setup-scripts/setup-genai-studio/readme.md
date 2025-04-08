@@ -16,7 +16,7 @@ The genai-studio playbook script will:
 
 - Disclaimer: The Ansible script has been tested on a fresh machine without any pre-existing MySQL server installation, studio, or monitoring deployment. Any other environment might require modifications to the Ansible playbooks accordingly.
 - Existing kubernetes cluster available. If not, please install by following the [Kubernetes official setup guide](https://kubernetes.io/docs/setup/). Alternatively, you can try out our [setup onpremise kubernetes script](../setup-onpremise-kubernetes/readme.md).
-- Update vars.yml accordingly. By default, if you have a locally installed MySQL server, you will need to update the variable `mysql_host` in vars.yml with the external public IP of your localhost. 
+- Update vars.yml accordingly. If you have a locally installed MySQL server, you will need to update the variable `mysql_host` in vars.yml with the external public IP of your localhost. 
 
 ## Installation steps:
 

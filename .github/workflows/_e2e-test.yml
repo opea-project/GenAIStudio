@@ -46,7 +46,7 @@ jobs:
       
           sudo apt install ansible -y
           sed -i 's/value: ${TAG}/value: latest/' manifests/studio-manifest.yaml
-          ansible-playbook genai-studio.yml -e "container_registry=${OPEA_IMAGE_REPO}opea" -e "container_tag=${{ inputs.tag }}" -e "mysql_host=$(hostname -I | awk '{print $1}')"
+          ansible-playbook genai-studio.yml -e "container_registry=${OPEA_IMAGE_REPO}opea" -e "container_tag=${{ inputs.tag }}" -e "mysql_host=mysql.mysql.svc.cluster.local"
           sleep 5
           kubectl wait --for=condition=ready pod --all --namespace=studio --timeout=300s --field-selector=status.phase!=Succeeded
           kubectl wait --for=condition=ready pod --all --namespace=monitoring --timeout=300s --field-selector=status.phase!=Succeeded
@@ -94,6 +94,10 @@ jobs:
           if kubectl get namespace monitoring; then
             kubectl delete -f manifests/monitoring-manifest.yaml || true
             kubectl wait --for=delete pod --all --namespace=monitoring --timeout=300s
+          fi
+          if kubectl get namespace mysql; then
+            helm delete mysql -n mysql || true
+            kubectl wait --for=delete pod --all --namespace=mysql --timeout=300s
           fi
         working-directory: ${{ github.workspace }}/setup-scripts/setup-genai-studio/
 

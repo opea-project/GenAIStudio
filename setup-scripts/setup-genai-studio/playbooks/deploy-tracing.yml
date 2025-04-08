@@ -8,7 +8,7 @@
       ignore_errors: yes
       changed_when: false
 
-    - name: End playbook if tracing namespace exists exists
+    - name: End playbook if tracing namespace exists
       meta: end_play
       when: namespace_check.stdout != ""
 
