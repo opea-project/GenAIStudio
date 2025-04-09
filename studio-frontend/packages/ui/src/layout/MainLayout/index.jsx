@@ -62,6 +62,7 @@ const MainLayout = () => {
     const keycloak = useKeycloak()
     console.log ("login roles", keycloak?.tokenParsed?.resource_access?.genaistudio?.roles[0])
     let userRole = keycloak?.tokenParsed?.resource_access?.genaistudio?.roles[0]
+    let userId = keycloak?.tokenParsed?.email ? keycloak.tokenParsed.email : ''
 
     const handleLogout = () => {
         keycloak.logout({
@@ -100,7 +101,7 @@ const MainLayout = () => {
                     }}
                 >
                     <Toolbar sx={{ height: `${headerHeight}px`, borderBottom: '1px solid', borderColor: theme.palette.primary[200] + 75 }}>
-                        <Header handleLeftDrawerToggle={handleLeftDrawerToggle} />
+                        <Header userId={userId} />
                     </Toolbar>
                 </AppBar>
 
