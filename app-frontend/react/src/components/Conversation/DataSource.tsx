@@ -135,7 +135,7 @@ export default function DataSource({ opened, onClose }: Props) {
 
   useEffect(() => {
     let isFetching = false; // Flag to track if the function is in progress
-  
+    getFileList();
     const interval = setInterval(async () => {
       if (!isFetching) {
         isFetching = true;
