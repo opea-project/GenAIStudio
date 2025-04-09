@@ -84,6 +84,9 @@ jobs:
       - name: Cleanup sandbox namespaces
         if: always()
         run: |
+          if kubectl get namespace mysql; then
+            kubectl delete ns mysql || true
+          fi
           for ns in $(kubectl get namespaces -o jsonpath='{.items[*].metadata.name}' | tr ' ' '\n' | grep '^sandbox-'); do
             kubectl delete namespace $ns || true
           done
@@ -94,10 +97,6 @@ jobs:
           if kubectl get namespace monitoring; then
             kubectl delete -f manifests/monitoring-manifest.yaml || true
             kubectl wait --for=delete pod --all --namespace=monitoring --timeout=300s
-          fi
-          if kubectl get namespace mysql; then
-            helm delete mysql -n mysql || true
-            kubectl wait --for=delete pod --all --namespace=mysql --timeout=300s
           fi
         working-directory: ${{ github.workspace }}/setup-scripts/setup-genai-studio/
 
