@@ -50,36 +50,52 @@ test('002_test_sandbox_chatqna', async ({ browser, baseURL }) => {
     await page.getByLabel('Password', { exact: true }).click();
     await page.getByLabel('Password', { exact: true }).fill('test');
     await page.getByRole('button', { name: 'Sign In' }).click();
-    // await page.getByRole('button', { name: 'Create New Workflow' }).click();
-    // await page.getByRole('button', { name: 'Settings' }).click();
-    // let fileChooserPromise = page.waitForEvent('filechooser');
-    // await page.getByRole('button', { name: 'Import Workflow' }).click();
-    // let fileChooser = await fileChooserPromise;
-    // await fileChooser.setFiles(sampleWorkflow);
-    // await page.getByRole('button', { name: 'Save Workflow' }).click();
-    // await page.getByPlaceholder('My New Chatflow').click();
-    // await page.getByPlaceholder('My New Chatflow').fill('test_002');
-    // await page.getByRole('button', { name: 'Save' }).click();
-    // await page.goto(IDC_URL);
-    // await expect(page.locator('td.MuiTableCell-root div.MuiStack-root p.MuiTypography-root').first()).toHaveText('Not Running', { timeout: 60000 });
-    // await page.getByLabel('a dense table').locator('button').first().click();
+    await page.getByRole('button', { name: 'Create New Workflow' }).click();
+    await page.getByRole('button', { name: 'Settings' }).click();
+    let fileChooserPromise = page.waitForEvent('filechooser');
+    await page.getByRole('button', { name: 'Import Workflow' }).click();
+    let fileChooser = await fileChooserPromise;
+    await fileChooser.setFiles(sampleWorkflow);
+    await page.getByRole('button', { name: 'Save Workflow' }).click();
+    await page.getByPlaceholder('My New Chatflow').click();
+    await page.getByPlaceholder('My New Chatflow').fill('test_002');
+    await page.getByRole('button', { name: 'Save' }).click();
+    await page.goto(IDC_URL);
+    await expect(page.locator('td.MuiTableCell-root div.MuiStack-root p.MuiTypography-root').first()).toHaveText('Not Running', { timeout: 60000 });
+    await page.getByLabel('a dense table').locator('button').first().click();
     await waitForStatusText(page, 'td.MuiTableCell-root div.MuiStack-root p.MuiTypography-root', 'Ready', 10, 60000);
-    // await page.waitForTimeout(10000);
+    await page.waitForTimeout(10000);
 
     // Open APP-UI
     const page2Promise = page.waitForEvent('popup');
     await page.getByLabel('Click to open Application UI').getByRole('button').nth(0).click();
     const page2 = await page2Promise;
+    await page2.bringToFront();
     await setupResponseListener(page2, apiResponse);
 
     // Here perform all the Upload Document + RAG
     // Chat Attempt 1
+    // const buttons = page2.getByRole('button');
+    // const buttonCount = await buttons.count();
+    // console.log(`Found ${buttonCount} buttons:`);
+    // for (let i = 0; i < buttonCount; i++) {
+    //     const button = buttons.nth(i);
+    //     const text = await button.textContent();
+    //     const box = await button.boundingBox();
+    //     if (box) {
+    //         console.log(`Button ${i}: Text="${text}", Location: x=${box.x}, y=${box.y}, width=${box.width}, height=${box.height}`);
+    //     } else {
+    //         console.log(`Button ${i}: Text="${text}", Location: Not visible or no bounding box`);
+    //     }
+    // }
     await page2.waitForTimeout(2000);
     await page2.getByPlaceholder('Ask a question').fill(question);
     await page2.getByRole('button').nth(4).click();
     await page2.waitForTimeout(10000);
     let responseContainsKeyword = apiResponse && containsAnyKeyword(apiResponse.value, keywords);
     console.log ('response:', apiResponse.value);
+    await page2.screenshot({ path: 'screenshot_chat_attempt1.png' });
+
     if (responseContainsKeyword) {
         throw new Error('LLM already has knowledge of this guide!')
     }
@@ -89,9 +105,9 @@ test('002_test_sandbox_chatqna', async ({ browser, baseURL }) => {
     await page2.getByRole('button').nth(2).click(); // Double click
 
     // Document Upload 1
-    let fileChooserPromise = page2.waitForEvent('filechooser');
+    fileChooserPromise = page2.waitForEvent('filechooser');
     await page2.getByRole('button', { name: 'Choose File' }).click()
-    let fileChooser = await fileChooserPromise;
+    fileChooser = await fileChooserPromise;
     await fileChooser.setFiles(uploadPDF1);
     await page2.getByRole('button', { name: 'Upload', exact: true }).click();
     await page2.waitForSelector('tr:nth-of-type(1) button[data-variant="light"] .tabler-icon-check', { state: 'visible', timeout: 300000 });
@@ -154,6 +170,9 @@ test('002_test_sandbox_chatqna', async ({ browser, baseURL }) => {
             console.log(`Attempt ${i + 1} failed: ${error}`);
         }
     }
+    await page2.screenshot({ path: 'screenshot_upload_document.png' });
+    await page2.waitForTimeout(1000);
+
     await page2.getByRole('banner').getByRole('button').click();
     await page2.waitForTimeout(10000);
 
@@ -204,6 +223,7 @@ test('002_test_sandbox_chatqna', async ({ browser, baseURL }) => {
     await page2.getByRole('button').nth(3).click();
     await page2.getByRole('row', { name: 'tennis_tutorial.pdf' }).getByRole('button').click();
     await expect(page2.getByRole('cell', { name: 'tennis_tutorial.pdf' })).toBeHidden( { timeout: 60000 } );
+    await page2.screenshot({ path: 'screenshot_delete_file.png' });
 
     // Stop & Delete Sandbox
     await page.bringToFront();
