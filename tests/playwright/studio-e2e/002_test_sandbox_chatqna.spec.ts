@@ -225,19 +225,19 @@ test('002_test_sandbox_chatqna', async ({ browser, baseURL }) => {
 
     // Delete 1 document + Check data sources successfully deduct 1 or not
     await page2.waitForTimeout(3000);
-    //     const buttons = page2.getByRole('button');
-    // const buttonCount = await buttons.count();
-    // console.log(`Found ${buttonCount} buttons:`);
-    // for (let i = 0; i < buttonCount; i++) {
-    //     const button = buttons.nth(i);
-    //     const text = await button.textContent();
-    //     const box = await button.boundingBox();
-    //     if (box) {
-    //         console.log(`Button ${i}: Text="${text}", Location: x=${box.x}, y=${box.y}, width=${box.width}, height=${box.height}`);
-    //     } else {
-    //         console.log(`Button ${i}: Text="${text}", Location: Not visible or no bounding box`);
-    //     }
-    // }
+        const buttons = page2.getByRole('button');
+    const buttonCount = await buttons.count();
+    console.log(`Found ${buttonCount} buttons:`);
+    for (let i = 0; i < buttonCount; i++) {
+        const button = buttons.nth(i);
+        const text = await button.textContent();
+        const box = await button.boundingBox();
+        if (box) {
+            console.log(`Button ${i}: Text="${text}", Location: x=${box.x}, y=${box.y}, width=${box.width}, height=${box.height}`);
+        } else {
+            console.log(`Button ${i}: Text="${text}", Location: Not visible or no bounding box`);
+        }
+    }
     console.log ('Delete 1 document + Check data sources successfully deduct 1 or not-------------------');
 
     await page2.getByRole('button').nth(3).click();
