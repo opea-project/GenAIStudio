@@ -198,7 +198,7 @@ test('002_test_sandbox_chatqna', async ({ browser, baseURL }) => {
     console.log ('Chat Attempt 2-------------------');
     await page2.getByPlaceholder('Ask a question').fill(question);
     await page2.getByRole('button').nth(4).click();
-    await page2.waitForTimeout(10000);
+    await page2.waitForTimeout(30000);
     responseContainsKeyword = apiResponse && containsAnyKeyword(apiResponse.value, keywords);
     console.log ('response:', apiResponse.value);
     console.log ("responseContainsKeyword:", responseContainsKeyword);
@@ -211,7 +211,7 @@ test('002_test_sandbox_chatqna', async ({ browser, baseURL }) => {
         const followUpQuestion = "How is Intel performing in Q3 2024?";
         await page2.getByPlaceholder('Ask a question').fill(followUpQuestion);
         await page2.getByRole('button').nth(4).click();
-        await page2.waitForTimeout(10000);
+        await page2.waitForTimeout(30000);
     
         responseContainsKeyword = apiResponse && containsAnyKeyword(apiResponse.value, keywords);
         console.log ('response:', apiResponse.value);
