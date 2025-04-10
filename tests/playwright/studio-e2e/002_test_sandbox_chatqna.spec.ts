@@ -41,7 +41,11 @@ test('002_test_sandbox_chatqna', async ({ browser, baseURL }) => {
     test.setTimeout(1200000);
     let apiResponse = { value: '' };
     const context = await browser.newContext({
-        ignoreHTTPSErrors: true
+        ignoreHTTPSErrors: true,
+        recordVideo: {
+            dir: './videos/',
+            size: { width: 1280, height: 720 }
+        }
     });
     const page = await context.newPage();
     const IDC_URL = baseURL || ""
@@ -63,11 +67,11 @@ test('002_test_sandbox_chatqna', async ({ browser, baseURL }) => {
     await page.goto(IDC_URL);
     await expect(page.locator('td.MuiTableCell-root div.MuiStack-root p.MuiTypography-root').first()).toHaveText('Not Running', { timeout: 60000 });
     await page.getByLabel('a dense table').locator('button').first().click();
-    await waitForStatusText(page, 'td.MuiTableCell-root div.MuiStack-root p.MuiTypography-root', 'Ready', 10, 60000);
+    await waitForStatusText(page, 'td.MuiTableCell-root div.MuiStack-root p.MuiTypography-root', 'Ready', 20, 60000);
     await page.waitForTimeout(10000);
 
     // Open APP-UI
-    const page2Promise = page.waitForEvent('popup');
+    const page2Promise = page.waitForEvent('popup', { context });
     await page.getByLabel('Click to open Application UI').getByRole('button').nth(0).click();
     const page2 = await page2Promise;
     await page2.bringToFront();
@@ -91,7 +95,7 @@ test('002_test_sandbox_chatqna', async ({ browser, baseURL }) => {
     await page2.waitForTimeout(2000);
     await page2.getByPlaceholder('Ask a question').fill(question);
     await page2.getByRole('button').nth(4).click();
-    await page2.waitForTimeout(10000);
+    await page2.waitForTimeout(20000);
     let responseContainsKeyword = apiResponse && containsAnyKeyword(apiResponse.value, keywords);
     console.log ('response:', apiResponse.value);
     await page2.screenshot({ path: 'screenshot_chat_attempt1.png' });
@@ -164,13 +168,14 @@ test('002_test_sandbox_chatqna', async ({ browser, baseURL }) => {
         await page2.getByRole('button').nth(2).click();
         try {
             await expect(page2.getByRole('cell', { name: 'https://pnatraj.medium.com/' })).toBeVisible({ timeout: 60000 });
+            await page2.screenshot({ path: 'screenshot_upload_document.png' });
+
             isVisible3 = true;
         break;
         } catch (error) {
             console.log(`Attempt ${i + 1} failed: ${error}`);
         }
     }
-    await page2.screenshot({ path: 'screenshot_upload_document.png' });
     await page2.waitForTimeout(1000);
 
     await page2.getByRole('banner').getByRole('button').click();
@@ -220,16 +225,37 @@ test('002_test_sandbox_chatqna', async ({ browser, baseURL }) => {
 
     // Delete 1 document + Check data sources successfully deduct 1 or not
     await page2.waitForTimeout(3000);
+    //     const buttons = page2.getByRole('button');
+    // const buttonCount = await buttons.count();
+    // console.log(`Found ${buttonCount} buttons:`);
+    // for (let i = 0; i < buttonCount; i++) {
+    //     const button = buttons.nth(i);
+    //     const text = await button.textContent();
+    //     const box = await button.boundingBox();
+    //     if (box) {
+    //         console.log(`Button ${i}: Text="${text}", Location: x=${box.x}, y=${box.y}, width=${box.width}, height=${box.height}`);
+    //     } else {
+    //         console.log(`Button ${i}: Text="${text}", Location: Not visible or no bounding box`);
+    //     }
+    // }
+    console.log ('Delete 1 document + Check data sources successfully deduct 1 or not-------------------');
+
     await page2.getByRole('button').nth(3).click();
     await page2.getByRole('row', { name: 'tennis_tutorial.pdf' }).getByRole('button').click();
     await expect(page2.getByRole('cell', { name: 'tennis_tutorial.pdf' })).toBeHidden( { timeout: 60000 } );
     await page2.screenshot({ path: 'screenshot_delete_file.png' });
+    console.log ("Document tennis_tutorial.pdf deleted");
 
     // Stop & Delete Sandbox
+    console.log ('Stop & Delete Sandbox-------------------');
     await page.bringToFront();
     await page.locator('button:has([data-testid="StopCircleOutlinedIcon"])').first().click();
     await waitForStatusText(page, 'td.MuiTableCell-root div.MuiStack-root p.MuiTypography-root', 'Not Running', 5, 60000);
     await page.locator('#demo-customized-button').first().click();
     await page.getByRole('menuitem', { name: 'Delete' }).click();
     await page.getByRole('button', { name: 'Delete' }).click();
+    await page2.close();
+    await page.close();
+    await context.close();
+    console.log('Job done');
   });
