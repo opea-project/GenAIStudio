@@ -22,6 +22,8 @@ def convert_proj_info_to_manifest(proj_info_json, output_file=None):
         service_manifest_raw = list(ordered_load_all(replace_dynamic_manifest_placeholder(service_manifest_read, service_info, proj_info_json), yaml.SafeLoader))
         service_manifest = [replace_manifest_placeholders(doc, service_info) for doc in service_manifest_raw]
         output_manifest.extend((doc, service_name) for doc in service_manifest)
+    
+    # print("Manifest generation completed.")
 
     manifest_string = ""
     for _, (doc, service_name) in enumerate(output_manifest):

@@ -11,6 +11,7 @@ import json
 from app.services.exporter_service import convert_proj_info_to_compose
 from app.models.pipeline_model import PipelineFlow
 from app.services.workflow_info_service import WorkflowInfo
+from app.utils.exporter_utils import process_opea_services
 
 router = APIRouter()
 
@@ -32,12 +33,19 @@ def create_and_download_zip(request: PipelineFlow, background_tasks: BackgroundT
     # Covnert request to workflow info json
     workflow_info_raw = WorkflowInfo(request.dict())
     workflow_info = json.loads(workflow_info_raw.export_to_json())
+    services_info = process_opea_services(workflow_info)
+    ports_info = services_info["services"]["app"]["ports_info"]
+    additional_files_info = services_info.get("additional_files", [])
+    # print("download-zip > additional_files_info", additional_files_info)
     
     # Write the strings to files
     try:
         # .env contents
         with open(env_file_path, 'w') as f:
-            f.write("public_host_ip='Your_External_Host_IP'")
+            f.write("public_host_ip='Your_External_Host_IP'\n")
+            # Write each port info to the .env file
+            for key, value in ports_info.items():
+                f.write(f"{key}={value}\n")
         
         # readme.md contents
         with open(compose_readme_file_path, 'r') as f:
@@ -60,6 +68,21 @@ def create_and_download_zip(request: PipelineFlow, background_tasks: BackgroundT
             zipf.write(readme_file_path, arcname=os.path.join("docker-compose", "readme.MD"))
             zipf.write(compose_file_path, arcname=os.path.join("docker-compose", "compose.yaml"))
             zipf.write(workflow_info_file_path, arcname=os.path.join("docker-compose", "workflow-info.json"))
+            for file_info in additional_files_info:
+                # copy files from the original location to the temp directory
+                source_path = file_info["source"]
+                target_path = file_info["target"]
+                if os.path.isdir(source_path):
+                    # Recursively add all files and subdirectories
+                    for root, dirs, files in os.walk(source_path):
+                        for file in files:
+                            full_file_path = os.path.join(root, file)
+                            # Preserve the directory structure inside the zip
+                            relative_path = os.path.relpath(full_file_path, source_path)
+                            zipf.write(full_file_path, arcname=os.path.join("docker-compose", target_path, relative_path))
+                else:
+                    # Add the single file
+                    zipf.write(source_path, arcname=os.path.join("docker-compose", target_path))
         
         # Schedule the cleanup task to run after the response has been sent
         background_tasks.add_task(clean_up_temp_dir, temp_dir)

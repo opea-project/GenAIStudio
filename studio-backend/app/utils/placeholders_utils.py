@@ -23,6 +23,7 @@ yaml.add_representer(OrderedDict, represent_ordereddict, Dumper=yaml.SafeDumper)
 
 # Function to load multiple YAML documents using OrderedDict
 def ordered_load_all(stream, Loader=yaml.SafeLoader, object_pairs_hook=OrderedDict):
+    # print("placeholders_utils.py: ordered_load_all")
     class OrderedLoader(Loader):
         pass
     def construct_mapping(loader, node):
@@ -35,8 +36,10 @@ def ordered_load_all(stream, Loader=yaml.SafeLoader, object_pairs_hook=OrderedDi
 
 # Recursive function to replace placeholders in manifest templates
 def replace_manifest_placeholders(obj, variables):
+    # print("placeholders_utils.py: replace_manifest_placeholders", obj, variables)
     if isinstance(obj, dict):
         for key, value in obj.items():
+            # print("placeholders_utils.py: replace_manifest_placeholders", key, value)
             # Skip nginx.conf as it contains {} that will clashe with .format()
             if key == "default.conf" or key == "workflow-info.json":
                 continue
@@ -62,6 +65,7 @@ def replace_manifest_placeholders(obj, variables):
     return obj
 
 def replace_dynamic_manifest_placeholder(value_str, service_info, proj_info_json):
+    # print("placeholders_utils.py: replace_dynamic_manifest_placeholder")
     indent_str = ' ' * 8
 
     if service_info['service_type'] == 'app':
@@ -145,6 +149,17 @@ def replace_compose_placeholders(obj, variables):
 def replace_dynamic_compose_placeholder(value_str, service_info):
     indent_str = ' ' * 2
 
+    if 'supervisor_agent' in service_info['service_type']:
+        # For __AGENT_ENDPOINTS__
+        dependent_endpoints_str = ""
+        for endpoint in service_info['dependent_endpoints']:
+            if endpoint == "NA":  # Skip if the endpoint is "NA"
+                continue
+            endpoint_block = f"{indent_str}- {endpoint}\n"
+            dependent_endpoints_str += endpoint_block
+
+        value_str = value_str.replace("__AGENT_ENDPOINTS__", dependent_endpoints_str.strip())
+
     if service_info['service_type'] == 'app':
         backend_endpoint_list_str = ""
         ui_env_config_info_str = ""
@@ -154,7 +169,9 @@ def replace_dynamic_compose_placeholder(value_str, service_info):
             backend_endpoint_list_str += endpoint_block
 
         # For __UI_CONFIG_INFO_ENV_PLACEHOLDER__
-        for _, value in service_info['ui_config_info'].items():
+        for key, value in service_info['ui_config_info'].items():
+            if 'agent' in key:
+                continue
             url_name = value['url_name']
             endpoint_path = value['endpoint_path']
             endpoint_block = f"{indent_str}  - VITE_{url_name}={endpoint_path}\n"

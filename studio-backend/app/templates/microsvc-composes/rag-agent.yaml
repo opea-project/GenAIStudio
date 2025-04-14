@@ -11,17 +11,17 @@
     no_proxy: ${no_proxy}
     http_proxy: ${http_proxy}
     https_proxy: ${https_proxy}
-    llm_engine: "{{llm_engine}}" #tgi/vllm/openai *options
+    llm_engine: "{{llmEngine}}" #tgi/vllm/openai *options
     strategy: "{{strategy}}" #rag_agent_llama *option
-    recursion_limit: "{{recursion_limit}}" #integer value
+    recursion_limit: "{{recursionLimit}}" #integer value
     model: "{{modelName}}"
     temperature: "{{temperature}}"
-    max_new_tokens: "{{max_new_tokens}}"
+    max_new_tokens: "{{maxNewToken}}"
     stream: false
     tools: /home/user/tools/worker_agent_tools.yaml
     require_human_feedback: false
     llm_endpoint_url: "http://${public_host_ip}:{{llm_port}}"
-    RETRIEVAL_TOOL_URL: "http://${public_host_ip}:{{app_backend_port}}/v1/app-backend/rag_agent_0"
+    RETRIEVAL_TOOL_URL: "http://${public_host_ip}:{{megasvc_endpoint_port}}/{{rag_name}}"
     port: 9095
     # dynamic variables
-    OPENAI_API_KEY: "{{OPENAI_API_KEY}}" #if llm_engine is openai, if not will be NA or removed
+    OPENAI_API_KEY: "{{openaiApiKey}}" #if llm_engine is openai, if not will be NA or removed
