@@ -2,6 +2,21 @@
 - name: Deploy clickhouse and otel collector for tracing
   hosts: localhost
   tasks:
+    - name: Check if local-path-storage namespace exists
+      shell: kubectl get namespace local-path-storage --ignore-not-found
+      register: namespace_check
+      ignore_errors: yes
+      changed_when: false
+    
+    - name: Install local-path-provisioner if namespace does not exist
+      shell: kubectl apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/v0.0.30/deploy/local-path-storage.yaml
+      when: namespace_check.stdout == ""
+      register: apply_output
+    
+    - name: Wait for local-path-provisioner to be ready
+      shell: kubectl wait --for=condition=Ready pod -l app=local-path-provisioner -n local-path-storage --timeout=120s
+      when: namespace_check.stdout == ""
+
     - name: Check if tracing namespace exists
       shell: kubectl get namespace tracing --ignore-not-found
       register: namespace_check
