@@ -6,7 +6,7 @@ metadata:
 data:
   KC_ASSETS_GIT_URL: "https://github.com/opea-project/GenAIStudio/tree/main/assets/keycloak"
   TELEMETRY_ENDPOINT: "http://tracing-opentelemetry-collector.tracing.svc.cluster.local:4318/v1/traces"
-  CLICHOUSE_DNS: "clickhouse.tracing.svc.cluster.local:9000"
+  CLICKHOUSE_DNS: "clickhouse.tracing.svc.cluster.local:9000"
   KEYCLOAK_DNS: "keycloak.studio.svc.cluster.local:8443"
   GRAFANA_DNS: "kube-prometheus-stack-grafana.monitoring.svc.cluster.local"
   STUDIO_FRONTEND_DNS: "studio-frontend.studio.svc.cluster.local:3000"
