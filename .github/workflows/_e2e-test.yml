@@ -87,6 +87,9 @@ jobs:
           if kubectl get namespace mysql; then
             kubectl delete ns mysql || true
           fi
+          if kubectl get namespace tracing; then
+            kubectl delete ns tracing || true
+          fi
           for ns in $(kubectl get namespaces -o jsonpath='{.items[*].metadata.name}' | tr ' ' '\n' | grep '^sandbox-'); do
             kubectl delete namespace $ns || true
           done
