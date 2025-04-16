@@ -783,8 +783,8 @@ metadata:
 spec:
   type: ClusterIP
   ports:
-    - port: 9100
-      targetPort: 9100
+    - port: 9210
+      targetPort: 9210
       protocol: TCP
       name: http-metrics
   selector:
@@ -1047,7 +1047,7 @@ spec:
             - --path.sysfs=/host/sys
             - --path.rootfs=/host/root
             - --path.udev.data=/host/root/run/udev/data
-            - --web.listen-address=[$(HOST_IP)]:9100
+            - --web.listen-address=[$(HOST_IP)]:9210
             - --collector.filesystem.mount-points-exclude=^/(dev|proc|sys|var/lib/docker/.+|var/lib/kubelet/.+)($|/)
             - --collector.filesystem.fs-types-exclude=^(autofs|binfmt_misc|bpf|cgroup2?|configfs|debugfs|devpts|devtmpfs|fusectl|hugetlbfs|iso9660|mqueue|nsfs|overlay|proc|procfs|pstore|rpc_pipefs|securityfs|selinuxfs|squashfs|sysfs|tracefs)$
           securityContext:
@@ -1057,14 +1057,14 @@ spec:
               value: 0.0.0.0
           ports:
             - name: http-metrics
-              containerPort: 9100
+              containerPort: 9210
               protocol: TCP
           livenessProbe:
             failureThreshold: 3
             httpGet:
               httpHeaders:
               path: /
-              port: 9100
+              port: 9210
               scheme: HTTP
             initialDelaySeconds: 0
             periodSeconds: 10
@@ -1075,7 +1075,7 @@ spec:
             httpGet:
               httpHeaders:
               path: /
-              port: 9100
+              port: 9210
               scheme: HTTP
             initialDelaySeconds: 0
             periodSeconds: 10
