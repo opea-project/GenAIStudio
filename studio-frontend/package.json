@@ -1,6 +1,6 @@
 {
     "name": "flowise",
-    "version": "2.1.1",
+    "version": "2.1.4",
     "private": true,
     "homepage": "https://flowiseai.com",
     "workspaces": [
@@ -70,13 +70,16 @@
         "@google/generative-ai": "^0.15.0",
         "openai": "4.57.3",
         "@langchain/core": "0.2.18",
-        "axios": "1.7.4",
+        "axios": "1.8.2",
         "nth-check": "2.0.1",
         "pdfjs-dist": "4.2.67",
         "prismjs": "1.27.0",
         "semver": "7.5.2",
         "ws": "8.17.1",
-        "esbuild": ">=0.25.0"
+        "esbuild": ">=0.25.0",
+        "cross-spawn": ">=7.0.5",
+        "solid-js": ">=1.9.4",
+        "tar-fs": ">=3.0.8"
     },
     "eslintIgnore": [
         "**/dist",
