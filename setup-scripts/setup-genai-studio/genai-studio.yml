@@ -1,8 +1,11 @@
-- name: Setup mysqldb
-  import_playbook: playbooks/setup-mysqldb.yml
+- name: Deploy mysqldb
+  import_playbook: playbooks/deploy-mysqldb.yml
 
 - name: Deploy monitoring
   import_playbook: playbooks/deploy-monitoring.yml
+
+- name: Deploy tracing
+  import_playbook: playbooks/deploy-tracing.yml
 
 - name: Deploy studio
   import_playbook: playbooks/deploy-studio.yml

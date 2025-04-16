@@ -1,0 +1,1209 @@
+{
+    "nodes": [
+      {
+        "id": "chat_input_0",
+        "position": {
+          "x": -747.4396813508564,
+          "y": 168.71651616595648
+        },
+        "type": "customNode",
+        "data": {
+          "label": "Chat Input",
+          "name": "chat_input",
+          "version": 1,
+          "type": "ChatCompletionRequest",
+          "icon": "/usr/src/packages/server/src/nodes/controls.png",
+          "category": "Controls",
+          "description": "User Input from Chat Window",
+          "baseClasses": [
+            "ChatCompletionRequest"
+          ],
+          "tags": [
+            "OPEA"
+          ],
+          "inMegaservice": false,
+          "filePath": "/usr/src/packages/server/src/nodes/chat_input.js",
+          "inputAnchors": [],
+          "inputParams": [],
+          "inputs": {},
+          "outputs": {},
+          "outputAnchors": [
+            {
+              "id": "chat_input_0-output-chat_input-ChatCompletionRequest",
+              "name": "chat_input",
+              "label": "ChatCompletionRequest",
+              "description": "User Input from Chat Window",
+              "type": "ChatCompletionRequest"
+            }
+          ],
+          "id": "chat_input_0",
+          "selected": false
+        },
+        "width": 300,
+        "height": 143,
+        "positionAbsolute": {
+          "x": -747.4396813508564,
+          "y": 168.71651616595648
+        },
+        "selected": false
+      },
+      {
+        "id": "chat_completion_0",
+        "position": {
+          "x": 46.92203056975487,
+          "y": 957.4841315237466
+        },
+        "type": "customNode",
+        "data": {
+          "label": "Chat Completion",
+          "name": "chat_completion",
+          "version": 1,
+          "type": "ChatCompletion",
+          "icon": "/usr/src/packages/server/src/nodes/controls.png",
+          "category": "Controls",
+          "description": "Send Chat Response to UI",
+          "baseClasses": [],
+          "tags": [
+            "OPEA"
+          ],
+          "inMegaservice": false,
+          "inputs": {
+            "llm_response": "{{opea_service@supervisor_agent_0.data.instance}}"
+          },
+          "hideOutput": true,
+          "filePath": "/usr/src/packages/server/src/nodes/chat_completion.js",
+          "inputAnchors": [
+            {
+              "label": "LLM Response",
+              "name": "llm_response",
+              "type": "ChatCompletion",
+              "id": "chat_completion_0-input-llm_response-ChatCompletion"
+            }
+          ],
+          "inputParams": [],
+          "outputs": {},
+          "outputAnchors": [],
+          "id": "chat_completion_0",
+          "selected": false
+        },
+        "width": 300,
+        "height": 143,
+        "selected": false,
+        "positionAbsolute": {
+          "x": 46.92203056975487,
+          "y": 957.4841315237466
+        },
+        "dragging": false
+      },
+      {
+        "id": "doc_input_0",
+        "position": {
+          "x": -454.36258557190916,
+          "y": 1670.5564778929888
+        },
+        "type": "customNode",
+        "data": {
+          "label": "Doc Input",
+          "name": "doc_input",
+          "version": 1,
+          "type": "UploadFile",
+          "icon": "/usr/src/packages/server/src/nodes/controls.png",
+          "category": "Controls",
+          "description": "User Input from Document Upload",
+          "baseClasses": [
+            "UploadFile"
+          ],
+          "tags": [
+            "OPEA"
+          ],
+          "inMegaservice": false,
+          "filePath": "/usr/src/packages/server/src/nodes/doc_input.js",
+          "inputAnchors": [],
+          "inputParams": [],
+          "inputs": {},
+          "outputs": {},
+          "outputAnchors": [
+            {
+              "id": "doc_input_0-output-doc_input-UploadFile",
+              "name": "doc_input",
+              "label": "UploadFile",
+              "description": "User Input from Document Upload",
+              "type": "UploadFile"
+            }
+          ],
+          "id": "doc_input_0",
+          "selected": false
+        },
+        "width": 300,
+        "height": 143,
+        "selected": false,
+        "positionAbsolute": {
+          "x": -454.36258557190916,
+          "y": 1670.5564778929888
+        },
+        "dragging": false
+      },
+      {
+        "id": "opea_service@prepare_doc_redis_prep_0",
+        "position": {
+          "x": 7.328997846805251,
+          "y": 1615.0882311218359
+        },
+        "type": "customNode",
+        "data": {
+          "label": "Data Preparation with Redis",
+          "name": "opea_service@prepare_doc_redis_prep",
+          "version": 1,
+          "type": "EmbedDoc",
+          "icon": "/usr/src/packages/server/src/nodes/data.png",
+          "category": "Data Preparation",
+          "description": "Data Preparation with redis using Langchain",
+          "baseClasses": [
+            "EmbedDoc"
+          ],
+          "tags": [
+            "OPEA"
+          ],
+          "inMegaservice": false,
+          "dependent_services": {
+            "tei": {
+              "modelName": "",
+              "huggingFaceToken": ""
+            }
+          },
+          "inputs": {
+            "doc_input": "{{doc_input_0.data.instance}}",
+            "modelName": "BAAI/bge-large-en-v1.5",
+            "huggingFaceToken": ""
+          },
+          "filePath": "/usr/src/packages/server/src/nodes/data_prep_redis.js",
+          "inputAnchors": [
+            {
+              "label": "Documents",
+              "name": "doc_input",
+              "type": "UploadFile",
+              "id": "opea_service@prepare_doc_redis_prep_0-input-doc_input-UploadFile"
+            }
+          ],
+          "inputParams": [
+            {
+              "label": "Model Name",
+              "name": "modelName",
+              "type": "string",
+              "default": "BAAI/bge-large-en-v1.5",
+              "id": "opea_service@prepare_doc_redis_prep_0-input-modelName-string"
+            },
+            {
+              "label": "HuggingFace Token",
+              "name": "huggingFaceToken",
+              "type": "password",
+              "optional": true,
+              "id": "opea_service@prepare_doc_redis_prep_0-input-huggingFaceToken-password"
+            }
+          ],
+          "outputs": {},
+          "outputAnchors": [
+            {
+              "id": "opea_service@prepare_doc_redis_prep_0-output-opea_service@prepare_doc_redis_prep-EmbedDoc",
+              "name": "opea_service@prepare_doc_redis_prep",
+              "label": "EmbedDoc",
+              "description": "Data Preparation with redis using Langchain",
+              "type": "EmbedDoc"
+            }
+          ],
+          "id": "opea_service@prepare_doc_redis_prep_0",
+          "selected": false
+        },
+        "width": 300,
+        "height": 428,
+        "selected": false,
+        "positionAbsolute": {
+          "x": 7.328997846805251,
+          "y": 1615.0882311218359
+        },
+        "dragging": false
+      },
+      {
+        "id": "redis_vector_store_0",
+        "position": {
+          "x": 792.0415477563516,
+          "y": 1659.1365447342218
+        },
+        "type": "customNode",
+        "data": {
+          "label": "Redis Vector Store",
+          "name": "redis_vector_store",
+          "version": 1,
+          "type": "EmbedDoc",
+          "icon": "/usr/src/packages/server/src/nodes/vector stores.png",
+          "category": "VectorStores",
+          "description": "Redis Vector Store",
+          "baseClasses": [
+            "EmbedDoc"
+          ],
+          "tags": [
+            "OPEA"
+          ],
+          "inMegaservice": true,
+          "inputs": {
+            "prepared_doc": "{{opea_service@prepare_doc_redis_prep_0.data.instance}}"
+          },
+          "filePath": "/usr/src/packages/server/src/nodes/redis_vector_store.js",
+          "inputAnchors": [
+            {
+              "label": "Prepared Documents",
+              "name": "prepared_doc",
+              "type": "EmbedDoc",
+              "id": "redis_vector_store_0-input-prepared_doc-EmbedDoc"
+            }
+          ],
+          "inputParams": [],
+          "outputs": {},
+          "outputAnchors": [
+            {
+              "id": "redis_vector_store_0-output-redis_vector_store-EmbedDoc",
+              "name": "redis_vector_store",
+              "label": "EmbedDoc",
+              "description": "Redis Vector Store",
+              "type": "EmbedDoc"
+            }
+          ],
+          "id": "redis_vector_store_0",
+          "selected": false
+        },
+        "width": 300,
+        "height": 231,
+        "positionAbsolute": {
+          "x": 792.0415477563516,
+          "y": 1659.1365447342218
+        },
+        "selected": false
+      },
+      {
+        "id": "opea_service@embedding_tei_langchain_0",
+        "position": {
+          "x": 715.4584421600844,
+          "y": -197.98471823334398
+        },
+        "type": "customNode",
+        "data": {
+          "label": "TEI Embedding Langchain",
+          "name": "opea_service@embedding_tei_langchain",
+          "version": 1,
+          "type": "EmbedDoc",
+          "icon": "/usr/src/packages/server/src/nodes/embeddings.png",
+          "category": "Embeddings",
+          "description": "Text Embedding Inference using Langchain",
+          "baseClasses": [
+            "EmbedDoc",
+            "EmbeddingResponse",
+            "ChatCompletionRequest"
+          ],
+          "tags": [
+            "OPEA"
+          ],
+          "inMegaservice": true,
+          "dependent_services": {
+            "tei": {
+              "modelName": "",
+              "huggingFaceToken": ""
+            }
+          },
+          "inputs": {
+            "textToEmbed": "{{opea_service@rag_agent_0.data.instance}}",
+            "modelName": "BAAI/bge-large-en-v1.5",
+            "huggingFaceToken": ""
+          },
+          "filePath": "/usr/src/packages/server/src/nodes/tei_embedding.js",
+          "inputAnchors": [
+            {
+              "label": "Text To Embed",
+              "name": "textToEmbed",
+              "type": "TextDoc|EmbeddingRequest|ChatCompletionRequest",
+              "id": "opea_service@embedding_tei_langchain_0-input-textToEmbed-TextDoc|EmbeddingRequest|ChatCompletionRequest"
+            }
+          ],
+          "inputParams": [
+            {
+              "label": "Model Name",
+              "name": "modelName",
+              "type": "string",
+              "default": "BAAI/bge-large-en-v1.5",
+              "id": "opea_service@embedding_tei_langchain_0-input-modelName-string"
+            },
+            {
+              "label": "HuggingFace Token",
+              "name": "huggingFaceToken",
+              "type": "password",
+              "optional": true,
+              "id": "opea_service@embedding_tei_langchain_0-input-huggingFaceToken-password"
+            }
+          ],
+          "outputs": {},
+          "outputAnchors": [
+            {
+              "id": "opea_service@embedding_tei_langchain_0-output-opea_service@embedding_tei_langchain-EmbedDoc|EmbeddingResponse|ChatCompletionRequest",
+              "name": "opea_service@embedding_tei_langchain",
+              "label": "EmbedDoc",
+              "description": "Text Embedding Inference using Langchain",
+              "type": "EmbedDoc | EmbeddingResponse | ChatCompletionRequest"
+            }
+          ],
+          "id": "opea_service@embedding_tei_langchain_0",
+          "selected": false
+        },
+        "width": 300,
+        "height": 428,
+        "selected": false,
+        "positionAbsolute": {
+          "x": 715.4584421600844,
+          "y": -197.98471823334398
+        },
+        "dragging": false
+      },
+      {
+        "id": "opea_service@retriever_redis_0",
+        "position": {
+          "x": 1279.216157473191,
+          "y": -237.72484843730132
+        },
+        "type": "customNode",
+        "data": {
+          "label": "Redis Retreiver",
+          "name": "opea_service@retriever_redis",
+          "version": 1,
+          "type": "SearchedDoc",
+          "icon": "/usr/src/packages/server/src/nodes/opea-icon-color.svg",
+          "category": "Retriever",
+          "description": "Redis Retreiver with Langchain",
+          "baseClasses": [
+            "SearchedDoc",
+            "RetrievalResponse",
+            "ChatCompletionRequest"
+          ],
+          "tags": [
+            "OPEA"
+          ],
+          "inMegaservice": true,
+          "dependent_services": {
+            "tei": {
+              "modelName": "",
+              "huggingFaceToken": ""
+            }
+          },
+          "inputs": {
+            "text": "{{opea_service@embedding_tei_langchain_0.data.instance}}",
+            "vector_db": "{{redis_vector_store_0.data.instance}}",
+            "modelName": "BAAI/bge-base-en-v1.5",
+            "huggingFaceToken": "",
+            "search_type": "similarity"
+          },
+          "filePath": "/usr/src/packages/server/src/nodes/retriever_redis.js",
+          "inputAnchors": [
+            {
+              "label": "Search Query",
+              "name": "text",
+              "type": "EmbedDoc|RetrievalRequest|ChatCompletionRequest",
+              "id": "opea_service@retriever_redis_0-input-text-EmbedDoc|RetrievalRequest|ChatCompletionRequest"
+            },
+            {
+              "label": "Redis Vector Store",
+              "name": "vector_db",
+              "type": "EmbedDoc",
+              "id": "opea_service@retriever_redis_0-input-vector_db-EmbedDoc"
+            }
+          ],
+          "inputParams": [
+            {
+              "label": "Model Name",
+              "name": "modelName",
+              "type": "string",
+              "default": "BAAI/bge-base-en-v1.5",
+              "id": "opea_service@retriever_redis_0-input-modelName-string"
+            },
+            {
+              "label": "HuggingFace Token",
+              "name": "huggingFaceToken",
+              "type": "password",
+              "optional": true,
+              "id": "opea_service@retriever_redis_0-input-huggingFaceToken-password"
+            },
+            {
+              "label": "Search Type",
+              "name": "search_type",
+              "type": "options",
+              "default": "similarity",
+              "options": [
+                {
+                  "name": "similarity",
+                  "label": "similarity"
+                },
+                {
+                  "name": "similarity_distance_threshold",
+                  "label": "similarity_distance_threshold"
+                },
+                {
+                  "name": "similarity_score_threshold",
+                  "label": "similarity_score_threshold"
+                },
+                {
+                  "name": "mmr",
+                  "label": "mmr"
+                }
+              ],
+              "optional": true,
+              "additionalParams": true,
+              "inferenceParams": true,
+              "id": "opea_service@retriever_redis_0-input-search_type-options"
+            }
+          ],
+          "outputs": {},
+          "outputAnchors": [
+            {
+              "id": "opea_service@retriever_redis_0-output-opea_service@retriever_redis-SearchedDoc|RetrievalResponse|ChatCompletionRequest",
+              "name": "opea_service@retriever_redis",
+              "label": "SearchedDoc",
+              "description": "Redis Retreiver with Langchain",
+              "type": "SearchedDoc | RetrievalResponse | ChatCompletionRequest"
+            }
+          ],
+          "id": "opea_service@retriever_redis_0",
+          "selected": false
+        },
+        "width": 300,
+        "height": 531,
+        "selected": false,
+        "positionAbsolute": {
+          "x": 1279.216157473191,
+          "y": -237.72484843730132
+        },
+        "dragging": false
+      },
+      {
+        "id": "opea_service@reranking_tei_0",
+        "position": {
+          "x": 1736.1385022512086,
+          "y": 66.18907138348126
+        },
+        "type": "customNode",
+        "data": {
+          "label": "TEI Reranking",
+          "name": "opea_service@reranking_tei",
+          "version": 1,
+          "type": "LLMParamsDoc",
+          "icon": "/usr/src/packages/server/src/nodes/reranking.png",
+          "category": "Reranking",
+          "description": "TEI Reranking",
+          "baseClasses": [
+            "LLMParamsDoc",
+            "RerankingResponse",
+            "ChatCompletionRequest"
+          ],
+          "tags": [
+            "OPEA"
+          ],
+          "inMegaservice": true,
+          "dependent_services": {
+            "tei": {
+              "modelName": "",
+              "huggingFaceToken": ""
+            }
+          },
+          "inputs": {
+            "retreived_docs": "{{opea_service@retriever_redis_0.data.instance}}",
+            "modelName": "BAAI/bge-reranker-base",
+            "huggingFaceToken": "",
+            "top_n": 1
+          },
+          "filePath": "/usr/src/packages/server/src/nodes/tei_reranking.js",
+          "inputAnchors": [
+            {
+              "label": "Documents",
+              "name": "retreived_docs",
+              "type": "SearchedDocs|RerankingRequest|ChatCompletionRequest",
+              "id": "opea_service@reranking_tei_0-input-retreived_docs-SearchedDocs|RerankingRequest|ChatCompletionRequest"
+            }
+          ],
+          "inputParams": [
+            {
+              "label": "Model Name",
+              "name": "modelName",
+              "type": "string",
+              "default": "BAAI/bge-reranker-base",
+              "id": "opea_service@reranking_tei_0-input-modelName-string"
+            },
+            {
+              "label": "HuggingFace Token",
+              "name": "huggingFaceToken",
+              "type": "password",
+              "optional": true,
+              "id": "opea_service@reranking_tei_0-input-huggingFaceToken-password"
+            },
+            {
+              "label": "Top N",
+              "name": "top_n",
+              "type": "number",
+              "default": 1,
+              "optional": true,
+              "additionalParams": true,
+              "inferenceParams": true,
+              "id": "opea_service@reranking_tei_0-input-top_n-number"
+            }
+          ],
+          "outputs": {},
+          "outputAnchors": [
+            {
+              "id": "opea_service@reranking_tei_0-output-opea_service@reranking_tei-LLMParamsDoc|RerankingResponse|ChatCompletionRequest",
+              "name": "opea_service@reranking_tei",
+              "label": "LLMParamsDoc",
+              "description": "TEI Reranking",
+              "type": "LLMParamsDoc | RerankingResponse | ChatCompletionRequest"
+            }
+          ],
+          "id": "opea_service@reranking_tei_0",
+          "selected": false
+        },
+        "width": 300,
+        "height": 481,
+        "selected": false,
+        "positionAbsolute": {
+          "x": 1736.1385022512086,
+          "y": 66.18907138348126
+        },
+        "dragging": false
+      },
+      {
+        "id": "opea_service@sql_agent_1",
+        "position": {
+          "x": 683.6037087065724,
+          "y": 579.6925434054767
+        },
+        "type": "customNode",
+        "data": {
+          "label": "SQL Agent",
+          "name": "opea_service@sql_agent",
+          "version": 1,
+          "type": "AgentTask",
+          "icon": "/usr/src/packages/server/src/nodes/opea-icon-color.svg",
+          "category": "Agent",
+          "description": "Agent specifically designed and optimized for answering questions aabout data in SQL databases.",
+          "baseClasses": [
+            "AgentTask",
+            "ChatCompletionRequest"
+          ],
+          "tags": [
+            "OPEA"
+          ],
+          "inMegaservice": false,
+          "dependent_services": {
+            "tgi": {
+              "modelName": "",
+              "huggingFaceToken": ""
+            }
+          },
+          "outputs": {
+            "output": "ChatCompletionRequest"
+          },
+          "inputs": {
+            "query": "{{opea_service@supervisor_agent_0.data.instance}}",
+            "llmEngine": "openai",
+            "modelName": "gpt-4o-mini",
+            "huggingFaceToken": "",
+            "openaiApiKey": "to_be_filled",
+            "db_path": "mysql+mysqlconnector://studio:studio@mysql.mysql.svc.cluster.local:3306/Chinook",
+            "db_name": "Chinook",
+            "strategy": "sql_agent",
+            "temperature": 0.1,
+            "maxNewToken": 8192,
+            "recursionLimit": "12"
+          },
+          "filePath": "/usr/src/packages/server/src/nodes/sql_agent.js",
+          "inputAnchors": [
+            {
+              "label": "Search Query",
+              "name": "query",
+              "type": "ChatCompletionRequest|SqlAgent",
+              "id": "opea_service@sql_agent_1-input-query-ChatCompletionRequest|SqlAgent"
+            }
+          ],
+          "inputParams": [
+            {
+              "label": "LLM Engine",
+              "name": "llmEngine",
+              "type": "options",
+              "default": "tgi",
+              "options": [
+                {
+                  "name": "tgi",
+                  "label": "TGI"
+                },
+                {
+                  "name": "openai",
+                  "label": "OpenAI"
+                }
+              ],
+              "id": "opea_service@sql_agent_1-input-llmEngine-options"
+            },
+            {
+              "label": "Model Name",
+              "name": "modelName",
+              "type": "string",
+              "default": "Intel/neural-chat-7b-v3-3",
+              "id": "opea_service@sql_agent_1-input-modelName-string"
+            },
+            {
+              "label": "HuggingFace Token",
+              "name": "huggingFaceToken",
+              "type": "password",
+              "optional": true,
+              "id": "opea_service@sql_agent_1-input-huggingFaceToken-password"
+            },
+            {
+              "label": "OpenAI API Key",
+              "name": "openaiApiKey",
+              "type": "password",
+              "optional": true,
+              "id": "opea_service@sql_agent_1-input-openaiApiKey-password"
+            },
+            {
+              "label": "Database Path/URI",
+              "name": "db_path",
+              "type": "string",
+              "placeholder": "mysql://user:password@localhost:3306/mydatabase",
+              "id": "opea_service@sql_agent_1-input-db_path-string"
+            },
+            {
+              "label": "Database Name",
+              "name": "db_name",
+              "type": "string",
+              "optional": true,
+              "id": "opea_service@sql_agent_1-input-db_name-string"
+            },
+            {
+              "label": "Strategy",
+              "name": "strategy",
+              "type": "options",
+              "default": "sql_agent_llama",
+              "options": [
+                {
+                  "name": "sql_agent",
+                  "label": "sql_agent"
+                },
+                {
+                  "name": "sql_agent_llama",
+                  "label": "sql_agent_llama"
+                }
+              ],
+              "additionalParams": true,
+              "id": "opea_service@sql_agent_1-input-strategy-options"
+            },
+            {
+              "label": "Temperature",
+              "name": "temperature",
+              "type": "number",
+              "default": 0.1,
+              "additionalParams": true,
+              "id": "opea_service@sql_agent_1-input-temperature-number"
+            },
+            {
+              "label": "Max New Token",
+              "name": "maxNewToken",
+              "type": "number",
+              "default": 8192,
+              "additionalParams": true,
+              "id": "opea_service@sql_agent_1-input-maxNewToken-number"
+            },
+            {
+              "label": "Recursion Limit",
+              "name": "recursionLimit",
+              "type": "number",
+              "default": 10,
+              "additionalParams": true,
+              "id": "opea_service@sql_agent_1-input-recursionLimit-number"
+            }
+          ],
+          "outputAnchors": [
+            {
+              "name": "output",
+              "label": "Output",
+              "type": "options",
+              "description": "",
+              "options": [
+                {
+                  "id": "opea_service@sql_agent_1-output-ChatCompletionRequest-ChatCompletionRequest",
+                  "name": "ChatCompletionRequest",
+                  "label": "ChatCompletionRequest",
+                  "description": "",
+                  "type": "ChatCompletionRequest",
+                  "isAnchor": true
+                }
+              ],
+              "default": "ChatCompletionRequest"
+            }
+          ],
+          "id": "opea_service@sql_agent_1",
+          "selected": false
+        },
+        "width": 300,
+        "height": 873,
+        "selected": false,
+        "positionAbsolute": {
+          "x": 683.6037087065724,
+          "y": 579.6925434054767
+        },
+        "dragging": false
+      },
+      {
+        "id": "opea_service@supervisor_agent_0",
+        "position": {
+          "x": -372.8818421270502,
+          "y": 181.09632356120426
+        },
+        "type": "customNode",
+        "data": {
+          "label": "Supervisor Agent",
+          "name": "opea_service@supervisor_agent",
+          "version": 1,
+          "type": "Agent",
+          "icon": "/usr/src/packages/server/src/nodes/opea-icon-color.svg",
+          "category": "Agent",
+          "description": "ReAct Supervisor Agent built on Langchain/Langgraph framework",
+          "baseClasses": [
+            "Agent",
+            "ChatCompletionRequest"
+          ],
+          "tags": [
+            "OPEA"
+          ],
+          "inMegaservice": true,
+          "dependent_services": {
+            "tgi": {
+              "modelName": "",
+              "huggingFaceToken": ""
+            }
+          },
+          "outputs": {
+            "output": "RagAgent"
+          },
+          "inputs": {
+            "query": "{{chat_input_0.data.instance}}",
+            "llmEngine": "openai",
+            "modelName": "gpt-4o-mini",
+            "huggingFaceToken": "",
+            "openaiApiKey": "to_be_filled",
+            "strategy": "react_llama",
+            "temperature": 0.1,
+            "maxNewToken": 8192,
+            "recursionLimit": "12"
+          },
+          "filePath": "/usr/src/packages/server/src/nodes/supervisor_agent.js",
+          "inputAnchors": [
+            {
+              "label": "Search Query",
+              "name": "query",
+              "type": "ChatCompletionRequest",
+              "id": "opea_service@supervisor_agent_0-input-query-ChatCompletionRequest"
+            }
+          ],
+          "inputParams": [
+            {
+              "label": "LLM Engine",
+              "name": "llmEngine",
+              "type": "options",
+              "default": "tgi",
+              "options": [
+                {
+                  "name": "tgi",
+                  "label": "TGI"
+                },
+                {
+                  "name": "openai",
+                  "label": "OpenAI"
+                }
+              ],
+              "id": "opea_service@supervisor_agent_0-input-llmEngine-options"
+            },
+            {
+              "label": "Model Name",
+              "name": "modelName",
+              "type": "string",
+              "default": "Intel/neural-chat-7b-v3-3",
+              "id": "opea_service@supervisor_agent_0-input-modelName-string"
+            },
+            {
+              "label": "HuggingFace Token",
+              "name": "huggingFaceToken",
+              "type": "password",
+              "optional": true,
+              "id": "opea_service@supervisor_agent_0-input-huggingFaceToken-password"
+            },
+            {
+              "label": "OpenAI API Key",
+              "name": "openaiApiKey",
+              "type": "password",
+              "optional": true,
+              "id": "opea_service@supervisor_agent_0-input-openaiApiKey-password"
+            },
+            {
+              "label": "Strategy",
+              "name": "strategy",
+              "type": "options",
+              "default": "react_llama",
+              "options": [
+                {
+                  "name": "react_langchain",
+                  "label": "react_langchain"
+                },
+                {
+                  "name": "react_llama",
+                  "label": "react_llama"
+                }
+              ],
+              "additionalParams": true,
+              "id": "opea_service@supervisor_agent_0-input-strategy-options"
+            },
+            {
+              "label": "Temperature",
+              "name": "temperature",
+              "type": "number",
+              "default": 0.1,
+              "additionalParams": true,
+              "id": "opea_service@supervisor_agent_0-input-temperature-number"
+            },
+            {
+              "label": "Max New Token",
+              "name": "maxNewToken",
+              "type": "number",
+              "default": 8192,
+              "additionalParams": true,
+              "id": "opea_service@supervisor_agent_0-input-maxNewToken-number"
+            },
+            {
+              "label": "Recursion Limit",
+              "name": "recursionLimit",
+              "type": "number",
+              "default": 10,
+              "additionalParams": true,
+              "id": "opea_service@supervisor_agent_0-input-recursionLimit-number"
+            }
+          ],
+          "outputAnchors": [
+            {
+              "name": "output",
+              "label": "Output",
+              "type": "options",
+              "description": "",
+              "options": [
+                {
+                  "id": "opea_service@supervisor_agent_0-output-RagAgent-RagAgent",
+                  "name": "RagAgent",
+                  "label": "RagAgent",
+                  "description": "",
+                  "type": "RagAgent",
+                  "isAnchor": true
+                },
+                {
+                  "id": "opea_service@supervisor_agent_0-output-SqlAgent-SqlAgent",
+                  "name": "SqlAgent",
+                  "label": "SqlAgent",
+                  "description": "",
+                  "type": "SqlAgent",
+                  "isAnchor": true
+                },
+                {
+                  "id": "opea_service@supervisor_agent_0-output-ChatCompletionRequest-ChatCompletion",
+                  "name": "ChatCompletionRequest",
+                  "label": "ChatCompletionRequest",
+                  "description": "",
+                  "type": "ChatCompletion",
+                  "isAnchor": true
+                }
+              ],
+              "default": "RagAgent"
+            }
+          ],
+          "id": "opea_service@supervisor_agent_0",
+          "selected": false
+        },
+        "width": 300,
+        "height": 777,
+        "selected": false,
+        "positionAbsolute": {
+          "x": -372.8818421270502,
+          "y": 181.09632356120426
+        },
+        "dragging": false
+      },
+      {
+        "id": "opea_service@rag_agent_0",
+        "position": {
+          "x": 152.0318692908072,
+          "y": -239.69271170416874
+        },
+        "type": "customNode",
+        "data": {
+          "label": "Rag Agent",
+          "name": "opea_service@rag_agent",
+          "version": 1,
+          "type": "AgentTask",
+          "icon": "/usr/src/packages/server/src/nodes/opea-icon-color.svg",
+          "category": "Agent",
+          "description": "RAG Agent built on Langchain/Langgraph framework",
+          "baseClasses": [
+            "AgentTask",
+            "ChatCompletionRequest"
+          ],
+          "tags": [
+            "OPEA"
+          ],
+          "inMegaservice": false,
+          "megaserviceClient": true,
+          "dependent_services": {
+            "tgi": {
+              "modelName": "",
+              "huggingFaceToken": ""
+            }
+          },
+          "outputs": {
+            "output": "retrivalRequest"
+          },
+          "inputs": {
+            "query": "{{opea_service@supervisor_agent_0.data.instance}}",
+            "retrievalResponse": "{{opea_service@reranking_tei_0.data.instance}}",
+            "llmEngine": "openai",
+            "modelName": "gpt-4o-mini",
+            "huggingFaceToken": "",
+            "openaiApiKey": "to_be_filled",
+            "strategy": "rag_agent",
+            "temperature": 0.1,
+            "maxNewToken": 8192,
+            "recursionLimit": "12"
+          },
+          "filePath": "/usr/src/packages/server/src/nodes/rag_agent.js",
+          "inputAnchors": [
+            {
+              "label": "Search Query",
+              "name": "query",
+              "type": "ChatCompletionRequest|RagAgent",
+              "id": "opea_service@rag_agent_0-input-query-ChatCompletionRequest|RagAgent"
+            },
+            {
+              "label": "Retrieval Response",
+              "name": "retrievalResponse",
+              "type": "SearchedDoc|RetrievalResponse|ChatCompletionRequest",
+              "id": "opea_service@rag_agent_0-input-retrievalResponse-SearchedDoc|RetrievalResponse|ChatCompletionRequest"
+            }
+          ],
+          "inputParams": [
+            {
+              "label": "LLM Engine",
+              "name": "llmEngine",
+              "type": "options",
+              "default": "tgi",
+              "options": [
+                {
+                  "name": "tgi",
+                  "label": "TGI"
+                },
+                {
+                  "name": "openai",
+                  "label": "OpenAI"
+                }
+              ],
+              "id": "opea_service@rag_agent_0-input-llmEngine-options"
+            },
+            {
+              "label": "Model Name",
+              "name": "modelName",
+              "type": "string",
+              "default": "Intel/neural-chat-7b-v3-3",
+              "id": "opea_service@rag_agent_0-input-modelName-string"
+            },
+            {
+              "label": "HuggingFace Token",
+              "name": "huggingFaceToken",
+              "type": "password",
+              "optional": true,
+              "id": "opea_service@rag_agent_0-input-huggingFaceToken-password"
+            },
+            {
+              "label": "OpenAI API Key",
+              "name": "openaiApiKey",
+              "type": "password",
+              "optional": true,
+              "id": "opea_service@rag_agent_0-input-openaiApiKey-password"
+            },
+            {
+              "label": "Strategy",
+              "name": "strategy",
+              "type": "options",
+              "default": "rag_agent_llama",
+              "options": [
+                {
+                  "name": "rag_agent",
+                  "label": "rag_agent"
+                },
+                {
+                  "name": "rag_agent_llama",
+                  "label": "rag_agent_llama"
+                }
+              ],
+              "additionalParams": true,
+              "id": "opea_service@rag_agent_0-input-strategy-options"
+            },
+            {
+              "label": "Temperature",
+              "name": "temperature",
+              "type": "number",
+              "default": 0.1,
+              "additionalParams": true,
+              "id": "opea_service@rag_agent_0-input-temperature-number"
+            },
+            {
+              "label": "Max New Token",
+              "name": "maxNewToken",
+              "type": "number",
+              "default": 8192,
+              "additionalParams": true,
+              "id": "opea_service@rag_agent_0-input-maxNewToken-number"
+            },
+            {
+              "label": "Recursion Limit",
+              "name": "recursionLimit",
+              "type": "number",
+              "default": 10,
+              "additionalParams": true,
+              "id": "opea_service@rag_agent_0-input-recursionLimit-number"
+            }
+          ],
+          "outputAnchors": [
+            {
+              "name": "output",
+              "label": "Output",
+              "type": "options",
+              "description": "",
+              "options": [
+                {
+                  "id": "opea_service@rag_agent_0-output-retrivalRequest-ChatCompletionRequest",
+                  "name": "retrivalRequest",
+                  "label": "Retrieval Request",
+                  "description": "",
+                  "type": "ChatCompletionRequest",
+                  "isAnchor": true
+                },
+                {
+                  "id": "opea_service@rag_agent_0-output-ChatCompletionRequest-ChatCompletionRequest",
+                  "name": "ChatCompletionRequest",
+                  "label": "ChatCompletionRequest",
+                  "description": "",
+                  "type": "ChatCompletionRequest",
+                  "isAnchor": true
+                }
+              ],
+              "default": "retrivalRequest"
+            }
+          ],
+          "id": "opea_service@rag_agent_0",
+          "selected": false
+        },
+        "width": 300,
+        "height": 777,
+        "selected": false,
+        "positionAbsolute": {
+          "x": 152.0318692908072,
+          "y": -239.69271170416874
+        },
+        "dragging": false
+      }
+    ],
+    "edges": [
+      {
+        "source": "doc_input_0",
+        "sourceHandle": "doc_input_0-output-doc_input-UploadFile",
+        "target": "opea_service@prepare_doc_redis_prep_0",
+        "targetHandle": "opea_service@prepare_doc_redis_prep_0-input-doc_input-UploadFile",
+        "type": "buttonedge",
+        "id": "doc_input_0-doc_input_0-output-doc_input-UploadFile-opea_service@prepare_doc_redis_prep_0-opea_service@prepare_doc_redis_prep_0-input-doc_input-UploadFile"
+      },
+      {
+        "source": "opea_service@prepare_doc_redis_prep_0",
+        "sourceHandle": "opea_service@prepare_doc_redis_prep_0-output-opea_service@prepare_doc_redis_prep-EmbedDoc",
+        "target": "redis_vector_store_0",
+        "targetHandle": "redis_vector_store_0-input-prepared_doc-EmbedDoc",
+        "type": "buttonedge",
+        "id": "opea_service@prepare_doc_redis_prep_0-opea_service@prepare_doc_redis_prep_0-output-opea_service@prepare_doc_redis_prep-EmbedDoc-redis_vector_store_0-redis_vector_store_0-input-prepared_doc-EmbedDoc"
+      },
+      {
+        "source": "opea_service@embedding_tei_langchain_0",
+        "sourceHandle": "opea_service@embedding_tei_langchain_0-output-opea_service@embedding_tei_langchain-EmbedDoc|EmbeddingResponse|ChatCompletionRequest",
+        "target": "opea_service@retriever_redis_0",
+        "targetHandle": "opea_service@retriever_redis_0-input-text-EmbedDoc|RetrievalRequest|ChatCompletionRequest",
+        "type": "buttonedge",
+        "id": "opea_service@embedding_tei_langchain_0-opea_service@embedding_tei_langchain_0-output-opea_service@embedding_tei_langchain-EmbedDoc|EmbeddingResponse|ChatCompletionRequest-opea_service@retriever_redis_0-opea_service@retriever_redis_0-input-text-EmbedDoc|RetrievalRequest|ChatCompletionRequest"
+      },
+      {
+        "source": "redis_vector_store_0",
+        "sourceHandle": "redis_vector_store_0-output-redis_vector_store-EmbedDoc",
+        "target": "opea_service@retriever_redis_0",
+        "targetHandle": "opea_service@retriever_redis_0-input-vector_db-EmbedDoc",
+        "type": "buttonedge",
+        "id": "redis_vector_store_0-redis_vector_store_0-output-redis_vector_store-EmbedDoc-opea_service@retriever_redis_0-opea_service@retriever_redis_0-input-vector_db-EmbedDoc"
+      },
+      {
+        "source": "opea_service@retriever_redis_0",
+        "sourceHandle": "opea_service@retriever_redis_0-output-opea_service@retriever_redis-SearchedDoc|RetrievalResponse|ChatCompletionRequest",
+        "target": "opea_service@reranking_tei_0",
+        "targetHandle": "opea_service@reranking_tei_0-input-retreived_docs-SearchedDocs|RerankingRequest|ChatCompletionRequest",
+        "type": "buttonedge",
+        "id": "opea_service@retriever_redis_0-opea_service@retriever_redis_0-output-opea_service@retriever_redis-SearchedDoc|RetrievalResponse|ChatCompletionRequest-opea_service@reranking_tei_0-opea_service@reranking_tei_0-input-retreived_docs-SearchedDocs|RerankingRequest|ChatCompletionRequest"
+      },
+      {
+        "source": "chat_input_0",
+        "sourceHandle": "chat_input_0-output-chat_input-ChatCompletionRequest",
+        "target": "opea_service@supervisor_agent_0",
+        "targetHandle": "opea_service@supervisor_agent_0-input-query-ChatCompletionRequest",
+        "type": "buttonedge",
+        "id": "chat_input_0-chat_input_0-output-chat_input-ChatCompletionRequest-opea_service@supervisor_agent_0-opea_service@supervisor_agent_0-input-query-ChatCompletionRequest"
+      },
+      {
+        "source": "opea_service@supervisor_agent_0",
+        "sourceHandle": "opea_service@supervisor_agent_0-output-RagAgent-RagAgent",
+        "target": "opea_service@rag_agent_0",
+        "targetHandle": "opea_service@rag_agent_0-input-query-ChatCompletionRequest|RagAgent",
+        "type": "buttonedge",
+        "id": "opea_service@supervisor_agent_0-opea_service@supervisor_agent_0-output-RagAgent-RagAgent-opea_service@rag_agent_0-opea_service@rag_agent_0-input-query-ChatCompletionRequest|RagAgent"
+      },
+      {
+        "source": "opea_service@supervisor_agent_0",
+        "sourceHandle": "opea_service@supervisor_agent_0-output-SqlAgent-SqlAgent",
+        "target": "opea_service@sql_agent_1",
+        "targetHandle": "opea_service@sql_agent_1-input-query-ChatCompletionRequest|SqlAgent",
+        "type": "buttonedge",
+        "id": "opea_service@supervisor_agent_0-opea_service@supervisor_agent_0-output-SqlAgent-SqlAgent-opea_service@sql_agent_1-opea_service@sql_agent_1-input-query-ChatCompletionRequest|SqlAgent"
+      },
+      {
+        "source": "opea_service@supervisor_agent_0",
+        "sourceHandle": "opea_service@supervisor_agent_0-output-ChatCompletionRequest-ChatCompletion",
+        "target": "chat_completion_0",
+        "targetHandle": "chat_completion_0-input-llm_response-ChatCompletion",
+        "type": "buttonedge",
+        "id": "opea_service@supervisor_agent_0-opea_service@supervisor_agent_0-output-ChatCompletionRequest-ChatCompletion-chat_completion_0-chat_completion_0-input-llm_response-ChatCompletion"
+      },
+      {
+        "source": "opea_service@reranking_tei_0",
+        "sourceHandle": "opea_service@reranking_tei_0-output-opea_service@reranking_tei-LLMParamsDoc|RerankingResponse|ChatCompletionRequest",
+        "target": "opea_service@rag_agent_0",
+        "targetHandle": "opea_service@rag_agent_0-input-retrievalResponse-SearchedDoc|RetrievalResponse|ChatCompletionRequest",
+        "type": "buttonedge",
+        "id": "opea_service@reranking_tei_0-opea_service@reranking_tei_0-output-opea_service@reranking_tei-LLMParamsDoc|RerankingResponse|ChatCompletionRequest-opea_service@rag_agent_0-opea_service@rag_agent_0-input-retrievalResponse-SearchedDoc|RetrievalResponse|ChatCompletionRequest"
+      },
+      {
+        "source": "opea_service@rag_agent_0",
+        "sourceHandle": "opea_service@rag_agent_0-output-retrivalRequest-ChatCompletionRequest",
+        "target": "opea_service@embedding_tei_langchain_0",
+        "targetHandle": "opea_service@embedding_tei_langchain_0-input-textToEmbed-TextDoc|EmbeddingRequest|ChatCompletionRequest",
+        "type": "buttonedge",
+        "id": "opea_service@rag_agent_0-opea_service@rag_agent_0-output-retrivalRequest-ChatCompletionRequest-opea_service@embedding_tei_langchain_0-opea_service@embedding_tei_langchain_0-input-textToEmbed-TextDoc|EmbeddingRequest|ChatCompletionRequest"
+      }
+    ]
+  }

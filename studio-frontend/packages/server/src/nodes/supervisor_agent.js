@@ -105,8 +105,7 @@ class OPEARedisRetreiver {
                         name:'react_llama',
                         label: 'react_llama'
                     }
-                ],
-                additionalParams: true
+                ]
             },
             {
                 label: 'Temperature',

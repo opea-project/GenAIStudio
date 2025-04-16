@@ -10,13 +10,13 @@ import { styled } from '@mui/material/styles'
 
 // project imports
 import LogoSection from '../LogoSection'
-import ProfileSection from './ProfileSection'
+// import ProfileSection from './ProfileSection'
 
 // assets
-import { IconMenu2 } from '@tabler/icons-react'
+// import { IconMenu2 } from '@tabler/icons-react'
 
 // store
-import { SET_DARKMODE } from '@/store/actions'
+// import { SET_DARKMODE } from '@/store/actions'
 
 // keycloak context
 import LogoutIcon from '@mui/icons-material/Logout';
@@ -87,28 +87,29 @@ const MaterialUISwitch = styled(Switch)(({ theme }) => ({
     }
 }))
 
-const Header = ({ handleLeftDrawerToggle }) => {
+const Header = ({userId}) => {
+    // console.log ('Header', userId)
     const theme = useTheme()
-    const navigate = useNavigate()
+    // const navigate = useNavigate()
 
-    const customization = useSelector((state) => state.customization)
+    // const customization = useSelector((state) => state.customization)
 
     // const [isDark, setIsDark] = useState(customization.isDarkMode)
-    const [isDark, setIsDark] = useState(false)
-    const dispatch = useDispatch()
+    // const [isDark, setIsDark] = useState(false)
+    // const dispatch = useDispatch()
 
-    const changeDarkMode = () => {
-        dispatch({ type: SET_DARKMODE, isDarkMode: !isDark })
-        setIsDark((isDark) => !isDark)
-        localStorage.setItem('isDarkMode', !isDark)
-    }
+    // const changeDarkMode = () => {
+    //     dispatch({ type: SET_DARKMODE, isDarkMode: !isDark })
+    //     setIsDark((isDark) => !isDark)
+    //     localStorage.setItem('isDarkMode', !isDark)
+    // }
 
-    const signOutClicked = () => {
-        localStorage.removeItem('username')
-        localStorage.removeItem('password')
-        navigate('/', { replace: true })
-        navigate(0)
-    }
+    // const signOutClicked = () => {
+    //     localStorage.removeItem('username')
+    //     localStorage.removeItem('password')
+    //     navigate('/', { replace: true })
+    //     navigate(0)
+    // }
 
     return (
         <>
@@ -137,13 +138,30 @@ const Header = ({ handleLeftDrawerToggle }) => {
                     </Box>
                 </Box>
 
+                
                 {/* Logout Button */}
                 <Box
                     sx={{
                         display: 'flex',
                         alignItems: 'center',
+                        gap: 2,
                     }}
                 >
+                    <Avatar
+                        variant='rounded'
+                        sx={{
+                            ...theme.typography.commonAvatar,
+                            ...theme.typography.mediumAvatar,
+                            transition: 'all .2s ease-in-out',
+                            background: theme.palette.secondary.light,
+                            color: theme.palette.secondary.dark,
+                        }}
+                        color='inherit'
+                    >
+                        {/* {...stringAvatar(userId)} */}
+                        {userId[0].toUpperCase()}{userId[1].toUpperCase()}
+                    </Avatar>
+
                     <LogoutButton />
                 </Box>
             </Box>

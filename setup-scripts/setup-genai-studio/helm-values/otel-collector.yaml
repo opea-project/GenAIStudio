@@ -1,0 +1,41 @@
+mode: deployment
+
+image:
+  repository: "otel/opentelemetry-collector-contrib"
+  tag: "latest"
+
+config:
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: 0.0.0.0:4317
+        http:
+          endpoint: 0.0.0.0:4318
+
+  processors:
+    batch:
+      timeout: 10s
+      send_batch_size: 512
+
+  exporters:
+    clickhouse:
+      endpoint: tcp://clickhouse.tracing.svc.cluster.local:9000
+      database: otel
+      ttl: 72h
+      traces_table_name: otel_traces
+      logs_table_name: otel_logs
+      create_schema: true
+      timeout: 5s
+      retry_on_failure:
+        enabled: true
+        initial_interval: 5s
+        max_interval: 30s
+        max_elapsed_time: 300s
+
+  service:
+    pipelines:
+      traces:
+        receivers: [otlp]
+        processors: [batch]
+        exporters: [clickhouse]

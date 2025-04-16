@@ -101,8 +101,7 @@ class OPEARedisRetreiver {
                         name:'sql_agent_llama',
                         label: 'sql_agent_llama'
                     }
-                ],
-                additionalParams: true
+                ]
             },
             {
                 label: 'Temperature',

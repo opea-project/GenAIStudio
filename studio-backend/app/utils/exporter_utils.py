@@ -2,7 +2,6 @@ import os
 import copy
 
 TEMPLATES_DIR = os.path.join(os.path.dirname(__file__), '..', 'templates')
-base_port = 9000
 
 manifest_map = {
         "redis_vector_store" : "microsvc-manifests/redis-vector-db.yaml",
@@ -28,7 +27,10 @@ compose_map = {
         "opea_service@retriever_redis" : "microsvc-composes/retriever-usvc.yaml",
         "opea_service@reranking_tei" : "microsvc-composes/reranking-usvc.yaml", 
         "opea_service@llm_tgi" : "microsvc-composes/llm-uservice.yaml",
-        "app" : "app/app.compose.yaml"
+        "app" : "app/app.compose.yaml",
+        "opea_service@supervisor_agent" : "microsvc-composes/supervisor-agent.yaml",
+        "opea_service@rag_agent" : "microsvc-composes/rag-agent.yaml",
+        "opea_service@sql_agent" : "microsvc-composes/sql-agent.yaml",
 }
 
 # Define a dictionary mapping opea service types to their ports
@@ -49,8 +51,15 @@ opea_url_name = {
     "opea_service@llm_tgi" : "APP_CHAT_COMPLETEION_SERVICE_URL",
 }
 
+additional_files_map = {
+    "opea_service@supervisor_agent" : [{"tools/": "agent-tools/"}],
+    "opea_service@rag_agent" : [{"tools/": "agent-tools/"}],
+    "opea_service@sql_agent" : [{"tools/": "agent-tools/"}],
+}
+
 def process_opea_services(proj_info_json):
-    global base_port
+    print("exporter_utils.py: process_opea_services")
+    base_port = 9000
     # Create a deep copy of the proj_info_json to avoid modifying the original data
     proj_info_copy = copy.deepcopy(proj_info_json)
 
@@ -106,7 +115,7 @@ def process_opea_services(proj_info_json):
             'service_type': 'redis_vector_store',
             'endpoint': endpoint_name,
             'port': port,
-            'port_key': port_key,
+            'port_key': f"${{{port_key}}}",
             'port_insight': port_insight
         }
     
@@ -135,7 +144,7 @@ def process_opea_services(proj_info_json):
                     'service_type': service_type,
                     'endpoint': endpoint_name,
                     'port': port,
-                    'port_key': port_key,
+                    'port_key': f"${{{port_key}}}",
                     **service_info  # Unpack the service_info dictionary
                 }
                 
@@ -155,6 +164,7 @@ def process_opea_services(proj_info_json):
                 **service_info  # Unpack the service_info dictionary
             }
 
+    # print("exporter_utils.py: process_opea_services: services", services)
     # Initialize a dictionary to hold the updated nodes with service mappings
     updated_nodes = {}
 
@@ -221,12 +231,13 @@ def process_opea_services(proj_info_json):
             'endpoint': opea_service_endpoint,
             'service_type': node_info['service_type'],
             'port': base_port,
-            'port_key': port_key,
+            'port_key': f"${{{port_key}}}",
             **node_info['params'],
             **service_info_dict  # Unpack the service_info_dict
         }
 
-    # Update the supervisor_agent nodes with connected agents' endpoints and ports
+    # print("exporter_utils.py: process_opea_services: updated_nodes", updated_nodes)
+    # Update the agent nodes
     for node_name, node_info in updated_nodes.items():
         if 'supervisor_agent' in node_name:
             for connected_agent in node_info['connected_agent']:
@@ -235,17 +246,27 @@ def process_opea_services(proj_info_json):
                 updated_nodes[node_name][f"{prefix}_port"] = updated_nodes[connected_agent]['port']
             updated_nodes[node_name].pop('connected_agent', None)
         if 'rag_agent' in node_name:
-            updated_nodes[node_name]['megasvc_endpoint'] = "app-backend:8888/v1/app-backend"
+            updated_nodes[node_name]['megasvc_endpoint_port'] = "8888/v1/app-backend"
             updated_nodes[node_name]['rag_name'] = node_name.replace('opea_service@', '')
         if "llmEngine" in node_info and node_info["llmEngine"] == "openai":
             updated_nodes[node_name]['llm_endpoint'] = "NA"
             updated_nodes[node_name]['llm_port'] = "NA"
+
+    # Update supervisor_agent with dependant endpoints
+    for node_name, node_info in updated_nodes.items():
+        if 'supervisor_agent' in node_name:
+            # Collect all keys ending with '_endpoint' and add them to dependent_endpoints
+            dependent_endpoints = [
+                value for key, value in node_info.items() if key.endswith('_endpoint')
+            ]
+            updated_nodes[node_name]['dependent_endpoints'] = dependent_endpoints
 
     # Merge the updated_nodes with the services dictionary
     services.update(updated_nodes)
 
     # Extract endpoint list from all the services up until now
     endpoint_list = [service["endpoint"] for service in services.values()]
+    # print("exporter_utils.py: process_opea_services: endpoint_list", endpoint_list)
 
     # Extract ui_config_info
     ui_config_info = {}
@@ -264,7 +285,8 @@ def process_opea_services(proj_info_json):
     # Get ports info for env
     ports_info = {}
 
-    for service_name, config in ui_config_info.items():
+    for service_name, config in services.items():
+        service_name = service_name.replace('opea_service@', '')
         port_key = f"{service_name.replace('-', '_')}_port"
         ports_info[port_key] = config["port"]
 
@@ -279,9 +301,36 @@ def process_opea_services(proj_info_json):
         }
 
     )
+    
+    
+    # Check for additional files
+    additional_files = {}
+    for node_name, node_info in services.items():
+        # print("exporter_utils.py: additional_files: node_name", node_name, "service_type", node_info['service_type'])
+        if node_info['service_type'] in additional_files_map:
+            # Get the list of additional files for this service type
+            additional_files_list = additional_files_map[node_info['service_type']]
+            for additional_file in additional_files_list:
+                for file_path, target_path in additional_file.items():
+                    # print("exporter_utils.py: additional_files: file_path", file_path, "target_path", target_path)
+                    # Check if the file exists
+                    full_file_path = os.path.join(TEMPLATES_DIR, file_path)
+                    if os.path.exists(full_file_path):
+                        # print("exporter_utils.py: additional_files: File exists:", full_file_path)
+                        # Use the file path as the key to avoid duplication
+                        additional_files[full_file_path] = {
+                            'source': full_file_path,
+                            'target': target_path
+                        }
+                    else:
+                        print("exporter_utils.py: additional_files: File does not exist:", full_file_path)
+
+    # Convert the dictionary values back to a list
+    additional_files = list(additional_files.values())
 
     services_info = {
-        'services': services
+        'services': services,
+        'additional_files': additional_files,
     }
 
     # Return the processed data with updated services

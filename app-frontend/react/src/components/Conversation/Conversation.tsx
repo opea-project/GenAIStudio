@@ -33,7 +33,7 @@ const Conversation = ({ title, enabledUiFeatures }: ConversationProps) => {
   const selectedConversation = conversations.find(x => x.conversationId === selectedConversationId);
   const scrollViewport = useRef<HTMLDivElement>(null);
 
-  const [tokenLimit, setTokenLimit] = useState<number>(50);
+  const [tokenLimit, setTokenLimit] = useState<number>(200);
   const [temperature, setTemperature] = useState<number>(0.30);
 
   const [messageTokenData, setMessageTokenData] = useState<{ [key: string]: { tokens: number; rate: number; time: number } }>({});

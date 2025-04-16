@@ -51,6 +51,7 @@ spec:
         env:
         - name: USE_NODE_ID_AS_IP
           value: 'true'
+        __TELEMETRY_ENDPOINT__
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:

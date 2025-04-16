@@ -16,11 +16,14 @@
             "log-opts": {
               "max-size" : "100m"
             },
-            "storage-driver": "overlay2".
+            "storage-driver": "overlay2",
             "insecure-registries": [
               "{{ groups['k8_master'][0] }}:5000"
             ]
           }
+      notify:
+        - Reload Docker daemon
+        - Restart Docker service
 
   handlers:
     - name: Reload Docker daemon

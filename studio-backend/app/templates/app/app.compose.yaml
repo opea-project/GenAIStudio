@@ -3,6 +3,7 @@ app-backend:
   container_name: app-backend
   volumes:
   - ./workflow-info.json:/home/user/config/workflow-info.json
+  - ./.env:/home/user/config/.env
   depends_on:
   __BACKEND_ENDPOINTS_LIST_PLACEHOLDER__
   ports:

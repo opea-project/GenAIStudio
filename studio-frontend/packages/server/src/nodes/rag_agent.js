@@ -101,8 +101,7 @@ class OPEARedisRetreiver {
                         name:'rag_agent_llama',
                         label: 'rag_agent_llama'
                     }
-                ],
-                additionalParams: true
+                ]
             },
             {
                 label: 'Temperature',

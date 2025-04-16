@@ -17,7 +17,7 @@ data:
   tools: "/home/user/tools/worker_agent_tools.yaml"
   require_human_feedback: "false"
   llm_endpoint_url: "http://{llm_endpoint}:{llm_port}"
-  RETRIEVAL_TOOL_URL: "http://{megasvc_endpoint}/{rag_name}"
+  RETRIEVAL_TOOL_URL: "http://app-backend:{megasvc_endpoint_port}/{rag_name}"
   PORT: "9095"
   OPENAI_API_KEY: "{openaiApiKey}"
 
