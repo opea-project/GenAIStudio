@@ -181,6 +181,7 @@ let currentAgentSteps: AgentStep[] = []; // Temporary storage for steps during s
 
 export const doConversation = (conversationRequest: ConversationRequest) => {
   const { conversationId, userPrompt, messages, model, maxTokens, temperature } = conversationRequest;
+  // const [isInThink, setIsInThink] = useState(false);
   if (!conversationId) {
     const id = uuidv4();
     store.dispatch(
@@ -211,6 +212,7 @@ export const doConversation = (conversationRequest: ConversationRequest) => {
   let thinkBuffer = ""; // Accumulates data for think blocks
   let postThinkBuffer = ""; // Accumulates plain text after last </think>
   let isInThink = false; // Tracks if we're inside a <think> block
+  // setIsInThinkMode(false); // Reset the think mode state
   currentAgentSteps = []; // Reset steps for this message
   isAgent = false; // Tracks if this is an agent message (set once, never reset)
   let isMessageDispatched = false; // Tracks if the final message has been dispatched
@@ -286,6 +288,7 @@ export const doConversation = (conversationRequest: ConversationRequest) => {
             } else {
               // Start or continue think block
               isInThink = true;
+              // setIsInThinkMode(true); // Set think mode state
               thinkBuffer += part;
               // Check if part contains </think>
               if (part.includes("</think>")) {
@@ -294,6 +297,7 @@ export const doConversation = (conversationRequest: ConversationRequest) => {
                 processThinkContent(thinkBuffer);
                 thinkBuffer = "";
                 isInThink = false;
+                // setIsInThinkMode(false); // Reset think mode state
                 if (afterThink) {
                   // Handle content after </think> as non-think
                   if (!afterThink.includes("<think>")) {
@@ -302,6 +306,7 @@ export const doConversation = (conversationRequest: ConversationRequest) => {
                   } else {
                     thinkBuffer = afterThink;
                     isInThink = true;
+                    // setIsInThinkMode(true); // Set think mode state
                   }
                 }
               }
@@ -316,6 +321,7 @@ export const doConversation = (conversationRequest: ConversationRequest) => {
             processThinkContent(thinkBuffer);
             thinkBuffer = "";
             isInThink = false;
+            // setIsInThinkMode(false); // Reset think mode state
             if (afterThink) {
               // Handle content after </think>
               if (!afterThink.includes("<think>")) {
@@ -324,6 +330,7 @@ export const doConversation = (conversationRequest: ConversationRequest) => {
               } else {
                 thinkBuffer = afterThink;
                 isInThink = true;
+                // setIsInThinkMode(true); // Set think mode state
               }
             }
           }
