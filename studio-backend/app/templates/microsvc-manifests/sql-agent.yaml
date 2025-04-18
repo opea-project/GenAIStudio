@@ -72,9 +72,9 @@ spec:
           envFrom:
             - configMapRef:
                 name: config-{endpoint}
-          volumeMounts:
-            - name: agent-tools
-              mountPath: /home/user/tools/
+          # volumeMounts:
+          #   - name: agent-tools
+          #     mountPath: /home/user/tools/
           securityContext:
             runAsUser: 0
             runAsGroup: 0
@@ -92,9 +92,9 @@ spec:
               python agent.py
           ports:
             - containerPort: 9096
-          volumeMounts:
-            - name: agent-tools
-              mountPath: /home/user/tools/
+          # volumeMounts:
+            # - name: agent-tools
+            #   mountPath: /home/user/tools/
           envFrom:
             - configMapRef:
                 name: config-{endpoint}
