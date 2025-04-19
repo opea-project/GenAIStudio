@@ -19,6 +19,7 @@ export interface ConversationMessageProps {
   tokenRate?: number;
   elapsedTime?: number;
   agentSteps: AgentStep[];
+  // isInThink: boolean;
 }
 
 export function ConversationMessage({ human, message, date, elapsedTime, tokenCount, tokenRate, agentSteps }: ConversationMessageProps) {

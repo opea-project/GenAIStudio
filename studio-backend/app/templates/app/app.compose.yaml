@@ -48,6 +48,6 @@ app-nginx:
     - BACKEND_SERVICE_IP=${public_host_ip}
     - BACKEND_SERVICE_PORT=8888
     - DATAPREP_SERVICE_IP=${public_host_ip}
-    - DATAPREP_SERVICE_PORT=6007
+    - DATAPREP_SERVICE_PORT=${prepare_doc_redis_prep_0_port}
   ipc: host
   restart: always

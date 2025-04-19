@@ -8,6 +8,7 @@ export type ConversationRequest = {
   model: string;
   maxTokens: number;
   temperature: number;
+  // setIsInThinkMode: (isInThinkMode: boolean) => void;
 };
 
 export enum MessageRole {
