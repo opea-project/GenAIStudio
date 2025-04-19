@@ -3,8 +3,8 @@
   container_name: "{{endpoint}}"
   ports:
     - "{{port_key}}:9096"
-  volumes:
-    - ./agent-tools/:/home/user/tools/
+  # volumes:
+  #   - ./agent-tools/:/home/user/tools/
   ipc: host
   environment:
     ip_address: ${public_host_ip}
