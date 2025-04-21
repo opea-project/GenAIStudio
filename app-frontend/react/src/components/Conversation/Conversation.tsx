@@ -41,6 +41,7 @@ const Conversation = ({ title, enabledUiFeatures }: ConversationProps) => {
   const [startTime, setStartTime] = useState<number | null>(null);
   const [isAssistantTyping, setIsAssistantTyping] = useState<boolean>(false);
   const [showInferenceParams, setShowInferenceParams] = useState<boolean>(true);
+  // const [isInThinkMode, setIsInThinkMode] = useState<boolean>(false);
 
   const toSend = "Enter";
 
@@ -74,6 +75,7 @@ const Conversation = ({ title, enabledUiFeatures }: ConversationProps) => {
       maxTokens: tokenLimit,
       temperature: temperature,
       model: "Intel/neural-chat-7b-v3-3",
+      // setIsInThinkMode
     });
     setPrompt("");
     setStartTime(Date.now());
@@ -89,24 +91,38 @@ const Conversation = ({ title, enabledUiFeatures }: ConversationProps) => {
       let tokenLength: number;
       if (isAgent) {
         const currentSteps = getCurrentAgentSteps();
-        const allContent = currentSteps.flatMap(step => step.content).join(" ");
-        tokenLength = allContent.split(" ").length;
+        const stepsContent = currentSteps.flatMap(step => step.content).join(" ");
+        const stepsSource = currentSteps.flatMap(step => step.source).join(" ");
+        const allContent = [stepsContent, stepsSource, onGoingResult].filter(str => str.trim()).join(" ");
+        let prevTokenLen = messageTokenData[`${selectedConversationId}-${currentMessageIndex}`]?.tokens || 0;
+        tokenLength = allContent.split(/\s+/).filter(token => token.length > 0).length + prevTokenLen;
+  
+        console.log("Agent Token Calc:", {
+          stepsContent,
+          stepsSource,
+          onGoingResult,
+          tokenLength
+        });
       } else {
-        tokenLength = onGoingResult.split(" ").length;
+        tokenLength = onGoingResult.split(/\s+/).filter(token => token.length > 0).length;
       }
-
+  
       const currentTimestamp = Date.now();
       const elapsedTime = (currentTimestamp - startTime) / 1000;
       const tokenRate = elapsedTime > 0 ? tokenLength / elapsedTime : 0;
-
-      setMessageTokenData((prev) => ({
-        ...prev,
-        [`${selectedConversationId}-${currentMessageIndex}`]: { tokens: tokenLength, rate: tokenRate, time: elapsedTime },
-      }));
-
+  
+      setMessageTokenData((prev) => {
+        const updatedData = {
+          ...prev,
+          [`${selectedConversationId}-${currentMessageIndex}`]: { tokens: tokenLength, rate: tokenRate, time: elapsedTime },
+        };
+        console.log("Updated token data:", updatedData);
+        return updatedData;
+      });
+  
       setIsAssistantTyping(false);
     }
-
+  
     scrollToBottom();
   }, [onGoingResult, startTime, selectedConversation?.Messages, currentMessageIndex, isAgent]);
 
@@ -180,6 +196,7 @@ const Conversation = ({ title, enabledUiFeatures }: ConversationProps) => {
                   tokenCount={message.role === MessageRole.Assistant ? tokens : undefined}
                   tokenRate={message.role === MessageRole.Assistant ? rate : undefined}
                   agentSteps={message.agentSteps || []}
+                  // isInThink={isInThinkMode}
                 />
               );
             })}
@@ -194,6 +211,7 @@ const Conversation = ({ title, enabledUiFeatures }: ConversationProps) => {
                 tokenCount={0}
                 tokenRate={0}
                 agentSteps={getCurrentAgentSteps()}
+                // isInThink={isInThinkMode}
               />
             )}
 
@@ -207,40 +225,40 @@ const Conversation = ({ title, enabledUiFeatures }: ConversationProps) => {
                 tokenCount={messageTokenData[`${selectedConversationId}-${currentMessageIndex}`]?.tokens}
                 tokenRate={messageTokenData[`${selectedConversationId}-${currentMessageIndex}`]?.rate}
                 agentSteps={getCurrentAgentSteps()}
+                // isInThink={isInThinkMode}
               />
             )}
           </div>
 
           <div className={styleClasses.conversatioSliders}>
-          <Button
-            variant="light"
-            size="xs"
-            radius="xl"
-            onClick={() => setShowInferenceParams(!showInferenceParams)}
-            rightSection={showInferenceParams ? <IconChevronDown size={14} /> : <IconChevronUp size={14} />}
-            mb="xs"
-          >
-            {showInferenceParams ? "Hide Inference Settings" : "Show Inference Settings"}
-          </Button>
-          <Collapse in={showInferenceParams} mb="md">
-            <Stack style={{ marginLeft: '10px' }}>
-              <Title size="sm">Inference Settings</Title>
-              <Text size="sm">Token Limit: {tokenLimit}</Text>
-              <Slider value={tokenLimit} onChange={setTokenLimit} min={10} max={500} step={1} />
-              <Text size="sm">Temperature: {temperature.toFixed(2)}</Text>
-              <Slider value={temperature} onChange={setTemperature} min={0.10} max={1.00} step={0.01} />
-              <Textarea
-                label="System Prompt"
-                placeholder="Set system prompt"
-                value={systemPrompt}
-                onChange={(e) => setSystemPrompt(e.target.value)}
-                size="sm"
-                mb="sm"
-              />
-            </Stack>
-          </Collapse>
-        </div>
-
+            <Button
+              variant="light"
+              size="xs"
+              radius="xl"
+              onClick={() => setShowInferenceParams(!showInferenceParams)}
+              rightSection={showInferenceParams ? <IconChevronDown size={14} /> : <IconChevronUp size={14} />}
+              mb="xs"
+            >
+              {showInferenceParams ? "Hide Inference Settings" : "Show Inference Settings"}
+            </Button>
+            <Collapse in={showInferenceParams} mb="md">
+              <Stack style={{ marginLeft: '10px' }}>
+                <Title size="sm">Inference Settings</Title>
+                <Text size="sm">Token Limit: {tokenLimit}</Text>
+                <Slider value={tokenLimit} onChange={setTokenLimit} min={10} max={500} step={1} />
+                <Text size="sm">Temperature: {temperature.toFixed(2)}</Text>
+                <Slider value={temperature} onChange={setTemperature} min={0.10} max={1.00} step={0.01} />
+                <Textarea
+                  label="System Prompt"
+                  placeholder="Set system prompt"
+                  value={systemPrompt}
+                  onChange={(e) => setSystemPrompt(e.target.value)}
+                  size="sm"
+                  mb="sm"
+                />
+              </Stack>
+            </Collapse>
+          </div>
 
           <div className={styleClasses.conversationActions}>
             <Tooltip
@@ -261,7 +279,7 @@ const Conversation = ({ title, enabledUiFeatures }: ConversationProps) => {
                     <IconArrowRight style={{ width: rem(18), height: rem(18) }} stroke={1.5} />
                   </ActionIcon>
                 }
-                disabled={!enabledUiFeatures.chat || !!onGoingResult}
+                disabled={!enabledUiFeatures.chat || !!onGoingResult || isAssistantTyping}
               />
             </Tooltip>
           </div>
