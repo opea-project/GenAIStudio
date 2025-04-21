@@ -3,8 +3,8 @@
   container_name: "{{endpoint}}"
   ports:
     - "{{port_key}}:9096"
-  volumes:
-    - ./agent-tools/:/home/user/tools/
+  # volumes:
+  #   - ./agent-tools/:/home/user/tools/
   ipc: host
   environment:
     ip_address: ${public_host_ip}
@@ -20,7 +20,6 @@
     temperature: "{{temperature}}"
     max_new_tokens: "{{maxNewToken}}"
     stream: false
-    tools: /home/user/tools/worker_agent_tools.yaml
     require_human_feedback: false
     llm_endpoint_url: "http://${public_host_ip}:{{llm_port}}"
     port: 9096
