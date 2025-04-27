@@ -17,8 +17,9 @@ async def list_trace_ids(namespace: str):
         SELECT DISTINCT tts.TraceId, tts.Start, tts.End
         FROM otel.otel_traces_trace_id_ts AS tts
         INNER JOIN otel.otel_traces AS ot ON tts.TraceId = ot.TraceId
-        WHERE ot.ResourceAttributes['k8s.namespace.name'] = '%(namespace)s'
+        WHERE ot.ResourceAttributes['k8s.namespace.name'] = %(namespace)s
         """
+        print(f"Query: {query}")
         result = client.execute(query, {'namespace': namespace})
 
         if not result:
