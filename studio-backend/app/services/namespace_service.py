@@ -130,9 +130,10 @@ def check_ns_status(namespace_id, status_type, core_v1_api, apps_v1_api):
 
         sandbox_app_url = f"/?ns={namespace_name}"
         sandbox_grafana_url = f"/grafana/d/{namespace_id}"
-        sandbox_tracer_url = f"tracer/{namespace_name}"
+        sandbox_tracer_url = f"/tracer/{namespace_name}"
+        sandbox_debuglogs_url = f"/debuglogs/{namespace_name}"
 
-        return {f"status": "Ready", "sandbox_app_url": sandbox_app_url, "sandbox_grafana_url": sandbox_grafana_url, "sandbox_tracer_url": sandbox_tracer_url}
+        return {f"status": "Ready", "sandbox_app_url": sandbox_app_url, "sandbox_grafana_url": sandbox_grafana_url, "sandbox_tracer_url": sandbox_tracer_url, "sandbox_debuglogs_url": sandbox_debuglogs_url}
 
     elif status_type == "Stopping":
 

@@ -755,7 +755,7 @@ data:
   tools: /home/user/tools/worker_agent_tools.yaml
   require_human_feedback: 'false'
   llm_endpoint_url: http://tgi-0:9004
-  RETRIEVAL_TOOL_URL: http://app-backend:8888/v1/app-backend/rag_agent_0
+  RETRIEVAL_TOOL_URL: http://app-backend:8899/v1/app-backend/rag_agent_0
   PORT: '9095'
   OPENAI_API_KEY: NA
 ---
@@ -1576,8 +1576,8 @@ metadata:
 spec:
   type: ClusterIP
   ports:
-  - port: 8888
-    targetPort: 8888
+  - port: 8899
+    targetPort: 8899
     protocol: TCP
     name: app-backend
   selector:
@@ -1630,7 +1630,7 @@ spec:
           subPath: .env
         ports:
         - name: app-backend
-          containerPort: 8888
+          containerPort: 8899
           protocol: TCP
         resources: null
       volumes:
@@ -1652,7 +1652,7 @@ metadata:
 spec:
   type: ClusterIP
   ports:
-  - port: 5175
+  - port: 5275
     targetPort: 80
     protocol: TCP
     name: app-frontend
@@ -1733,7 +1733,7 @@ data:
         }
 
         location / {
-            proxy_pass http://app-frontend:5175;
+            proxy_pass http://app-frontend:5275;
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -1741,7 +1741,7 @@ data:
         }
 
         location /v1/app-backend {
-            proxy_pass http://app-backend:8888;
+            proxy_pass http://app-backend:8899;
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;

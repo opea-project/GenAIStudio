@@ -33,6 +33,10 @@ const buildDeploymentPackage = (id, body) => client.post(`chatflows-sandbox/buil
 
 const importSampleChatflowsbyUserId = (userid) => client.post(`/chatflows/importsamples?userid=${userid}&type=OPEA`)
 
+const getPublicKey = () => client.get('/chatflows/pubkey')
+
+const clickDeployment = (id, body) => client.post(`chatflows-sandbox/one-click-deployment/${id}`, body)
+
 export default {
     getAllChatflows,
     getAllAgentflows,
@@ -49,5 +53,7 @@ export default {
     getAllowChatflowUploads,
     deploySandbox,
     stopSandbox,
-    buildDeploymentPackage
+    buildDeploymentPackage,
+    getPublicKey,
+    clickDeployment
 }

@@ -15,7 +15,7 @@ data:
   no_proxy: ""
   TRANSFORMERS_CACHE: "/tmp/transformers_cache"
   HF_HOME: "/tmp/.cache/huggingface"
-  LOGFLAG: ""
+  LOGFLAG: "True"
 ---
 # Source: embedding-usvc/templates/service.yaml
 # Copyright (C) 2024 Intel Corporation

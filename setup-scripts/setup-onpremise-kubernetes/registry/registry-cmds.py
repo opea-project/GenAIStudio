@@ -15,7 +15,7 @@ def get_manifest(image_name, image_tag):
     return response.json()
 
 def list_images_all():
-    """List all images in the registry."""
+    """List all images in the registry along with their digests."""
     response = requests.get(f"{REGISTRY_URL}/v2/_catalog")
     response.raise_for_status()
     repositories = response.json().get('repositories', [])
@@ -25,7 +25,13 @@ def list_images_all():
         tags = tag_response.json().get('tags', [])
         if tags:
             for tag in tags:
-                print(f"{repo}:{tag}")
+                manifest_response = requests.head(
+                    f"{REGISTRY_URL}/v2/{repo}/manifests/{tag}",
+                    headers={'Accept': 'application/vnd.docker.distribution.manifest.v2+json'}
+                )
+                manifest_response.raise_for_status()
+                digest = manifest_response.headers.get('Docker-Content-Digest', '<unknown>')
+                print(f"{repo}:{tag} (digest: {digest})")
         else:
             print(f"{repo}:<null>")
 

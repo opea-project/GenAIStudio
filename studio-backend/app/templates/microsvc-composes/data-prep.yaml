@@ -18,3 +18,4 @@
     TEI_EMBEDDING_ENDPOINT: "http://${public_host_ip}:{{tei_port}}"
     DATAPREP_COMPONENT_NAME: "OPEA_DATAPREP_REDIS"
     HUGGINGFACEHUB_API_TOKEN: "{{huggingFaceToken}}"
+    LOGFLAG: "True"

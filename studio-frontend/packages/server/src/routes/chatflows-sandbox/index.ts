@@ -10,5 +10,6 @@ router.post(['/stop/','/stop/:id'], chatflowsController.stopChatflowSandbox)
 
 router.post(['/build-deployment-package/','/build-deployment-package/:id'], chatflowsController.buildDeploymentPackage)
 
+router.post('/one-click-deployment/:id', chatflowsController.oneClickDeployment);
 
 export default router

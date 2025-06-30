@@ -19,7 +19,7 @@ data:
   no_proxy: ""
   HF_HOME: "/tmp/.cache/huggingface"
   HUGGINGFACEHUB_API_TOKEN: "{huggingFaceToken}"
-  LOGFLAG: ""
+  LOGFLAG: "True"
   RETRIEVER_COMPONENT_NAME: "OPEA_RETRIEVER_REDIS"
 ---
 # Source: retriever-usvc/templates/service.yaml
