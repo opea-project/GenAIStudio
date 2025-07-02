@@ -9,7 +9,7 @@ services:
     - 6379:6379
     - 8001:8001
   tei-0:
-    image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.5
+    image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.7
     container_name: tei-0
     ports:
     - 2081:80
@@ -38,7 +38,7 @@ services:
       HF_HUB_ENABLE_HF_TRANSFER: 0
     command: --model-id Intel/neural-chat-7b-v3-3 --cuda-graphs 0
   tei-1:
-    image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.5
+    image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.7
     container_name: tei-1
     ports:
     - 2082:80
@@ -51,7 +51,7 @@ services:
       https_proxy: ${https_proxy}
     command: --model-id BAAI/bge-reranker-base --auto-truncate
   tei-2:
-    image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.5
+    image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.7
     container_name: tei-2
     ports:
     - 2083:80

@@ -139,7 +139,7 @@ spec:
         - configMapRef:
             name: config-tei-0
         securityContext: {}
-        image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.5
+        image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.7
         imagePullPolicy: IfNotPresent
         args:
         - --auto-truncate
@@ -352,7 +352,7 @@ spec:
         - configMapRef:
             name: config-tei-1
         securityContext: {}
-        image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.5
+        image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.7
         imagePullPolicy: IfNotPresent
         args:
         - --auto-truncate
@@ -460,7 +460,7 @@ spec:
         - configMapRef:
             name: config-tei-2
         securityContext: {}
-        image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.5
+        image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.7
         imagePullPolicy: IfNotPresent
         args:
         - --auto-truncate
