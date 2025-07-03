@@ -2,6 +2,7 @@ from kubernetes import client
 from kubernetes.client.rest import ApiException
 import time
 import yaml
+import traceback
 
 from app.services.exporter_service import convert_proj_info_to_manifest
 from app.services.dashboard_service import import_grafana_dashboards, delete_dashboard
@@ -14,7 +15,11 @@ def deploy_manifest_in_namespace(core_v1_api, apps_v1_api, proj_info):
     namespace_name = f"sandbox-{proj_info['id']}"
     
     # Convert the mega_yaml to a manifest string
-    manifest_string = convert_proj_info_to_manifest(proj_info)
+    try:
+        manifest_string = convert_proj_info_to_manifest(proj_info)
+    except Exception as e:
+        traceback.print_exc()
+        print(f"Error converting project info to manifest: {e}")
 
     # Split the manifest string into individual YAML documents
     yaml_docs_deploy = yaml.safe_load_all(manifest_string)

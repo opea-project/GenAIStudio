@@ -317,15 +317,6 @@ export const FlowListTable = ({ data, images, isLoading, filterFunction, updateF
                                     Workflow Name
                                 </TableSortLabel>
                             </StyledTableCell>
-                            <StyledTableCell style={{ width: '5%' }} key='1a'>
-                                <Stack
-                                    direction={{ xs: 'column', sm: 'row' }}
-                                    spacing={1}
-                                    justifyContent='center'
-                                >
-                                    Sandbox Control
-                                </Stack>
-                            </StyledTableCell>
                             <StyledTableCell style={{ width: '15%' }} key='1b'>
                                 <Stack
                                     direction={{ xs: 'column', sm: 'row' }}
@@ -335,13 +326,22 @@ export const FlowListTable = ({ data, images, isLoading, filterFunction, updateF
                                     Sandbox Status
                                 </Stack>
                             </StyledTableCell>
+                            <StyledTableCell style={{ width: '5%' }} key='1a'>
+                                <Stack
+                                    direction={{ xs: 'column', sm: 'row' }}
+                                    spacing={1}
+                                    justifyContent='center'
+                                >
+                                    Sandbox Control
+                                </Stack>
+                            </StyledTableCell>
                             <StyledTableCell style={{ width: '5%' }} key='2'>
                                 <Stack
                                     direction={{ xs: 'column', sm: 'row' }}
                                     spacing={1}
                                     justifyContent='center'
                                 >
-                                    Launch App
+                                    Open Sandbox
                                 </Stack>
                             </StyledTableCell>
                             <StyledTableCell style={{ width: '5%' }} key='3'>
@@ -483,6 +483,20 @@ export const FlowListTable = ({ data, images, isLoading, filterFunction, updateF
                                                 </Typography>
                                             </Tooltip>
                                         </StyledTableCell>
+                                        <StyledTableCell key='1b'>
+                                            <Stack
+                                                direction={{ xs: 'column', sm: 'row' }}
+                                                spacing={1}
+                                                justifyContent='center'
+                                                alignItems='center'
+                                            >
+                                                {row.sandboxStatus === "Getting Ready" || row.sandboxStatus === "Stopping" ? (
+                                                    <CircularProgress size={20} />
+                                                ) : null
+                                                }
+                                                <Typography variant="body2">{row.sandboxStatus}</Typography>
+                                            </Stack>
+                                        </StyledTableCell>
                                         <StyledTableCell key='1a'>
                                             <Stack
                                                 direction={{ xs: 'column', sm: 'row' }}
@@ -515,20 +529,6 @@ export const FlowListTable = ({ data, images, isLoading, filterFunction, updateF
                                                         </Button>
                                                     </Tooltip>
                                                 )}
-                                            </Stack>
-                                        </StyledTableCell>
-                                        <StyledTableCell key='1b'>
-                                            <Stack
-                                                direction={{ xs: 'column', sm: 'row' }}
-                                                spacing={1}
-                                                justifyContent='center'
-                                                alignItems='center'
-                                            >
-                                                {row.sandboxStatus === "Getting Ready" || row.sandboxStatus === "Stopping" ? (
-                                                    <CircularProgress size={20} />
-                                                ) : null
-                                                }
-                                                <Typography variant="body2">{row.sandboxStatus}</Typography>
                                             </Stack>
                                         </StyledTableCell>
                                         <StyledTableCell key='2'>
@@ -588,6 +588,7 @@ export const FlowListTable = ({ data, images, isLoading, filterFunction, updateF
                                                     onClose={() => setObservabilityAnchorEl(null)}
                                                 >
                                                     <MenuItem
+                                                        sx={{ color: 'primary.main' }}
                                                         onClick={() => {
                                                             handleOpenUrl(row.sandboxGrafanaUrl);
                                                             setObservabilityAnchorEl(null);
@@ -597,6 +598,7 @@ export const FlowListTable = ({ data, images, isLoading, filterFunction, updateF
                                                         <Analytics fontSize="small" sx={{ mr: 1 }} /> Monitoring Dashboard
                                                     </MenuItem>
                                                     <MenuItem
+                                                        sx={{ color: 'primary.main' }}
                                                         onClick={() => {
                                                             handleOpenUrl(row.sandboxTracerUrl);
                                                             setObservabilityAnchorEl(null);
@@ -606,6 +608,7 @@ export const FlowListTable = ({ data, images, isLoading, filterFunction, updateF
                                                         <ViewTimelineOutlined fontSize="small" sx={{ mr: 1, transform: 'scaleX(-1)' }} /> LLM Call Traces
                                                     </MenuItem>
                                                     <MenuItem
+                                                        sx={{ color: 'primary.main' }}
                                                         onClick={() => {
                                                             handleOpenUrl(row.sandboxDebugLogsUrl);
                                                             setObservabilityAnchorEl(null);

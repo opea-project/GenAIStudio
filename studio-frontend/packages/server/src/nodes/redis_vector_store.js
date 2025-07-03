@@ -6,7 +6,7 @@ class OPEARedisVectorStore {
         this.name = 'redis_vector_store'
         this.version = 1.0
         this.type = 'EmbedDoc'
-        this.icon = 'vector stores.png'
+        this.icon = 'assets/vector stores.png'
         this.category = 'VectorStores'
         this.description = 'Redis Vector Store'
         this.baseClasses = [this.type]

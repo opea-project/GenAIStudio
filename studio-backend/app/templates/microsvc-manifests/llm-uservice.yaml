@@ -80,7 +80,7 @@ spec:
             runAsUser: 1000
             seccompProfile:
               type: RuntimeDefault
-          image: "${REGISTRY}/llm-textgen:${TAG}"
+          image: "${REGISTRY}/{IMAGE_REPOSITORY}:${TAG}"
           imagePullPolicy: Always
           ports:
             - name: llm-uservice

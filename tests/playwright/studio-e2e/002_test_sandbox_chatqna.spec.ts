@@ -67,7 +67,7 @@ test('002_test_sandbox_chatqna', async ({ browser, baseURL }) => {
     await page.goto(IDC_URL);
     await expect(page.locator('td.MuiTableCell-root div.MuiStack-root p.MuiTypography-root').first()).toHaveText('Not Running', { timeout: 60000 });
     await page.getByLabel('a dense table').locator('button').first().click();
-    await waitForStatusText(page, 'td.MuiTableCell-root div.MuiStack-root p.MuiTypography-root', 'Ready', 20, 60000);
+    await waitForStatusText(page, 'td.MuiTableCell-root div.MuiStack-root p.MuiTypography-root', 'Getting Ready', 20, 60000);
     await page.waitForTimeout(10000);
 
     // Open APP-UI
@@ -93,8 +93,8 @@ test('002_test_sandbox_chatqna', async ({ browser, baseURL }) => {
     //     }
     // }
     await page2.waitForTimeout(2000);
-    await page2.getByPlaceholder('Ask a question').fill(question);
-    await page2.getByRole('button').nth(4).click();
+    await page2.getByRole('textbox', { name: 'Enter your message' }).fill(question);
+    await page2.getByRole('button').filter({ hasText: /^$/ }).nth(2).click();
     await page2.waitForTimeout(20000);
     let responseContainsKeyword = apiResponse && containsAnyKeyword(apiResponse.value, keywords);
     console.log ('response:', apiResponse.value);
@@ -105,61 +105,77 @@ test('002_test_sandbox_chatqna', async ({ browser, baseURL }) => {
     }
     apiResponse.value = "";
 
-    await page2.getByRole('button').nth(2).click();
-    await page2.getByRole('button').nth(2).click(); // Double click
+    await page2.getByRole('button').nth(2).dblclick();
+    //await page2.getByRole('button').nth(2).click(); // Double click
 
     // Document Upload 1
+    await page2.getByRole('button', { name: 'Open Sidebar' }).click();
+    await page2.getByRole('link', { name: 'Data Management' }).click();
     fileChooserPromise = page2.waitForEvent('filechooser');
-    await page2.getByRole('button', { name: 'Choose File' }).click()
+    await page2.getByRole('button', { name: 'Browse Files' }).click();
     fileChooser = await fileChooserPromise;
     await fileChooser.setFiles(uploadPDF1);
-    await page2.getByRole('button', { name: 'Upload', exact: true }).click();
-    await page2.waitForSelector('tr:nth-of-type(1) button[data-variant="light"] .tabler-icon-check', { state: 'visible', timeout: 300000 });
+    await page2.getByRole('button', { name: 'Upload' }).click();
+    await page2.getByRole('button', { name: 'Agree and Continue' }).click();
+    //await page2.waitForSelector('tr:nth-of-type(1) button[data-variant="light"] .tabler-icon-check', { state: 'visible', timeout: 50000 });
+    await page2.getByText('DocumentsData SourceUpload or').isVisible();
+    await page2.waitForTimeout(20000);
+
     // Refresh page and verify upload with retry 
     let isVisible1 = false;
     for (let i = 0; i < 2; i++) {
-        await page2.reload();
-        await page2.waitForTimeout(1500);
-        await page2.getByRole('button').nth(2).click();
+        //await page2.reload();
+        //await page2.waitForTimeout(1500);
+        //await page2.getByRole('button').nth(2).click();
         try {
-            await expect(page2.getByRole('cell', { name: 'tennis_tutorial.pdf' })).toBeVisible({ timeout: 60000 });
+            await expect(page2.locator('div').filter({ hasText: /^tennis_tutorial\.pdf$/ })).toBeVisible({ timeout: 30000 });
             isVisible1 = true;
             break;
         } catch (error) {
             console.log(`Attempt ${i + 1} failed: ${error}`);
         }
     }
-    await page2.waitForTimeout(1000);
+    await page2.waitForTimeout(10000);
     
     // Document Upload 2
     fileChooserPromise = page2.waitForEvent('filechooser');
-    await page2.getByRole('button', { name: 'Choose File' }).click()
+    await page2.getByRole('button', { name: 'Browse Files' }).click();
     fileChooser = await fileChooserPromise;
     await fileChooser.setFiles(uploadPDF2);
-    await page2.getByRole('button', { name: 'Upload', exact: true }).click();
-    await page2.waitForSelector('tr:nth-of-type(2) button[data-variant="light"] .tabler-icon-check', { state: 'visible', timeout: 300000 });
+    await page2.getByRole('button', { name: 'Upload' }).click();
+    await page2.getByRole('button', { name: 'Agree and Continue' }).click();
+    //await page2.waitForSelector('tr:nth-of-type(1) button[data-variant="light"] .tabler-icon-check', { state: 'visible', timeout: 50000 });
+    await page2.getByText('DocumentsData SourceUpload or').isVisible();
+    await page2.waitForTimeout(20000);
+    
     // Refresh page and verify upload with retry 
     let isVisible2 = false;
     for (let i = 0; i < 2; i++) {
-        await page2.reload();
-        await page2.waitForTimeout(1500);
-        await page2.getByRole('button').nth(2).click();
+        //await page2.reload();
+        //await page2.waitForTimeout(1500);
+        //await page2.getByRole('button').nth(2).click();
         try {
-            await expect(page2.getByRole('cell', { name: 'Q3 24_EarningsRelease' })).toBeVisible({ timeout: 60000 });
+            await expect(page2.locator('div').filter({ hasText: /^Q3 24_EarningsRelease\.pdf$/ })).toBeVisible({ timeout: 30000 });
             isVisible2 = true;
             break;
         } catch (error) {
             console.log(`Attempt ${i + 1} failed: ${error}`);
         }
     }
-    await page2.waitForTimeout(1000);
+    await page2.waitForTimeout(10000);
 
     // Link Upload
-    await page2.getByRole('button', { name: 'Use Link' }).click();
-    await page2.getByPlaceholder('URL').click();
-    await page2.getByPlaceholder('URL').fill('https://pnatraj.medium.com/kubectl-exec-plugin-invalid-apiversion-client-authentication-k8s-io-v1alpha1-870aace51998');
-    await page2.getByRole('button', { name: 'Upload', exact: true }).click();
-    await page2.waitForSelector('tr:nth-of-type(3) button[data-variant="light"] .tabler-icon-check', { state: 'visible', timeout: 300000 });
+    await page2.getByRole('button', { name: 'Documents' }).click();
+    await page2.getByRole('menuitem', { name: 'Web' }).click();
+    await page2.getByRole('textbox', { name: 'Enter a Web URL' }).click();
+    await page2.getByRole('textbox', { name: 'Enter a Web URL' }).fill('https://pnatraj.medium.com/kubectl-exec-plugin-invalid-apiversion-client-authentication-k8s-io-v1alpha1-870aace51998');
+    await page2.getByTestId('AddCircleIcon').click();
+    await page2.waitForTimeout(10000);
+    await page2.getByText('DocumentsData SourceUpload or').isVisible();
+    // await page2.getByRole('button', { name: 'Use Link' }).click();
+    //await page2.getByPlaceholder('URL').click();
+    //await page2.getByPlaceholder('URL').fill('https://pnatraj.medium.com/kubectl-exec-plugin-invalid-apiversion-client-authentication-k8s-io-v1alpha1-870aace51998');
+    //await page2.getByRole('button', { name: 'Upload', exact: true }).click();
     // Refresh page and verify upload with retry 
     let isVisible3 = false;
     for (let i = 0; i < 2; i++) {
@@ -167,7 +183,7 @@ test('002_test_sandbox_chatqna', async ({ browser, baseURL }) => {
         await page2.waitForTimeout(1500);
         await page2.getByRole('button').nth(2).click();
         try {
-            await expect(page2.getByRole('cell', { name: 'https://pnatraj.medium.com/' })).toBeVisible({ timeout: 60000 });
+            await expect(page2.getByRole('listitem').filter({ hasText: 'https://pnatraj.medium.com/' }).locator('div')).toBeVisible;
             await page2.screenshot({ path: 'screenshot_upload_document.png' });
 
             isVisible3 = true;
@@ -178,8 +194,8 @@ test('002_test_sandbox_chatqna', async ({ browser, baseURL }) => {
     }
     await page2.waitForTimeout(1000);
 
-    await page2.getByRole('banner').getByRole('button').click();
-    await page2.waitForTimeout(10000);
+    //await page2.getByRole('banner').getByRole('button').click();
+    //await page2.waitForTimeout(10000);
 
     // Chat Attempt 2
     // const buttons = page2.getByRole('button');
@@ -196,8 +212,9 @@ test('002_test_sandbox_chatqna', async ({ browser, baseURL }) => {
     //     }
     // }
     console.log ('Chat Attempt 2-------------------');
-    await page2.getByPlaceholder('Ask a question').fill(question);
-    await page2.getByRole('button').nth(4).click();
+    await page2.getByRole('button', { name: 'New Chat' }).click();
+    await page2.getByRole('textbox', { name: 'Enter your message' }).fill(question);
+    await page2.getByRole('button').filter({ hasText: /^$/ }).nth(2).click();
     await page2.waitForTimeout(30000);
     responseContainsKeyword = apiResponse && containsAnyKeyword(apiResponse.value, keywords);
     console.log ('response:', apiResponse.value);
@@ -209,8 +226,8 @@ test('002_test_sandbox_chatqna', async ({ browser, baseURL }) => {
     
         // Ask another question
         const followUpQuestion = "How is Intel performing in Q3 2024?";
-        await page2.getByPlaceholder('Ask a question').fill(followUpQuestion);
-        await page2.getByRole('button').nth(4).click();
+        await page2.getByRole('textbox', { name: 'Enter your message' }).fill(followUpQuestion);
+        await page2.getByRole('button').filter({ hasText: /^$/ }).nth(2).click();
         await page2.waitForTimeout(30000);
     
         responseContainsKeyword = apiResponse && containsAnyKeyword(apiResponse.value, keywords);
@@ -240,9 +257,12 @@ test('002_test_sandbox_chatqna', async ({ browser, baseURL }) => {
     }
     console.log ('Delete 1 document + Check data sources successfully deduct 1 or not-------------------');
 
-    await page2.getByRole('button').nth(3).click();
-    await page2.getByRole('row', { name: 'tennis_tutorial.pdf' }).getByRole('button').click();
-    await expect(page2.getByRole('cell', { name: 'tennis_tutorial.pdf' })).toBeHidden( { timeout: 60000 } );
+    await page2.getByRole('button', { name: 'Open Sidebar' }).click();
+    await page2.getByRole('link', { name: 'Data Management' }).click();
+    await page2.getByRole('button', { name: 'Select' }).click();
+    await page2.getByRole('checkbox', { name: 'tennis_tutorial.pdf' }).check();
+    await page2.getByRole('button', { name: 'Delete Selected' }).click();
+    await expect(page2.locator('div').filter({ hasText: /^tennis_tutorial\.pdf$/ })).toBeHidden( { timeout: 60000 } );
     await page2.screenshot({ path: 'screenshot_delete_file.png' });
     console.log ("Document tennis_tutorial.pdf deleted");
 
