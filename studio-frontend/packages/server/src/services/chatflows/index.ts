@@ -499,6 +499,34 @@ const buildDeploymentPackageService = async (chatflowId: string, deploymentConfi
     }
 }
 
+const oneClickDeploymentService = async (chatflowId: string, deploymentConfig: Record<string, any>) => {
+    console.log('oneClickDeploymentService', chatflowId, deploymentConfig)
+    try {
+        const chatflow = await generatePipelineJson(chatflowId)
+        const studioServerUrl = STUDIO_SERVER_URL
+        const endpoint = 'studio-backend/click-deploy'
+        console.log('chatflow', JSON.stringify(chatflow))
+        console.log('studioServerUrl', studioServerUrl)
+        console.log('deploymentConfig', deploymentConfig)
+        const response = await axios.post(`${studioServerUrl}/${endpoint}`, {
+            remoteHost: deploymentConfig.hostname,
+            remoteUser: deploymentConfig.username,
+            pipelineFlow: chatflow
+        }, {
+            headers: { 'Content-Type': 'application/json' },
+            timeout: 60 * 1000
+        })
+        return response.data
+    } catch (error: unknown) {
+        if (error instanceof Error) {
+            console.error(`Error: ${error.stack}`)
+        } else {
+            console.error(`An error occurred: ${error}`)
+        }
+        throw error
+    }
+}
+
 const _checkAndUpdateDocumentStoreUsage = async (chatflow: ChatFlow) => {
     const parsedFlowData: IReactFlowObject = JSON.parse(chatflow.flowData)
     const nodes = parsedFlowData.nodes
@@ -527,5 +555,6 @@ export default {
     deployChatflowSandboxService,
     stopChatflowSandboxService,
     buildDeploymentPackageService,
-    getSinglePublicChatbotConfig
+    getSinglePublicChatbotConfig,
+    oneClickDeploymentService
 }

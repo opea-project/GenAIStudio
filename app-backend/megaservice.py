@@ -170,7 +170,7 @@ class AppService:
         elif self.services[node_id].service_type == ServiceType.LLM:
             # convert TGI/vLLM to unified OpenAI /v1/chat/completions format
             next_inputs = {}
-            next_inputs["model"] = inputs.get("model") or "Intel/neural-chat-7b-v3-3"
+            next_inputs["model"] = inputs.get("model") or "NA"
             if inputs.get("inputs"):
                 next_inputs["messages"] = [{"role": "user", "content": inputs["inputs"]}]
             elif inputs.get("query") and inputs.get("documents"):
@@ -401,7 +401,7 @@ class AppService:
 
 if __name__ == "__main__":
     print('pre initialize appService')
-    app = AppService(host="0.0.0.0", port=8888)
+    app = AppService(host="0.0.0.0", port=8899)
     print('after initialize appService')
     app.add_remote_service()
     print('after add_remote_service')

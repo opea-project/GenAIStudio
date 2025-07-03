@@ -20,7 +20,7 @@ data:
   http_proxy: ""
   https_proxy: ""
   no_proxy: ""
-  LOGFLAG: ""
+  LOGFLAG: "True"
 ---
 # Source: data-prep/templates/service.yaml
 # Copyright (C) 2024 Intel Corporation

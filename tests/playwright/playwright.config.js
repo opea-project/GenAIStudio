@@ -11,7 +11,7 @@ const { defineConfig, devices } = require('@playwright/test');
  * @see https://playwright.dev/docs/test-configuration
  */
 module.exports = defineConfig({
-  testDir: './',
+  testDir: '.',
   fullyParallel: false, // Disable fully parallel tests
   forbidOnly: !!process.env.CI,
   retries: 0,

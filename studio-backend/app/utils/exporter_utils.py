@@ -246,7 +246,7 @@ def process_opea_services(proj_info_json):
                 updated_nodes[node_name][f"{prefix}_port"] = updated_nodes[connected_agent]['port']
             updated_nodes[node_name].pop('connected_agent', None)
         if 'rag_agent' in node_name:
-            updated_nodes[node_name]['megasvc_endpoint_port'] = "8888/v1/app-backend"
+            updated_nodes[node_name]['megasvc_endpoint_port'] = "8899/v1/app-backend"
             updated_nodes[node_name]['rag_name'] = node_name.replace('opea_service@', '')
         if "llmEngine" in node_info and node_info["llmEngine"] == "openai":
             updated_nodes[node_name]['llm_endpoint'] = "NA"

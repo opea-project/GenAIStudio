@@ -23,8 +23,8 @@ metadata:
 spec:
   type: ClusterIP
   ports:
-  - port: 8888
-    targetPort: 8888
+  - port: 8899
+    targetPort: 8899
     protocol: TCP
     name: app-backend
   selector:
@@ -72,7 +72,7 @@ spec:
           subPath: workflow-info.json
         ports:
         - name: app-backend
-          containerPort: 8888
+          containerPort: 8899
           protocol: TCP
         resources: null
       imagePullSecrets:
@@ -91,7 +91,7 @@ metadata:
 spec:
   type: ClusterIP
   ports:
-  - port: 5175
+  - port: 5275
     targetPort: 80
     protocol: TCP
     name: app-frontend
@@ -163,7 +163,7 @@ data:
         }
 
         location / {
-            proxy_pass http://app-frontend:5175;
+            proxy_pass http://app-frontend:5275;
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -171,7 +171,7 @@ data:
         }
 
         location /v1/app-backend {
-            proxy_pass http://app-backend:8888;
+            proxy_pass http://app-backend:8899;
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;

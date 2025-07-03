@@ -15,7 +15,8 @@ data:
   http_proxy: "${HTTP_PROXY}"
   https_proxy: "${HTTP_PROXY}"
   no_proxy: "${NO_PROXY}"
-  LOGFLAG: ""
+  LOGFLAG: "True"
+  LLM_MODEL_ID: "{modelName}"
 ---
 # Source: llm-uservice/templates/service.yaml
 # Copyright (C) 2024 Intel Corporation

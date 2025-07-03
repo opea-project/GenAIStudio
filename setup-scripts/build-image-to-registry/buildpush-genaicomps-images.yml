@@ -1,0 +1,45 @@
+---
+- name: Clone or update GenAIComps repo and build/push images
+  hosts: localhost
+  vars_files:
+    - vars.yml
+  tasks:
+    - name: Check if /tmp/GenAIComps exists
+      stat:
+        path: /tmp/GenAIComps
+      register: genaicomp_dir
+
+    - name: Clone GenAIComps repo if not present
+      git:
+        repo: https://github.com/opea-project/GenAIComps.git
+        dest: /tmp/GenAIComps
+        clone: yes
+        update: no
+      when: not genaicomp_dir.stat.exists
+
+    - name: Pull latest changes in GenAIComps repo
+      git:
+        repo: https://github.com/opea-project/GenAIComps.git
+        dest: /tmp/GenAIComps
+        update: yes
+      when: genaicomp_dir.stat.exists
+
+    - name: Build and push GenAIComps images
+      vars:
+        genaicomp_images:
+          - { name: 'embedding', dockerfile: 'comps/embeddings/src/Dockerfile' }
+          - { name: 'reranking', dockerfile: 'comps/rerankings/src/Dockerfile' }
+          - { name: 'retriever', dockerfile: 'comps/retrievers/src/Dockerfile' }
+          - { name: 'llm-textgen', dockerfile: 'comps/llms/src/text-generation/Dockerfile' }
+          - { name: 'dataprep', dockerfile: 'comps/dataprep/src/Dockerfile' }
+          - { name: 'agent', dockerfile: 'comps/agent/src/Dockerfile' }
+      block:
+        - name: Build image
+          command: docker build -t {{ container_registry }}/{{ item.name }}:{{ container_tag }} -f {{ item.dockerfile }} .
+          args:
+            chdir: /tmp/GenAIComps
+          loop: "{{ genaicomp_images }}"
+
+        - name: Push image
+          command: docker push {{ container_registry }}/{{ item.name }}:{{ container_tag }}
+          loop: "{{ genaicomp_images }}"

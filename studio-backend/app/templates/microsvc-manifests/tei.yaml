@@ -67,7 +67,7 @@ spec:
                 name: config-{endpoint}
           securityContext:
             {}
-          image: "ghcr.io/huggingface/text-embeddings-inference:cpu-1.5"
+          image: "ghcr.io/huggingface/text-embeddings-inference:cpu-1.7"
           imagePullPolicy: IfNotPresent
           args:
             - "--auto-truncate"

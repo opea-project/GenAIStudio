@@ -74,7 +74,7 @@ const Conversation = ({ title, enabledUiFeatures }: ConversationProps) => {
       messages,
       maxTokens: tokenLimit,
       temperature: temperature,
-      model: "Intel/neural-chat-7b-v3-3",
+      model: "",
       // setIsInThinkMode
     });
     setPrompt("");

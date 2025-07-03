@@ -17,7 +17,9 @@ import {
     Fade
 } from "@mui/material";
 import { tableCellClasses } from '@mui/material/TableCell'
-
+import ViewHeader from '@/layout/MainLayout/ViewHeader'
+import chatflowsApi from '@/api/chatflows';
+import useApi from '@/hooks/useApi';
 
 import config from '@/config'
 
@@ -67,6 +69,7 @@ export default function LLMTraces() {
     const [selectedSpan, setSelectedSpan] = useState(null);
     const [page, setPage] = useState(0);
     const [rowsPerPage, setRowsPerPage] = useState(10);
+    const [workflowName, setWorkflowName] = useState('');
 
     const { ns } = useParams();
     console.log("ns: ", ns);
@@ -74,6 +77,8 @@ export default function LLMTraces() {
     const studio_server_url = config.studio_server_url;
     const sandbox_tracer_list_endpoint = config.sandbox_tracer_list_endpoint;
     const sandbox_tracer_tree_endpoint = config.sandbox_tracer_tree_endpoint;
+
+    const getAllOpeaflowsApi = useApi(chatflowsApi.getAllOpeaflows);
 
     // Fetch trace ids from the server
     const fetchTraces = async (ns) => {
@@ -150,13 +155,33 @@ export default function LLMTraces() {
     }
     , [selectedTrace, studio_server_url, sandbox_tracer_tree_endpoint]);
 
+    useEffect(() => {
+        getAllOpeaflowsApi.request();
+    }, []);
+
+    useEffect(() => {
+        if (getAllOpeaflowsApi.data && ns) {
+            // Namespace is usually sandbox-<workflow.id>
+            const flows = getAllOpeaflowsApi.data;
+            const found = flows.find(flow => `sandbox-${flow.id}` === ns);
+            setWorkflowName(found ? found.name : '');
+        }
+    }, [getAllOpeaflowsApi.data, ns]);
+
 
     return (
-        <Box sx={{ display: "flex", height: "100vh", p: 4, gap: 2, position: "relative" }}>
+        // <Box sx={{ display: "flex", height: "100vh", p: 4, gap: 2, position: "relative" }}>
+        <Box sx={{ display: "flex", height: "100vh", gap: 2, position: "relative" }}>
             <Box sx={{ flex: 1, opacity: selectedTrace ? 0.5 : 1 }}>
+                <ViewHeader title='LLM Call Traces'></ViewHeader>
+                {workflowName && (
+                    <Typography variant="h6" gutterBottom>
+                        Workflow name: {workflowName}
+                    </Typography>
+                )}
                 {traceList.length > 0 ? (
                     <>
-                        <Typography variant="h6" gutterBottom>Traces</Typography>
+                        <Typography variant="h6" gutterBottom>Traces:</Typography>
                         <TableContainer component={Paper} sx={{ border: 1, borderColor: "grey.900", borderRadius: 2 }}>
                             <Table size="small">
                                 <TableHead>

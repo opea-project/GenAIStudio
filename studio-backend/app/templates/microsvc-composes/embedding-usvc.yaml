@@ -14,4 +14,5 @@
     TEI_EMBEDDING_ENDPOINT: "http://${public_host_ip}:{{tei_port}}"
     TRANSFORMERS_CACHE: "/tmp/transformers_cache"
     HF_HOME: "/tmp/.cache/huggingface"
+    LOGFLAG: "True"
   restart: unless-stopped

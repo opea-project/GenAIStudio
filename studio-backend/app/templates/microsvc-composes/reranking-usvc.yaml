@@ -15,4 +15,5 @@
     HUGGINGFACEHUB_API_TOKEN: "{{huggingFaceToken}}"
     HF_HUB_DISABLE_PROGRESS_BARS: 1
     HF_HUB_ENABLE_HF_TRANSFER: 0
+    LOGFLAG: "True"
   restart: unless-stopped
