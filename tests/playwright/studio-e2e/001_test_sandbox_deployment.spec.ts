@@ -45,7 +45,7 @@ test('001_test_sandbox_deployment', async ({ browser, baseURL }) => {
     const page2Promise = page.waitForEvent('popup');
     await page.getByLabel('Click to open Application UI').getByRole('button').nth(0).click();
     const page2 = await page2Promise;
-    await expect(page2.getByRole('button', { name: 'opea logo OPEA Studio' })).toBeVisible();
+    await expect(page2.getByRole('heading', { name: 'OPEA Studio' })).toBeVisible();
     await page.bringToFront();
 
     // Open Dashboard - update the locator for V1.4
