@@ -49,27 +49,27 @@ test('001_test_sandbox_deployment', async ({ browser, baseURL }) => {
     await page.bringToFront();
 
     // Open Dashboard - update the locator for V1.4
+    await page.getByRole('cell', { name: 'Observability Options' }).getByRole('button').click();
     const page3Promise = page.waitForEvent('popup');
-    await page.getByRole('row', { name: 'test_001 Ready Stop Sandbox' }).getByLabel('Observability Options').getByRole('button').click();
     await page.getByRole('menuitem', { name: 'Monitoring Dashboard' }).click();
     const page3 = await page3Promise;
     await expect(page3.getByRole('link', { name: 'Grafana' })).toBeVisible({ timeout: 60000 });
     await page.bringToFront();
 
     // Open Trace - new for V1.4
+    await page.getByRole('cell', { name: 'Observability Options' }).getByRole('button').click();
     const page4Promise = page.waitForEvent('popup');
-    await page.getByRole('row', { name: 'test_001 Ready Stop Sandbox' }).getByLabel('Observability Options').getByRole('button').click();
     await page.getByRole('menuitem', { name: 'LLM Call Traces' }).click();
     const page4 = await page4Promise;
     await expect(page4.getByText('No traces found')).toHaveText(/No traces found/, { timeout: 60000 });
     await page.bringToFront();
 
     // Open Debug Logs - new for V1.4
+    await page.getByRole('cell', { name: 'Observability Options' }).getByRole('button').click();
     const page5Promise = page.waitForEvent('popup');
-    await page.getByRole('row', { name: 'test_001 Ready Stop Sandbox' }).getByLabel('Observability Options').getByRole('button').click();
     await page.getByRole('menuitem', { name: 'Debug Logs' }).click();
     const page5 = await page5Promise;
-    await expect(page5.getByRole('heading', { name: 'workflow - test_001' })).toHaveText(/workflow - test_001/, { timeout: 60000 });
+    await expect(page5.getByRole('heading', { name: 'Workflow name: test_001' })).toHaveText(/Workflow name: test_001/, { timeout: 60000 });
     await page.bringToFront();
 
     // Generate Deployment Package - to be deleted
@@ -83,10 +83,10 @@ test('001_test_sandbox_deployment', async ({ browser, baseURL }) => {
         //expect(fs.existsSync(downloadPath)).toBe(true);
     
     // Stop & Delete Sandbox
-    await page.getByRole('row', { name: 'test_001 Ready Stop Sandbox' }).getByLabel('Stop Sandbox').click();
+    await page.getByRole('button', { name: 'Stop Sandbox' }).click();
     // await expect(page.locator('td.MuiTableCell-root div.MuiStack-root p.MuiTypography-root').first()).toHaveText('Not Running', { timeout: statusChangeTimeout });
     await waitForStatusText(page, 'td.MuiTableCell-root div.MuiStack-root p.MuiTypography-root', 'Not Running', 5, 60000);
-    await page.getByRole('row', { name: 'test_001 Not Running Run' }).locator('#demo-customized-button').click();
+    await page.locator('#demo-customized-button').click();
     
     await page.getByRole('menuitem', { name: 'Delete' }).click();
     await page.getByRole('button', { name: 'Delete' }).click();
