@@ -6,7 +6,7 @@ class OPEARedisRetreiver {
         this.name = 'opea_service@rag_agent'
         this.version = 1.0
         this.type = 'AgentTask'
-        this.icon = 'opea-icon-color.svg'
+        this.icon = 'assets/opea-icon-color.svg'
         this.category = 'Agent'
         this.description = 'RAG Agent built on Langchain/Langgraph framework'
         this.baseClasses = [this.type, 'ChatCompletionRequest']

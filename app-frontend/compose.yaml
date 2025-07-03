@@ -1,0 +1,52 @@
+# Copyright (C) 2024 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+
+services:
+  app-frontend:
+    image: app-frontend:ch
+    container_name: app-frontend
+    depends_on:
+    - chathistory-mongo
+    ports:
+      - 5175:80
+    environment:
+      - no_proxy=${no_proxy}
+      - https_proxy=${https_proxy}
+      - http_proxy=${http_proxy}
+      - APP_BACKEND_SERVICE_URL=http://localhost:8888/v1/app-backend
+      - APP_DATAPREP_SERVICE_URL=http://localhost:6007/v1/dataprep
+      - APP_CHAT_HISTORY_SERVICE_URL=http://localhost:6012/v1/chathistory
+      - APP_UI_SELECTION=chat,summary,code
+    ipc: host
+    restart: always
+
+  mongo:
+    image: mongo:7.0.11
+    container_name: mongodb
+    ports:
+      - 27017:27017
+    environment:
+      http_proxy: ${http_proxy}
+      https_proxy: ${https_proxy}
+      no_proxy: ${no_proxy}
+    command: mongod --quiet --logpath /dev/null
+
+  chathistory-mongo:
+    image: ${REGISTRY:-opea}/chathistory-mongo:${TAG:-latest}
+    container_name: chathistory-mongo-server
+    ports:
+      - "6012:6012"
+    ipc: host
+    environment:
+      http_proxy: ${http_proxy}
+      no_proxy: ${no_proxy}
+      https_proxy: ${https_proxy}
+      MONGO_HOST: ${MONGO_HOST:-mongo}
+      MONGO_PORT: ${MONGO_PORT:-27017}
+      COLLECTION_NAME: ${COLLECTION_NAME:-Conversations}
+      LOGFLAG: ${LOGFLAG}
+    restart: unless-stopped
+
+networks:
+  default:
+    driver: bridge

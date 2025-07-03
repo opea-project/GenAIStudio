@@ -1,39 +1,182 @@
-// Copyright (C) 2024 Intel Corporation
-// SPDX-License-Identifier: Apache-2.0
+import "./App.scss";
 
-import "./App.scss"
-import { MantineProvider } from "@mantine/core"
-import '@mantine/notifications/styles.css';
-import { SideNavbar, SidebarNavList } from "./components/sidebar/sidebar"
-import { IconMessages } from "@tabler/icons-react"
-import UserInfoModal from "./components/UserInfoModal/UserInfoModal"
-import Conversation from "./components/Conversation/Conversation"
-import { Notifications } from '@mantine/notifications';
-// import { UiFeatures } from "./common/Sandbox";
-import { UI_FEATURES } from "./config";
+import React, { Suspense, useEffect } from "react";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import ProtectedRoute from "@layouts/ProtectedRoute/ProtectedRoute";
 
-// const dispatch = useAppDispatch();
+import { setUser, userSelector } from "@redux/User/userSlice";
+import { useAppDispatch, useAppSelector } from "@redux/store";
+import {
+  conversationSelector,
+  getAllConversations,
+  getSupportedModels,
+  getSupportedUseCases,
+} from "@redux/Conversation/ConversationSlice";
+import { getPrompts } from "@redux/Prompt/PromptSlice";
 
-const title = "OPEA Studio"
-const navList: SidebarNavList = [
-  { icon: IconMessages, label: title }
-]
+import MainLayout from "@layouts/Main/MainLayout";
+import MinimalLayout from "@layouts/Minimal/MinimalLayout";
+import Notification from "@components/Notification/Notification";
+import { Box, styled, Typography } from "@mui/material";
+// import { AtomIcon } from "@icons/Atom";
 
-function App() {
-  const enabledUiFeatures = UI_FEATURES;
+import Home from "@pages/Home/Home";
+import ChatView from "@pages/Chat/ChatView";
 
-  return (
-    <MantineProvider>
-      <Notifications position="top-right" />
-      <UserInfoModal />
-      <div className="layout-wrapper">
-        <SideNavbar navList={navList} />
-        <div className="content">
-          <Conversation title={title} enabledUiFeatures={enabledUiFeatures} />
-        </div>
-      </div>
-    </MantineProvider>
-  )
-}
+// const HistoryView = React.lazy(() => import("@pages/History/HistoryView"));
+// const DataSourceManagement = React.lazy(
+//   () => import("@pages/DataSource/DataSourceManagement")
+// );
 
-export default App
+import HistoryView from "@pages/History/HistoryView";
+import DataSourceManagement from "@pages/DataSource/DataSourceManagement";
+
+const LoadingBox = styled(Box)({
+  display: "flex",
+  flexDirection: "column",
+  justifyContent: "center",
+  alignItems: "center",
+  height: "100vh",
+  width: "100vw",
+});
+
+const App = () => {
+  const dispatch = useAppDispatch();
+  const { name, isAuthenticated } = useAppSelector(userSelector);
+  const { useCase } = useAppSelector(conversationSelector);
+
+  useEffect(() => {
+    // Set static admin user
+    dispatch(
+      setUser({
+        name: "admin",
+        isAuthenticated: true,
+        role: "Admin",
+      })
+    );
+  }, [dispatch]);
+
+  const initSettings = () => {
+    if (isAuthenticated) {
+      dispatch(getSupportedUseCases());
+      dispatch(getSupportedModels());
+      dispatch(getPrompts());
+    }
+  };
+
+  useEffect(() => {
+    if (isAuthenticated) initSettings();
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    // if (isAuthenticated && useCase) {
+    //   dispatch(getAllConversations({ user: name, useCase: useCase }));
+    // }
+    dispatch(getAllConversations({ user: name}));
+
+    console.log ("on reload")
+  }, [useCase, name, isAuthenticated]);
+
+  return  (
+    <BrowserRouter>
+        <Routes>
+          {/* Routes wrapped in MainLayout */}
+          <Route element={<MainLayout />}>
+            <Route
+              path="/"
+              element={
+                <ProtectedRoute
+                  requiredRoles={["User", "Admin"]}
+                  component={Home}
+                />
+              }
+            />
+          </Route>
+
+          <Route element={<MainLayout dataView={true} />}>
+            <Route
+              path="/data"
+              element={
+                <ProtectedRoute
+                  requiredRoles={["Admin"]}
+                  component={DataSourceManagement}
+                />
+              }
+            />
+          </Route>
+
+          <Route element={<MainLayout historyView={true} />}>
+            <Route
+              path="/shared"
+              element={
+                <ProtectedRoute
+                  requiredRoles={["User", "Admin"]}
+                  component={(props) => (
+                    <HistoryView {...props} shared={true} />
+                  )}
+                />
+              }
+            />
+            <Route
+              path="/history"
+              element={
+                <ProtectedRoute
+                  requiredRoles={["User", "Admin"]}
+                  component={(props) => (
+                    <HistoryView {...props} shared={false} />
+                  )}
+                />
+              }
+            />
+          </Route>
+
+          <Route element={<MainLayout chatView={true} />}>
+            <Route
+              path="/faq/:conversation_id"
+              element={
+                <ProtectedRoute
+                  requiredRoles={["User", "Admin"]}
+                  component={ChatView}
+                />
+              }
+            />
+            <Route
+              path="/code/:conversation_id"
+              element={
+                <ProtectedRoute
+                  requiredRoles={["User", "Admin"]}
+                  component={ChatView}
+                />
+              }
+            />
+            <Route
+              path="/chat/:conversation_id"
+              element={
+                <ProtectedRoute
+                  requiredRoles={["User", "Admin"]}
+                  component={ChatView}
+                />
+              }
+            />
+            <Route
+              path="/summary/:conversation_id"
+              element={
+                <ProtectedRoute
+                  requiredRoles={["User", "Admin"]}
+                  component={ChatView}
+                />
+              }
+            />
+          </Route>
+
+          {/* Routes not wrapped in MainLayout */}
+          <Route element={<MinimalLayout />}>
+            {/* <Route path="/xxxx" element={<xxxx />} /> */}
+          </Route>
+        </Routes>
+        <Notification />
+    </BrowserRouter>
+  );
+};
+
+export default App;

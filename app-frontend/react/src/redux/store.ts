@@ -1,64 +1,47 @@
+// Copyright (C) 2025 Intel Corporation
+// SPDX-License-Identifier: Apache-2.0
+
 import { combineReducers, configureStore } from "@reduxjs/toolkit";
-import userReducer from "./User/userSlice";
-import conversationReducer from "./Conversation/ConversationSlice";
-// import sandboxReducer from "./Sandbox/SandboxSlice";
+import userReducer from "@redux/User/userSlice";
+import conversationReducer from "@redux/Conversation/ConversationSlice";
+import promptReducer from "@redux/Prompt/PromptSlice";
 import { TypedUseSelectorHook, useDispatch, useSelector } from "react-redux";
-import { APP_UUID } from "../config";
-
-function getBucketKey() {
-  const url = new URL(window.location.href);
-  const query = url.search;
-  return `${query}_${APP_UUID}`;
-}
-
-function saveToLocalStorage(state: ReturnType<typeof store.getState>) {
-  try {
-    const bucketKey = getBucketKey();
-    const serialState = JSON.stringify(state);
-    localStorage.setItem(`reduxStore_${bucketKey}`, serialState);
-  } catch (e) {
-    console.warn("Could not save state to localStorage:", e);
-  }
-}
-
-function loadFromLocalStorage() {
-  try {
-    const bucketKey = getBucketKey();
-    const serialisedState = localStorage.getItem(`reduxStore_${bucketKey}`);
-    if (serialisedState === null) return undefined;
-    return JSON.parse(serialisedState);
-  } catch (e) {
-    console.warn("Could not load state from localStorage:", e);
-    return undefined;
-  }
-}
 
 export const store = configureStore({
   reducer: combineReducers({
     userReducer,
     conversationReducer,
-    // sandboxReducer,
+    promptReducer,
   }),
   devTools: import.meta.env.PROD || true,
-  preloadedState: loadFromLocalStorage(),
+  // preloadedState: loadFromLocalStorage(),
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
       serializableCheck: false,
     }),
 });
 
-// Remove Redux state for the specific bucket key
-export function clearLocalStorageBucket() {
-  try {
-    const bucketKey = getBucketKey();
-    localStorage.removeItem(`reduxStore_${bucketKey}`);
-  } catch (e) {
-    console.warn("Could not clear localStorage bucket:", e);
-  }
-}
+// function saveToLocalStorage(state: ReturnType<typeof store.getState>) {
+//   try {
+//     const serialState = JSON.stringify(state);
+//     localStorage.setItem("reduxStore", serialState);
+//   } catch (e) {
+//     console.warn(e);
+//   }
+// }
 
-store.subscribe(() => saveToLocalStorage(store.getState()));
+// function loadFromLocalStorage() {
+//   try {
+//     const serialisedState = localStorage.getItem("reduxStore");
+//     if (serialisedState === null) return undefined;
+//     return JSON.parse(serialisedState);
+//   } catch (e) {
+//     console.warn(e);
+//     return undefined;
+//   }
+// }
 
+// store.subscribe(() => saveToLocalStorage(store.getState()));
 export default store;
 export type AppDispatch = typeof store.dispatch;
 export type RootState = ReturnType<typeof store.getState>;

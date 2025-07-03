@@ -1,0 +1,114 @@
+---
+# Source: asr/templates/configmap.yaml
+# Copyright (C) 2024 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-{endpoint}
+data:
+  HEALTHCHECK_ENDPOINT: "{whisper_endpoint}:{whisper_port}"
+  ASR_ENDPOINT: "http://{whisper_endpoint}:{whisper_port}"
+  http_proxy: ""
+  https_proxy: ""
+  no_proxy: ""
+  LOGFLAG: "True"
+
+---
+# Source: asr/templates/service.yaml
+# Copyright (C) 2024 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: "{endpoint}"
+spec:
+  type: ClusterIP
+  ports:
+    - port: "{port}"
+      targetPort: 9099
+      protocol: TCP
+      name: "{endpoint}"
+  selector:
+    app: "{endpoint}"
+---
+# Source: asr/templates/deployment.yaml
+# Copyright (C) 2024 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: "{endpoint}"
+  labels:
+    app: "{endpoint}"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: "{endpoint}"
+  template:
+    metadata:
+      labels:
+        app: "{endpoint}"
+    spec:
+      securityContext:
+        {}
+      initContainers:
+        - name: wait-for-remote-service
+          image: busybox
+          command: ['sh', '-c', 'until nc -z -v -w30 $HEALTHCHECK_ENDPOINT 80; do echo "Waiting for remote service..."; sleep 5; done']
+          envFrom:
+            - configMapRef:
+                name: config-{endpoint}
+      containers:
+        - name: asr-usvc
+          envFrom:
+            - configMapRef:
+                name: config-{endpoint}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+              - ALL
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 1000
+            seccompProfile:
+              type: RuntimeDefault
+          image: "${REGISTRY}/asr:${TAG}"
+          "imagePullPolicy": Always
+          ports:
+            - name: asr-usvc
+              containerPort: 9099
+              protocol: TCP
+          volumeMounts:
+            - mountPath: /tmp
+              name: tmp
+          livenessProbe:
+            failureThreshold: 24
+            httpGet:
+              path: v1/health_check
+              port: asr-usvc
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: v1/health_check
+              port: asr-usvc
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          startupProbe:
+            failureThreshold: 120
+            httpGet:
+              path: v1/health_check
+              port: asr-usvc
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            {}
+      volumes:
+        - name: tmp
+          emptyDir: {}

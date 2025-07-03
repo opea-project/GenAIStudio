@@ -15,7 +15,7 @@ class OPEADataPrep {
         this.name = 'opea_service@prepare_doc_redis_prep'
         this.version = 1.0
         this.type = 'EmbedDoc'
-        this.icon = 'data.png'
+        this.icon = 'assets/data.png'
         this.category = 'Data Preparation'
         this.description = 'Data Preparation with redis using Langchain'
         this.baseClasses = [this.type]

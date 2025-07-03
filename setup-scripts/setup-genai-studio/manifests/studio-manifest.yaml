@@ -163,6 +163,25 @@ data:
             proxy_set_header Upgrade $http_upgrade;
             proxy_set_header Connection "upgrade";
         }
+
+        # Location block for chathistory service
+        location /v1/chathistory {
+            # Initialize the variable for namespace
+            if ($http_referer ~* "([&?]ns=([^&]+))") {
+                set $namespace $2;  # Capture the value of 'ns'
+            }
+    
+            # Rewrite the request to include the namespace
+            rewrite ^/(.*)$ /$1?ns=$namespace break;
+
+            # Proxy to the desired service using the namespace
+            proxy_pass http://${APP_CHATHISTORY_DNS};
+    
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
     }
 ---
 apiVersion: v1

@@ -6,7 +6,7 @@ class OPEADocInput {
         this.name = 'doc_input'
         this.version = 1.0
         this.type = 'UploadFile'
-        this.icon = 'controls.png'
+        this.icon = 'assets/controls.png'
         this.category = 'Controls'
         this.description = 'User Input from Document Upload'
         this.baseClasses = [this.type]

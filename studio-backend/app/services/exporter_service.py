@@ -1,6 +1,7 @@
 import os
 import yaml
 from collections import OrderedDict
+import traceback
 
 from app.utils.exporter_utils import TEMPLATES_DIR, manifest_map, compose_map, process_opea_services
 from app.utils.placeholders_utils import ordered_load_all, replace_manifest_placeholders, replace_dynamic_manifest_placeholder, replace_compose_placeholders, replace_dynamic_compose_placeholder
@@ -8,8 +9,11 @@ from app.utils.placeholders_utils import ordered_load_all, replace_manifest_plac
 def convert_proj_info_to_manifest(proj_info_json, output_file=None):
 
     print("Converting workflow info json to manifest.")
-
-    opea_services = process_opea_services(proj_info_json)
+    try:
+        opea_services = process_opea_services(proj_info_json)
+    except Exception as e:
+        traceback.print_exc()
+        print(f"Error processing OPEA services: {e}")
     # print(json.dumps(opea_services, indent=4))
 
     output_manifest = []

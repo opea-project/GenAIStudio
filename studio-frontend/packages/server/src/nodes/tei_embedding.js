@@ -2,14 +2,14 @@
 Object.defineProperty(exports, '__esModule', { value: true })
 // const modelLoader_1 = require("../../../src/modelLoader");
 // const utils_1 = require("../../../src/utils");
-const llamaindex_1 = require('llamaindex')
+// const llamaindex_1 = require('llamaindex')
 class OPEAEmbeddings {
     constructor() {
         this.label = 'TEI Embedding Langchain'
         this.name = 'opea_service@embedding_tei_langchain'
         this.version = 1.0
         this.type = 'EmbedDoc'
-        this.icon = 'embeddings.png'
+        this.icon = 'assets/embeddings.png'
         this.category = 'Embeddings'
         this.description = 'Text Embedding Inference using Langchain'
         this.baseClasses = [this.type, 'EmbeddingResponse', 'ChatCompletionRequest']

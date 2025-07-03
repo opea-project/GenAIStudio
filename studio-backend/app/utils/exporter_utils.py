@@ -16,6 +16,9 @@ manifest_map = {
         "opea_service@supervisor_agent" : "microsvc-manifests/supervisor-agent.yaml",
         "opea_service@rag_agent" : "microsvc-manifests/rag-agent.yaml",
         "opea_service@sql_agent" : "microsvc-manifests/sql-agent.yaml",
+        "opea_service@llm_docsum" : "microsvc-manifests/llm-uservice.yaml",
+        "opea_service@asr" : "microsvc-manifests/asr-usvc.yaml",
+        "whisper" : "microsvc-manifests/whisper.yaml",
     }
 
 compose_map = {
@@ -31,6 +34,9 @@ compose_map = {
         "opea_service@supervisor_agent" : "microsvc-composes/supervisor-agent.yaml",
         "opea_service@rag_agent" : "microsvc-composes/rag-agent.yaml",
         "opea_service@sql_agent" : "microsvc-composes/sql-agent.yaml",
+        "opea_service@llm_docsum" : "microsvc-composes/llm-uservice.yaml",
+        "opea_service@asr" : "microsvc-composes/asr-usvc.yaml",
+        "whisper" : "microsvc-composes/whisper.yaml",
 }
 
 # Define a dictionary mapping opea service types to their ports
@@ -38,8 +44,10 @@ opea_endpoint_paths = {
     "opea_service@prepare_doc_redis_prep" : "/v1/dataprep",
     "opea_service@embedding_tei_langchain" : "/v1/embeddings",
     "opea_service@retriever_redis" : "/v1/retrieval",
-    "opea_service@reranking_tei" : "/v1/reranking", 
+    "opea_service@reranking_tei" : "/v1/reranking",
     "opea_service@llm_tgi" : "/v1/chat/completions",
+    "opea_service@llm_docsum" : "/v1/docsum",
+    "opea_service@asr" : "/v1/audio/transcriptions",
 }
 
 # Define a dictionary mapping opea service types to their ports
@@ -49,6 +57,8 @@ opea_url_name = {
     "opea_service@retriever_redis" : "APP_RETRIEVAL_SERVICE_URL",
     "opea_service@reranking_tei" : "APP_RERANKING_SERVICE_URL", 
     "opea_service@llm_tgi" : "APP_CHAT_COMPLETEION_SERVICE_URL",
+    "opea_service@llm_docsum" : "APP_DOCSUM_SERVICE_URL",
+    "opea_service@asr" : "APP_ASR_SERVICE_URL",
 }
 
 additional_files_map = {
@@ -57,11 +67,22 @@ additional_files_map = {
     "opea_service@sql_agent" : [{"tools/": "agent-tools/"}],
 }
 
+additional_params_map = {
+    "opea_service@llm_tgi": {
+        "IMAGE_REPOSITORY": "llm-textgen",
+    },
+    "opea_service@llm_docsum": {
+        "IMAGE_REPOSITORY": "llm-docsum",
+    },
+}
+
 def process_opea_services(proj_info_json):
     print("exporter_utils.py: process_opea_services")
     base_port = 9000
     # Create a deep copy of the proj_info_json to avoid modifying the original data
     proj_info_copy = copy.deepcopy(proj_info_json)
+    
+    # check for 
 
     # Filter nodes to include only those with keys containing 'opea_service@'
     # and extract their 'dependent_services', 'connected_from', and 'connected_to'
@@ -121,13 +142,14 @@ def process_opea_services(proj_info_json):
     
     # Handle other dependent services
     for node_name, node_info in opea_data['nodes'].items():
+        print("process_opea_services: node_name", node_name, "node_info", node_info)
         for service_type, service_info in node_info.get('dependent_services', {}).items():
             # Skip redis_vector_store as it's handled separately
             if service_type == 'redis_vector_store':
                 continue
             
             # Create a unique key for the service based on its modelName and huggingFaceToken
-            service_key = (service_info['modelName'], service_info['huggingFaceToken'])
+            service_key = (service_info.get('modelName', 'default'), service_info['huggingFaceToken'])
             
             # Check if the service has already been added
             if service_key not in service_keys:
@@ -193,7 +215,7 @@ def process_opea_services(proj_info_json):
                     prefix = service_type
                 service_info_dict[f"{prefix}_endpoint"] = services[service_id]['endpoint']
                 service_info_dict[f"{prefix}_port"] = services[service_id]['port']
-                service_info_dict[f"modelName"] = services[service_id]['modelName']
+                service_info_dict[f"modelName"] = services[service_id].get('modelName', 'NA')
                 service_info_dict[f"huggingFaceToken"] = services[service_id]['huggingFaceToken']
         
         # Iterate through the connected_to and connected_to to map to the service info
@@ -260,6 +282,14 @@ def process_opea_services(proj_info_json):
                 value for key, value in node_info.items() if key.endswith('_endpoint')
             ]
             updated_nodes[node_name]['dependent_endpoints'] = dependent_endpoints
+            
+    # Update additional params for services
+    for node_name, node_info in updated_nodes.items():
+        # Check if the service type has additional params defined
+        if node_info['service_type'] in additional_params_map:
+            # Update the node info with additional params
+            for param_key, param_value in additional_params_map[node_info['service_type']].items():
+                updated_nodes[node_name][param_key] = param_value
 
     # Merge the updated_nodes with the services dictionary
     services.update(updated_nodes)

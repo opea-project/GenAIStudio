@@ -1,0 +1,145 @@
+---
+# Source: whisper/templates/configmap.yaml
+# Copyright (C) 2024 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-{endpoint}
+data:
+  EASYOCR_MODULE_PATH: "/tmp/.EasyOCR"
+  ASR_MODEL_PATH: "openai/whisper-small"
+  http_proxy: "${HTTP_PROXY}"
+  https_proxy: "${HTTP_PROXY}"
+  no_proxy: "${NO_PROXY}"
+  HF_HOME: "/tmp/.cache/huggingface"
+  HUGGINGFACE_HUB_CACHE: "/data"
+  HF_TOKEN: "{huggingFaceToken}"
+  LOGFLAG: "True"
+---
+# Source: whisper/templates/service.yaml
+# Copyright (C) 2024 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: "{endpoint}"
+spec:
+  type: "ClusterIP"
+  ports:
+    - port: "{port}"
+      targetPort: "{port}"
+      protocol: TCP
+      name: "{endpoint}"
+  selector:
+    app: "{endpoint}"
+---
+# Source: whisper/templates/deployment.yaml
+# Copyright (C) 2024 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: "{endpoint}"
+  labels:
+    app: "{endpoint}"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: "{endpoint}"
+  template:
+    metadata:
+      labels:
+        app: "{endpoint}"
+    spec:
+      securityContext:
+        {}
+      # initContainers:
+        # - name: model-downloader
+        #   envFrom:
+        #     - configMapRef:
+        #         name: config-{endpoint}
+        #   securityContext:
+        #     readOnlyRootFilesystem: true
+        #     allowPrivilegeEscalation: false
+        #     capabilities:
+        #       drop:
+        #       - ALL
+        #       add:
+        #       - DAC_OVERRIDE
+        #       # To be able to make data model directory group writable for
+        #       # previously downloaded model by old versions of helm chart
+        #       - FOWNER
+        #     seccompProfile:
+        #       type: RuntimeDefault
+        #   image: huggingface/downloader:0.17.3
+        #   command: ['sh', '-ec']
+        #   args:
+        #     - |
+        #       echo "Huggingface log in ...";
+        #       huggingface-cli login --token $(HF_TOKEN);
+        #       echo "Download model openai/whisper-small ... ";
+        #       chmod -R g+w /data
+        #       huggingface-cli download --cache-dir /data openai/whisper-small;
+        #       echo "Change model files mode ...";
+        #       chmod -R g+w /data/models--openai--whisper-small;
+        #       # NOTE: Buggy logout command;
+        #       # huggingface-cli logout;
+          # volumeMounts:
+          #   - mountPath: /data
+          #     name: model-volume
+          #   - mountPath: /tmp
+          #     name: tmp
+      containers:
+        - name: whisper
+          envFrom:
+            - configMapRef:
+                name: config-{endpoint}
+          securityContext:
+            {}
+          image: "opea/whisper"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: whisper
+              containerPort: "{port}"
+              protocol: TCP
+          volumeMounts:
+            - mountPath: /data
+              name: model-volume
+            - mountPath: /tmp
+              name: tmp
+          livenessProbe:
+            failureThreshold: 24
+            initialDelaySeconds: 8
+            periodSeconds: 8
+            timeoutSeconds: 4
+            tcpSocket:
+              port: http
+          readinessProbe:
+            initialDelaySeconds: 16
+            periodSeconds: 8
+            timeoutSeconds: 4
+            tcpSocket:
+              port: http
+          startupProbe:
+            failureThreshold: 180
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 2
+            tcpSocket:
+              port: http
+      volumes:
+        - name: model-volume
+          persistentVolumeClaim:
+            claimName: model-pvc
+        - name: shm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 1Gi 
+        - name: tmp
+          emptyDir: {}
+      terminationGracePeriodSeconds: 120
