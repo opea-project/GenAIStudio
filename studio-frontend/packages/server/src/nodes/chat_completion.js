@@ -6,7 +6,7 @@ class OPEAChatCompletion {
         this.name = 'chat_completion'
         this.version = 1.0
         this.type = 'ChatCompletion'
-        this.icon = 'controls.png'
+        this.icon = 'assets/controls.png'
         this.category = 'Controls'
         this.description = 'Send Chat Response to UI'
         this.baseClasses = []
@@ -16,7 +16,23 @@ class OPEAChatCompletion {
             {
                 label: 'LLM Response',
                 name: 'llm_response',
-                type: 'ChatCompletion'
+                type: 'StreamingResponse|ChatCompletion'
+            },
+            {
+                label: 'UI Choice',
+                name: 'ui_choice',
+                type: 'options',
+                default: 'chat',
+                options: [
+                    {
+                        name: 'chat',
+                        label: 'Chat'
+                    },
+                    {
+                        name: 'columns',
+                        label: 'Two Columns (For Document Sumarization or Translation)'
+                    }
+                ]
             }
         ],
         this.hideOutput = true

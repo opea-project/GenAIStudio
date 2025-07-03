@@ -2,3 +2,4 @@ test-results/
 **.log
 **/report.html
 docker-compose
+**/node_modules/

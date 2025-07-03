@@ -6,7 +6,7 @@ Install npm dependencies:
 # Install package.json npm packages
 npm install
 # Install playwright dependencies
-npx playwright install-deps
+npx playwright install
 ```
 
 Find baseURL variable in playwright.config.js and update it to point to your frontend application:
@@ -20,7 +20,8 @@ Run the testcases:
 # Run all testcase
 npx playwright test
 # Run specific testcase
-npx playwright test studio-e2e/<testcase>.spec.ts
+npx playwright test <testcase>.spec.ts
+npx playwright test <testcase>.spec.ts --debug
 ```
 
 Open the test report:

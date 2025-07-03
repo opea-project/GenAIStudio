@@ -214,7 +214,7 @@ The downloaded zip file includes the necessary configurations for deploying the 
 3. Access the application by opening your web browser and go to:
 
     ```bash
-    http://<public_host_ip>:8080
+    http://<public_host_ip>:8090
     ```
 
 

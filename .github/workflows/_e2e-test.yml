@@ -36,16 +36,9 @@ jobs:
           ref: ${{ env.CHECKOUT_REF }}
           fetch-depth: 0
 
-      - name: Update Manifest
-        run: |
-          find . -type f -name 'studio-manifest.yaml' -exec sed -i 's/value: opea/value: ${REGISTRY}/g' {} \;
-        working-directory: ${{ github.workspace }}/setup-scripts/setup-genai-studio/manifests/
-
       - name: Deploy GenAI Studio
         run: |
-      
           sudo apt install ansible -y
-          sed -i 's/value: "${TAG}"/value: latest/' manifests/studio-manifest.yaml
           ansible-playbook genai-studio.yml -e "container_registry=${OPEA_IMAGE_REPO}opea" -e "container_tag=${{ inputs.tag }}" -e "mysql_host=mysql.mysql.svc.cluster.local"
           sleep 5
           kubectl wait --for=condition=ready pod --all --namespace=studio --timeout=300s --field-selector=status.phase!=Succeeded

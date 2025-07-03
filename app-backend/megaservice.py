@@ -7,7 +7,8 @@ import importlib
 import re
 
 # library import
-from fastapi import Request
+from typing import List
+from fastapi import Request, UploadFile, File
 from fastapi.responses import StreamingResponse
 from dotenv import load_dotenv
 
@@ -65,6 +66,7 @@ class AppService:
         self.host = host
         self.port = port
         self.endpoint = "/v1/app-backend"
+        self.is_docsum = False
         with open('config/workflow-info.json', 'r') as f:
             self.workflow_info = json.load(f)
             
@@ -117,6 +119,8 @@ class AppService:
             if node['inMegaservice']:
                 print('adding Node', node_id)
                 microservice_name = node['name'].split('@')[1]
+                if "docsum" in microservice_name:
+                    self.is_docsum = True
                 service_node_ip = node_id.split('@')[1].replace('_','-') if USE_NODE_ID_AS_IP else HOST_IP
                 microservice = templates[microservice_name].get_service(host_ip=service_node_ip, node_id_as_ip=USE_NODE_ID_AS_IP, port=os.getenv(f"{node_id.split('@')[1]}_port", None))
                 microservice.name = node_id
@@ -170,7 +174,7 @@ class AppService:
         elif self.services[node_id].service_type == ServiceType.LLM:
             # convert TGI/vLLM to unified OpenAI /v1/chat/completions format
             next_inputs = {}
-            next_inputs["model"] = inputs.get("model") or "Intel/neural-chat-7b-v3-3"
+            next_inputs["model"] = inputs.get("model") or "NA"
             if inputs.get("inputs"):
                 next_inputs["messages"] = [{"role": "user", "content": inputs["inputs"]}]
             elif inputs.get("query") and inputs.get("documents"):
@@ -356,7 +360,7 @@ class AppService:
             for node, response in result_dict.items():
                 if isinstance(response, StreamingResponse):
                     return response
-            last_node = runtime_graph.all_leaves()[-1]
+            last_node = runtime_graph.all_leaves()[-1] # YX to fix it to the source node of chat completion
             print('result_dict:', result_dict)
             print('last_node:',last_node)
             last_node_info = self.workflow_info['nodes'][last_node]
@@ -377,9 +381,77 @@ class AppService:
                 # handle the non-llm response
                 return result_dict[last_node]
 
+    async def handle_request_docsum(self, request: Request, files: List[UploadFile] = File(default=None)):
+        """Accept pure text, or files .txt/.pdf.docx, audio/video base64 string."""
+        if "application/json" in request.headers.get("content-type"):
+            data = await request.json()
+            stream_opt = data.get("stream", True)
+            summary_type = data.get("summary_type", "auto")
+            chunk_size = data.get("chunk_size", -1)
+            chunk_overlap = data.get("chunk_overlap", -1)
+            chat_request = ChatCompletionRequest.model_validate(data)
+            prompt = handle_message(chat_request.messages)
+
+            initial_inputs_data = {data["type"]: prompt}
+
+        elif "multipart/form-data" in request.headers.get("content-type"):
+            data = await request.form()
+            stream_opt = data.get("stream", True)
+            summary_type = data.get("summary_type", "auto")
+            chunk_size = data.get("chunk_size", -1)
+            chunk_overlap = data.get("chunk_overlap", -1)
+            chat_request = ChatCompletionRequest.model_validate(data)
+
+            data_type = data.get("type")
+
+            file_summaries = []
+            if files:
+                for file in files:
+                    # Fix concurrency issue with the same file name
+                    # https://github.com/opea-project/GenAIExamples/issues/1279
+                    uid = str(uuid.uuid4())
+                    file_path = f"/tmp/{uid}"
+
+                    import aiofiles
+
+                    async with aiofiles.open(file_path, "wb") as f:
+                        await f.write(await file.read())
+
+                    if data_type == "text":
+                        docs = read_text_from_file(file, file_path)
+                    elif data_type in ["audio", "video"]:
+                        docs = encode_file_to_base64(file_path)
+                    else:
+                        raise ValueError(f"Data type not recognized: {data_type}")
+
+                    os.remove(file_path)
+
+                    if isinstance(docs, list):
+                        file_summaries.extend(docs)
+                    else:
+                        file_summaries.append(docs)
+
+            if file_summaries:
+                prompt = handle_message(chat_request.messages) + "\n".join(file_summaries)
+            else:
+                prompt = handle_message(chat_request.messages)
+
+            data_type = data.get("type")
+            if data_type is not None:
+                initial_inputs_data = {}
+                initial_inputs_data[data_type] = prompt
+            else:
+                initial_inputs_data = {"messages": prompt}
+
+        else:
+            raise ValueError(f"Unknown request type: {request.headers.get('content-type')}")
+    
     def create_handle_request(self, megaservice):
         async def handle_request_wrapper(request: Request):
-            return await self.handle_request(request, megaservice)
+            if self.is_docsum:
+                return await self.handle_request_docsum(request)
+            else:
+                return await self.handle_request(request, megaservice)
         return handle_request_wrapper
     
     def start(self):
@@ -401,7 +473,7 @@ class AppService:
 
 if __name__ == "__main__":
     print('pre initialize appService')
-    app = AppService(host="0.0.0.0", port=8888)
+    app = AppService(host="0.0.0.0", port=8899)
     print('after initialize appService')
     app.add_remote_service()
     print('after add_remote_service')

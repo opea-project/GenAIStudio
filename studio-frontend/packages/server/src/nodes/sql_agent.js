@@ -6,7 +6,7 @@ class OPEARedisRetreiver {
         this.name = 'opea_service@sql_agent'
         this.version = 1.0
         this.type = 'AgentTask'
-        this.icon = 'opea-icon-color.svg'
+        this.icon = 'assets/opea-icon-color.svg'
         this.category = 'Agent'
         this.description = 'Agent specifically designed and optimized for answering questions aabout data in SQL databases.'
         this.baseClasses = [this.type, 'ChatCompletionRequest']

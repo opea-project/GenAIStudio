@@ -64,6 +64,9 @@ class WorkflowInfo:
                             node_data['connected_from'].append(connected_from_id)
                             dag_nodes[connected_from_id]['connected_to'].append(id)
                             continue
+                    #skip ui_choice inputs
+                    if input_key == 'ui_choice':
+                        continue
 
                     if input_key == 'huggingFaceToken' and not input_value:
                         # If huggingFaceToken is empty, set it to 'NA'
@@ -85,6 +88,7 @@ class WorkflowInfo:
                         node_data['dependent_services'] = {}
                         continue
                     else:
+                        # print("node_data", node_data)
                         for service_type, service_params in list(node_data['dependent_services'].items()):
                             if llm_engine:
                                 if llm_engine == service_type:
@@ -100,7 +104,10 @@ class WorkflowInfo:
                                     node_data['dependent_services'][service_type][input_key] = input_value
                                     node_data['params'].pop(input_key, None)
                                     continue
-
+                # Handle imageRepository specific logic
+                print(f"imageRepository: {node_data.get('imageRepository')}")
+                if node_data.get('imageRepository'):
+                    node_data['params']['IMAGE_REPOSITORY'] = node_data['imageRepository']
                 del node_data['inputParams']
                 del node_data['inputs']
                 del node_data['outputs']

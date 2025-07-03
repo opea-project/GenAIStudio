@@ -76,8 +76,14 @@ class PipelineFlow(BaseModel):
     sandboxStatus: Optional[str] = None
     sandboxAppUrl: Optional[str] = None
     sandboxGrafanaUrl: Optional[str] = None
+    sandboxDebugLogsUrl: Optional[str] = None
     createdDate: datetime
     updatedDate: datetime
 
+class DeployPipelineFlow(BaseModel):
+    remoteHost: str
+    remoteUser: str
+    pipelineFlow: PipelineFlow
+    
 class WorkflowId(BaseModel):
     id: str

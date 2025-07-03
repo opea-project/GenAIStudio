@@ -28,6 +28,7 @@ import { AddCustomTemplate1725629836652 } from './1725629836652-AddCustomTemplat
 import { AddArtifactsToChatMessage1726156258465 } from './1726156258465-AddArtifactsToChatMessage'
 import { AddStudioFieldsToChatFlow1733282099772 } from './1733282099772-AddStudioFieldsToChatFlow'
 import { AddSandboxTracerUrlToChatFlow1743740099772 } from './1743740099772-AddSandboxTracerUrlToChatFlow'
+import { AddSandboxDebugLogsUrlToChatFlow1749612373191 } from './1749612373191-AddSandboxDebugLogsUrlToChatFlow'
 
 
 export const mysqlMigrations = [
@@ -60,5 +61,6 @@ export const mysqlMigrations = [
     AddCustomTemplate1725629836652,
     AddArtifactsToChatMessage1726156258465,
     AddStudioFieldsToChatFlow1733282099772,
-    AddSandboxTracerUrlToChatFlow1743740099772
+    AddSandboxTracerUrlToChatFlow1743740099772,
+    AddSandboxDebugLogsUrlToChatFlow1749612373191
 ]

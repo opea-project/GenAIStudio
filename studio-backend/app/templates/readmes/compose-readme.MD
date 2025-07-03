@@ -29,5 +29,5 @@ Follow these steps to docker compose the application:
 4. Open application in browser with 
 
     ```bash
-    http://<public_host_ip>:8080
+    http://<public_host_ip>:8090
     ```

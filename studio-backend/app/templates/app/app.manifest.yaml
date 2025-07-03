@@ -22,8 +22,8 @@ metadata:
 spec:
   type: ClusterIP
   ports:
-  - port: 8888
-    targetPort: 8888
+  - port: 8899
+    targetPort: 8899
     protocol: TCP
     name: app-backend
   selector:
@@ -51,6 +51,8 @@ spec:
         env:
         - name: USE_NODE_ID_AS_IP
           value: 'true'
+        - name: LOGFLAG
+          value: 'True'
         __TELEMETRY_ENDPOINT__
         securityContext:
           allowPrivilegeEscalation: false
@@ -75,7 +77,7 @@ spec:
           subPath: .env
         ports:
         - name: app-backend
-          containerPort: 8888
+          containerPort: 8899
           protocol: TCP
         resources: null
       volumes:
@@ -95,7 +97,7 @@ metadata:
 spec:
   type: ClusterIP
   ports:
-  - port: 5175
+  - port: 5275
     targetPort: 80
     protocol: TCP
     name: app-frontend
@@ -122,8 +124,16 @@ spec:
       containers:
       - name: app-frontend
         env:
-        - name: VITE_APP_BACKEND_SERVICE_URL
-          value: /v1/app-backend
+        # - name: VITE_APP_BACKEND_SERVICE_URL
+        #   value: "/v1/app-backend"
+        - name: APP_BACKEND_SERVICE_URL
+          value: "/v1/app-backend"
+        - name: APP_DATAPREP_SERVICE_URL
+          value: "/v1/dataprep"
+        - name: APP_CHAT_HISTORY_SERVICE_URL
+          value: "/v1/chathistory"
+        - name: APP_UI_SELECTION
+          value: "chat,summary,code"
         __UI_CONFIG_INFO_ENV_PLACEHOLDER__
         securityContext: {}
         image: __APP_FRONTEND_IMAGE__
@@ -139,6 +149,90 @@ spec:
       volumes:
       - name: tmp
         emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongo
+spec:
+  type: ClusterIP
+  ports:
+    - port: 27017
+      targetPort: 27017
+      protocol: TCP
+      name: mongo
+  selector:
+    app: mongo
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mongo
+  labels:
+    app: mongo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mongo
+  template:
+    metadata:
+      labels:
+        app: mongo
+    spec:
+      containers:
+      - name: mongo
+        image: mongo:7.0.11
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 27017
+        command: ["mongod", "--quiet", "--logpath", "/dev/null", "--bind_ip_all"]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: chathistory-mongo
+spec:
+  type: ClusterIP
+  ports:
+    - port: 6012
+      targetPort: 6012
+      protocol: TCP
+      name: chathistory-mongo
+  selector:
+    app: chathistory-mongo
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: chathistory-mongo
+  labels:
+    app: chathistory-mongo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: chathistory-mongo
+  template:
+    metadata:
+      labels:
+        app: chathistory-mongo
+    spec:
+      containers:
+      - name: chathistory-mongo
+        image: opea/chathistory-mongo:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 6012
+        env:
+        - name: MONGO_HOST
+          value: "mongo"
+        - name: MONGO_PORT
+          value: "27017"
+        - name: COLLECTION_NAME
+          value: "Conversations"
+        - name: LOGFLAG
+          value: "True"
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -165,7 +259,7 @@ data:
         }
 
         location / {
-            proxy_pass http://app-frontend:5175;
+            proxy_pass http://app-frontend:5275;
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -173,7 +267,22 @@ data:
         }
 
         location /v1/app-backend {
-            proxy_pass http://app-backend:8888;
+            proxy_pass http://app-backend:8899;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+
+            # Disable buffering for SSE
+            proxy_buffering off;
+            proxy_cache off;
+            proxy_http_version 1.1;
+            proxy_set_header Connection '';
+            chunked_transfer_encoding off;
+        }
+
+        location /v1/chathistory {
+            proxy_pass http://chathistory-mongo:6012;
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;

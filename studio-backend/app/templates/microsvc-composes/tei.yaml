@@ -1,5 +1,5 @@
 "{{endpoint}}":
-  image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.5
+  image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.7
   container_name: "{{endpoint}}"
   ports:
     - "{{port_key}}:80"
