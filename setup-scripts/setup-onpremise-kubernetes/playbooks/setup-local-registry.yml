@@ -52,11 +52,11 @@
         https_proxy: "{{ http_proxy }}"
         no_proxy: "{{ no_proxy }}"
 
-    - name: Install Docker SDK for Python
-      pip:
-        name: docker
-        executable: pip3
+    - name: Install Docker SDK for Python via apt
+      apt:
+        name: python3-docker
         state: present
+      become: yes
       environment:
         http_proxy: "{{ http_proxy }}"
         https_proxy: "{{ http_proxy }}"
