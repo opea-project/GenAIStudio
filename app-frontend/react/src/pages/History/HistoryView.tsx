@@ -1,3 +1,4 @@
+import React from "react";
 import {
   Box,
   Checkbox,
@@ -26,6 +27,7 @@ import {
   SolidButton,
   TextButton,
 } from "@root/shared/ActionButtons";
+import { useToWithQuery } from "@utils/navigationAndAxiosWithQuery";
 
 interface HistoryViewProps {
   shared: boolean;
@@ -34,6 +36,7 @@ interface HistoryViewProps {
 const HistoryView: React.FC<HistoryViewProps> = ({ shared }) => {
   const dispatch = useAppDispatch();
   const { name } = useAppSelector(userSelector);
+  const toWithQuery = useToWithQuery();
 
   const theme = useTheme();
 
@@ -109,7 +112,7 @@ const HistoryView: React.FC<HistoryViewProps> = ({ shared }) => {
           ) : (
             <Link
               component={RouterLink}
-              to={`/chat/${conversation.id}`}
+              to={toWithQuery(`/chat/${conversation.id}`)}
               sx={{ ...theme.customStyles.gradientBlock }}
               className={styles.historyLink}
             >
