@@ -1,6 +1,9 @@
 auth:
   rootPassword: root
 
+image:
+  tag: "8.0"
+
 primary:
   extraFlags: "--innodb-use-native-aio=0"
 

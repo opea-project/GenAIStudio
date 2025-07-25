@@ -1,3 +1,6 @@
+- name: Create ssh secrets
+  import_playbook: playbooks/create-ssh-secrets.yml
+
 - name: Deploy mysqldb
   import_playbook: playbooks/deploy-mysqldb.yml
 
