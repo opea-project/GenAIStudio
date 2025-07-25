@@ -21,6 +21,7 @@ The genai-studio playbook script will:
 
 Run below commands:
 ```sh
+curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 sudo apt install ansible -y
 ansible-playbook genai-studio.yml
 ```

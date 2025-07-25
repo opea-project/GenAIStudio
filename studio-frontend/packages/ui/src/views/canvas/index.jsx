@@ -232,15 +232,22 @@ const Canvas = () => {
             console.log (keycloak?.tokenParsed)    
 
             if (!chatflow.id) {
+                // Determine type: use duplicated flow type if available, otherwise use current canvas type
+                const chatflowType = duplicatedFlowType || 
+                                   (isAgentCanvas ? 'MULTIAGENT' : isOpeaCanvas ? 'OPEA' : 'CHATFLOW')
+                
                 const newChatflowBody = {
                     name: chatflowName,
                     deployed: false,
                     isPublic: false,
                     flowData,
                     userid: keycloak?.tokenParsed?.email ? keycloak.tokenParsed.email : '',
-                    type: isAgentCanvas ? 'MULTIAGENT' : isOpeaCanvas ? 'OPEA' : 'CHATFLOW'
+                    type: chatflowType
                 }
                 createNewChatflowApi.request(newChatflowBody)
+                
+                // Clear the duplicated flow type after using it
+                setDuplicatedFlowType(null)
             } else {
                 const updateBody = {
                     name: chatflowName,
@@ -468,6 +475,9 @@ const Canvas = () => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [canvasDataStore.chatflow])
 
+    // Store duplicated flow type to be used when saving
+    const [duplicatedFlowType, setDuplicatedFlowType] = useState(null)
+
     // Initialization
     useEffect(() => {
         setIsSyncNodesButtonEnabled(false)
@@ -475,8 +485,22 @@ const Canvas = () => {
         if (chatflowId) {
             getSpecificChatflowApi.request(chatflowId)
         } else {
-            if (localStorage.getItem('duplicatedFlowData')) {
-                handleLoadFlow(localStorage.getItem('duplicatedFlowData'))
+            const duplicatedData = localStorage.getItem('duplicatedFlowData')
+            if (duplicatedData) {
+                try {
+                    // Try to parse as new format (with type information)
+                    const parsedData = JSON.parse(duplicatedData)
+                    if (parsedData && parsedData.flowData && parsedData.type) {
+                        handleLoadFlow(parsedData.flowData)
+                        setDuplicatedFlowType(parsedData.type)
+                    } else {
+                        // Fallback to old format (just flow data)
+                        handleLoadFlow(duplicatedData)
+                    }
+                } catch (e) {
+                    // If JSON parsing fails, treat as old format
+                    handleLoadFlow(duplicatedData)
+                }
                 setTimeout(() => localStorage.removeItem('duplicatedFlowData'), 0)
             } else {
                 setNodes([])

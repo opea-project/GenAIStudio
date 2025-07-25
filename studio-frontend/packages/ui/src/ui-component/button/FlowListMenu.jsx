@@ -265,8 +265,17 @@ export default function FlowListMenu({ chatflow, isAgentCanvas, setError, update
     const handleDuplicate = () => {
         setAnchorEl(null)
         try {
-            localStorage.setItem('duplicatedFlowData', chatflow.flowData)
-            window.open(`${uiBaseURL}/${isAgentCanvas ? 'agentcanvas' : 'canvas'}`, '_blank')
+            // Store both the flow data and type information
+            const duplicatedData = {
+                flowData: chatflow.flowData,
+                type: chatflow.type || (isAgentCanvas ? 'MULTIAGENT' : 'CHATFLOW')
+            }
+            localStorage.setItem('duplicatedFlowData', JSON.stringify(duplicatedData))
+            
+            // Determine canvas type based on original chatflow type
+            const targetCanvas = chatflow.type === 'OPEA' ? 'opeacanvas' : 
+                                chatflow.type === 'MULTIAGENT' ? 'agentcanvas' : 'canvas'
+            window.open(`${uiBaseURL}/${targetCanvas}`, '_blank')
         } catch (e) {
             console.error(e)
         }

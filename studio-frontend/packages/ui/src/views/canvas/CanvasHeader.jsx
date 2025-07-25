@@ -121,8 +121,18 @@ const CanvasHeader = ({ chatflow, isAgentCanvas, isOpeaCanvas, handleSaveFlow, h
                 let flowData = chatflow.flowData
                 const parsedFlowData = JSON.parse(flowData)
                 flowData = JSON.stringify(parsedFlowData)
-                localStorage.setItem('duplicatedFlowData', flowData)
-                window.open(`${uiBaseURL}/${isAgentCanvas ? 'agentcanvas' : isOpeaCanvas ? 'opeacanvas' : 'canvas'}`, '_blank')
+                
+                // Store both the flow data and type information
+                const duplicatedData = {
+                    flowData: flowData,
+                    type: chatflow.type || (isAgentCanvas ? 'MULTIAGENT' : isOpeaCanvas ? 'OPEA' : 'CHATFLOW')
+                }
+                localStorage.setItem('duplicatedFlowData', JSON.stringify(duplicatedData))
+                
+                // Determine canvas type based on original chatflow type
+                const targetCanvas = chatflow.type === 'OPEA' ? 'opeacanvas' : 
+                                    chatflow.type === 'MULTIAGENT' ? 'agentcanvas' : 'canvas'
+                window.open(`${uiBaseURL}/${targetCanvas}`, '_blank')
             } catch (e) {
                 console.error(e)
             }

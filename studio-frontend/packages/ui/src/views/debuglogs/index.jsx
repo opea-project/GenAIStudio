@@ -151,6 +151,7 @@ export default function PodLogsView() {
                             <StyledTableCell>Pod Name</StyledTableCell>
                             <StyledTableCell>Pod Ready</StyledTableCell>
                             <StyledTableCell>Pod Status</StyledTableCell>
+                            <StyledTableCell>Dependencies</StyledTableCell>
                             <StyledTableCell>Pod Events</StyledTableCell>
                             <StyledTableCell>Pod Logs</StyledTableCell>
                         </StyledTableRow>
@@ -161,6 +162,12 @@ export default function PodLogsView() {
                                 <StyledTableCell>{pod.name}</StyledTableCell>
                                 <StyledTableCell>{pod.ready}</StyledTableCell>
                                 <StyledTableCell>{pod.status}</StyledTableCell>
+                                <StyledTableCell>
+                                    {pod.dependencies && pod.dependencies.length > 0 
+                                        ? pod.dependencies.join(', ') 
+                                        : 'None'
+                                    }
+                                </StyledTableCell>
                                 <StyledTableCell>
                                     {pod.events.length > 0 ? (
                                         <Button variant="outlined" size="small" onClick={() => handleExpandEvents(pod.name)}>Details</Button>
@@ -187,13 +194,15 @@ export default function PodLogsView() {
                 BackdropProps={{ timeout: 500 }}
             >
                 <Fade in={!!selectedPodLogs}>
-                    <Box sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '70%', maxHeight: '80%', bgcolor: 'background.paper', borderRadius: 2, boxShadow: 24, p: 4, overflow: 'auto' }} ref={logsRef}>
+                    <Box sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '70%', maxHeight: '80%', bgcolor: 'background.paper', borderRadius: 2, boxShadow: 24, p: 4, display: 'flex', flexDirection: 'column' }}>
                         <Typography variant="h6" gutterBottom>{selectedLogPod?.name} Logs</Typography>
                         <Divider sx={{ my: 1 }} />
-                        <pre style={{ whiteSpace: 'pre-wrap', wordWrap: 'break-word' }}>
-                            {selectedLogPod?.logs?.join('\n') || 'No logs available'}
-                        </pre>
-                        <Box mt={2} textAlign="right">
+                        <Box sx={{ flex: 1, overflow: 'auto', mb: 2 }} ref={logsRef}>
+                            <pre style={{ whiteSpace: 'pre-wrap', wordWrap: 'break-word', margin: 0 }}>
+                                {selectedLogPod?.logs?.join('\n') || 'No logs available'}
+                            </pre>
+                        </Box>
+                        <Box textAlign="right">
                             <Button variant="contained" onClick={() => setSelectedPodLogs(null)}>Close</Button>
                         </Box>
                     </Box>
@@ -208,13 +217,15 @@ export default function PodLogsView() {
                 BackdropProps={{ timeout: 500 }}
             >
                 <Fade in={!!selectedPodEvents}>
-                    <Box sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '60%', maxHeight: '80%', bgcolor: 'background.paper', borderRadius: 2, boxShadow: 24, p: 4, overflow: 'auto' }} ref={eventsRef}>
+                    <Box sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '60%', maxHeight: '80%', bgcolor: 'background.paper', borderRadius: 2, boxShadow: 24, p: 4, display: 'flex', flexDirection: 'column' }}>
                         <Typography variant="h6" gutterBottom>{selectedEventPod?.name} Events</Typography>
                         <Divider sx={{ my: 1 }} />
-                        <pre style={{ whiteSpace: 'pre-wrap', wordWrap: 'break-word' }}>
-                            {selectedEventPod?.events?.join('\n') || 'No events available'}
-                        </pre>
-                        <Box mt={2} textAlign="right">
+                        <Box sx={{ flex: 1, overflow: 'auto', mb: 2 }} ref={eventsRef}>
+                            <pre style={{ whiteSpace: 'pre-wrap', wordWrap: 'break-word', margin: 0 }}>
+                                {selectedEventPod?.events?.join('\n') || 'No events available'}
+                            </pre>
+                        </Box>
+                        <Box textAlign="right">
                             <Button variant="contained" onClick={() => setSelectedPodEvents(null)}>Close</Button>
                         </Box>
                     </Box>
