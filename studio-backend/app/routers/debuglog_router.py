@@ -227,6 +227,17 @@ async def get_all_pods_in_namespace(namespace: str):
             except Exception as e:
                 pass
 
+        # Analyze pod dependencies
+        dependencies = []
+        if services:
+            try:
+                dependencies = find_pod_dependencies(pod, pods, services, namespace, core_v1_api)
+                print(f"Pod {pod_name} dependencies: {dependencies}")
+            except Exception as e:
+                print(f"Error analyzing dependencies for pod {pod_name}: {str(e)}")
+                import traceback
+                traceback.print_exc()
+
         # Determine the Ready and Status of the pod
         ready_status = "Unknown"
         pod_status = pod.status.phase if pod.status.phase else "Unknown"
