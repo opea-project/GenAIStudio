@@ -33,6 +33,9 @@
           - { name: 'llm-textgen', dockerfile: 'comps/llms/src/text-generation/Dockerfile' }
           - { name: 'dataprep', dockerfile: 'comps/dataprep/src/Dockerfile' }
           - { name: 'agent', dockerfile: 'comps/agent/src/Dockerfile' }
+          - { name: 'whisper', dockerfile: 'comps/third_parties/whisper/src/Dockerfile' }
+          - { name: 'llm-docsum', dockerfile: 'comps/llms/src/doc-summarization/Dockerfile' }
+          - { name: 'asr', dockerfile: 'comps/asr/src/Dockerfile' }
       block:
         - name: Build image
           command: docker build -t {{ container_registry }}/{{ item.name }}:{{ container_tag }} -f {{ item.dockerfile }} .

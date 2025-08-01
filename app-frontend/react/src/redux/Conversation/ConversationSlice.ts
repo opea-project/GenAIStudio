@@ -668,12 +668,12 @@ const eventStream = (type: string, body: any, conversationId: string = "") => {
         if (msg?.data != "[DONE]") {
           // console.log("msg", msg.data);
           try {
-            if (type === "code") {
-              const parsedData = JSON.parse(msg.data);
-              result += parsedData.choices[0].delta.content;
-              store.dispatch(setOnGoingResult(result));
-            }
-            if (type === "chat") {
+            // if (type === "code") {
+            //   const parsedData = JSON.parse(msg.data);
+            //   result += parsedData.choices[0].delta.content;
+            //   store.dispatch(setOnGoingResult(result));
+            // }
+            if (type === "chat" || type === "code") {
               let parsed = false;
 
               try {
@@ -690,9 +690,11 @@ const eventStream = (type: string, body: any, conversationId: string = "") => {
                 // We will extract the text between b' and '</s>'
                 // Note: This is a workaround and should be used with caution, as it assumes a specific format
                 // and may not work for all cases.
+                console.log('onmessage >> msg.data:', JSON.stringify(msg.data))
                 const match = msg.data.match(/data:\s*b'([^']*)'/);
                 if (match && match[1] !== "</s>") {
                   const extractedText = match[1];
+                  console.log('onmessage >> extractedText:', JSON.stringify(extractedText));
                   result += extractedText;
                   store.dispatch(setOnGoingResult(result));
                 } else {
@@ -711,6 +713,10 @@ const eventStream = (type: string, body: any, conversationId: string = "") => {
                 }
               }
             } else {
+              if (msg.data === "") {
+                console.log("Empty message received");
+                return;
+              }
               //text summary/faq for data: "ops string"
               const res = JSON.parse(msg.data); // Parse valid JSON
               const logs = res.ops;
@@ -729,6 +735,7 @@ const eventStream = (type: string, body: any, conversationId: string = "") => {
             }
           } catch (e) {
             console.log("something wrong in msg", e);
+            console.log("msg", msg)
             notify("Error in message response", NotificationSeverity.ERROR);
             throw e;
           }

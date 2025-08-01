@@ -9,7 +9,7 @@ class OPEA_LLM_CODEGEN {
         //     }
         // };
         this.label = 'LLM Code Generation'
-        this.name = 'opea_service@codegen'
+        this.name = 'opea_service@llm_codegen'
         this.version = 1.0
         this.type = 'GeneratedDoc'
         this.icon = 'assets/llm.png'
@@ -28,13 +28,13 @@ class OPEA_LLM_CODEGEN {
             {
                 label: 'LLM Params Document',
                 name: 'text',
-                type: 'LLMParamsDoc|DocSumChatCompletionRequest'
+                type: 'LLMParamsDoc|ChatCompletionRequest'
             },
             {
                 label: 'Model Name',
                 name: 'modelName',
                 type: 'string',
-                default: 'Intel/neural-chat-7b-v3-3'
+                default: 'Qwen/Qwen2.5-Coder-7B-Instruct'
             },
             {
                 label: 'HuggingFace Token',

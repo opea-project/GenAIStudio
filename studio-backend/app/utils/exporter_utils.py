@@ -17,6 +17,7 @@ manifest_map = {
         "opea_service@rag_agent" : "microsvc-manifests/rag-agent.yaml",
         "opea_service@sql_agent" : "microsvc-manifests/sql-agent.yaml",
         "opea_service@llm_docsum" : "microsvc-manifests/llm-uservice.yaml",
+        "opea_service@llm_codegen" : "microsvc-manifests/llm-uservice.yaml",
         "opea_service@asr" : "microsvc-manifests/asr-usvc.yaml",
         "whisper" : "microsvc-manifests/whisper.yaml",
     }
@@ -35,6 +36,7 @@ compose_map = {
         "opea_service@rag_agent" : "microsvc-composes/rag-agent.yaml",
         "opea_service@sql_agent" : "microsvc-composes/sql-agent.yaml",
         "opea_service@llm_docsum" : "microsvc-composes/llm-uservice.yaml",
+        "opea_service@llm_codegen" : "microsvc-composes/llm-uservice.yaml",
         "opea_service@asr" : "microsvc-composes/asr-usvc.yaml",
         "whisper" : "microsvc-composes/whisper.yaml",
 }
@@ -46,7 +48,8 @@ opea_endpoint_paths = {
     "opea_service@retriever_redis" : "/v1/retrieval",
     "opea_service@reranking_tei" : "/v1/reranking",
     "opea_service@llm_tgi" : "/v1/chat/completions",
-    "opea_service@llm_docsum" : "/v1/docsum",
+    "opea_service@llm_docsum" : "/v1/chat/completions",
+    "opea_service@llm_codegen" : "/v1/chat/completions",
     "opea_service@asr" : "/v1/audio/transcriptions",
 }
 
@@ -58,6 +61,7 @@ opea_url_name = {
     "opea_service@reranking_tei" : "APP_RERANKING_SERVICE_URL", 
     "opea_service@llm_tgi" : "APP_CHAT_COMPLETEION_SERVICE_URL",
     "opea_service@llm_docsum" : "APP_DOCSUM_SERVICE_URL",
+    "opea_service@llm_codegen" : "APP_CODEGEN_SERVICE_URL",
     "opea_service@asr" : "APP_ASR_SERVICE_URL",
 }
 
@@ -74,6 +78,9 @@ additional_params_map = {
     "opea_service@llm_docsum": {
         "IMAGE_REPOSITORY": "llm-docsum",
     },
+    "opea_service@llm_codegen": {
+        "IMAGE_REPOSITORY": "llm-textgen",
+    }
 }
 
 def process_opea_services(proj_info_json):
@@ -142,7 +149,7 @@ def process_opea_services(proj_info_json):
     
     # Handle other dependent services
     for node_name, node_info in opea_data['nodes'].items():
-        print("process_opea_services: node_name", node_name, "node_info", node_info)
+        # print("process_opea_services: node_name", node_name, "node_info", node_info)
         for service_type, service_info in node_info.get('dependent_services', {}).items():
             # Skip redis_vector_store as it's handled separately
             if service_type == 'redis_vector_store':
