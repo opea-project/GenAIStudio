@@ -128,7 +128,15 @@ export const FlowListTable = ({ data, images, isLoading, filterFunction, updateF
             ws.onmessage = (event) => {
                 const data = JSON.parse(event.data);
                 console.log('Deployment status:', data.status, id, type);
-                if (data.status === 'Done' || data.status === 'Error' || data.status === 'Not Running' || data.status === 'Ready') {
+                
+                if (data.status === 'Ready for redeployment') {
+                    // Automatically trigger redeployment after namespace deletion
+                    ws.close();
+                    openConnections.splice(openConnections.indexOf(ws), 1);
+                    updateSandboxStatus(id, 'Getting Ready');
+                    // Trigger a new deployment
+                    handleRunSandbox(id);
+                } else if (data.status === 'Done' || data.status === 'Error' || data.status === 'Not Running' || data.status === 'Ready') {
                     ws.close();
                     openConnections.splice(openConnections.indexOf(ws), 1);
                     updateSandboxStatus(id, data.status, data.sandbox_app_url, data.sandbox_grafana_url, data.sandbox_tracer_url, data.sandbox_debuglogs_url);
@@ -141,7 +149,7 @@ export const FlowListTable = ({ data, images, isLoading, filterFunction, updateF
             return ws;
         };
         sortedData.map((row) => {
-            if (row.sandboxStatus === 'Getting Ready' || row.sandboxStatus === 'Stopping') {
+            if (row.sandboxStatus === 'Getting Ready' || row.sandboxStatus === 'Stopping' || row.sandboxStatus === 'Deleting existing namespace') {
                 const ws = openWebSocketConnection(row.id, row.sandboxStatus);
                 openConnections.push(ws);
             }
@@ -490,7 +498,7 @@ export const FlowListTable = ({ data, images, isLoading, filterFunction, updateF
                                                 justifyContent='center'
                                                 alignItems='center'
                                             >
-                                                {row.sandboxStatus === "Getting Ready" || row.sandboxStatus === "Stopping" ? (
+                                                {row.sandboxStatus === "Getting Ready" || row.sandboxStatus === "Stopping" || row.sandboxStatus === "Deleting existing namespace" ? (
                                                     <CircularProgress size={20} />
                                                 ) : null
                                                 }
@@ -504,7 +512,7 @@ export const FlowListTable = ({ data, images, isLoading, filterFunction, updateF
                                                 justifyContent='center'
                                                 alignItems='center'
                                             >
-                                                {row.sandboxStatus === "Ready" || row.sandboxStatus === "Getting Ready" ? (
+                                                {row.sandboxStatus === "Ready" || row.sandboxStatus === "Getting Ready" || row.sandboxStatus === "Deleting existing namespace" ? (
                                                     <Tooltip title="Stop Sandbox">
                                                         <Button
                                                             color='primary'

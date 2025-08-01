@@ -117,10 +117,7 @@ def replace_dynamic_manifest_placeholder(value_str, service_info, proj_info_json
             "__BACKEND_PROJECT_INFO_JSON_PLACEHOLDER__", backend_workflow_info_str.replace(f"\n", f"\n{indent_str}")).replace(
             "__APP_FRONTEND_IMAGE__", app_frontend_image).replace(
             "__APP_BACKEND_IMAGE__", app_backend_image).replace(
-            "__TELEMETRY_ENDPOINT__", telemetry_endpoint_env_str)
-
-        print(final_config)
-    
+            "__TELEMETRY_ENDPOINT__", telemetry_endpoint_env_str)    
     else:
         final_config = value_str
 
