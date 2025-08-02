@@ -43,7 +43,7 @@ async def check_sandbox_status(websocket: WebSocket):
     try:
         data = await websocket.receive_json()
         print("Received data: ", data)
-        response = await run_in_threadpool(check_ns_status, data["id"], data["status"], core_v1_api, apps_v1_api)
+        response = await run_in_threadpool(check_ns_status, data["id"], data["status"], core_v1_api, apps_v1_api, None)
         await websocket.send_json(response)
     except WebSocketDisconnect:
         print("Client disconnected")

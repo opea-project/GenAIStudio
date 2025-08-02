@@ -6,7 +6,7 @@ import traceback
 
 from app.services.exporter_service import convert_proj_info_to_manifest
 from app.services.dashboard_service import import_grafana_dashboards, delete_dashboard
-from app.utils.namespace_utils import wait_for_pod, wait_for_deployment, wait_for_service  
+from app.utils.namespace_utils import wait_for_deployment, wait_for_service, wait_for_namespace_ready  
 
 def deploy_manifest_in_namespace(core_v1_api, apps_v1_api, proj_info):
     
@@ -24,10 +24,21 @@ def deploy_manifest_in_namespace(core_v1_api, apps_v1_api, proj_info):
     # Split the manifest string into individual YAML documents
     yaml_docs_deploy = yaml.safe_load_all(manifest_string)
     
-    # Check if the namespace exists, if not create it
+    # Check if the namespace exists
     try:
-        core_v1_api.read_namespace(name=namespace_name)
-        print(f"Namespace '{namespace_name}' already exists")
+        existing_namespace = core_v1_api.read_namespace(name=namespace_name)
+        print(f"Namespace '{namespace_name}' already exists - deleting first")
+        
+        # Delete the existing namespace first
+        try:
+            core_v1_api.delete_namespace(name=namespace_name, body=client.V1DeleteOptions())
+            print(f"Namespace '{namespace_name}' is being deleted.")
+        except ApiException as delete_e:
+            print(f"Error deleting existing namespace: {delete_e}")
+        
+        # Return status indicating deletion is in progress
+        return {"status": "Deleting existing namespace", "namespace": namespace_name}
+        
     except ApiException as e:        
         if e.status == 404:
             # Namespace not found, create it
@@ -75,7 +86,9 @@ def deploy_manifest_in_namespace(core_v1_api, apps_v1_api, proj_info):
                 "name": manifest['metadata']['name'],
                 "status": "Deployed"
             })
-            print(f"Manifest for '{kind}' named '{manifest['metadata']['name']}' deployed in namespace '{namespace_name}'")
+            # for debug
+            # print(f"Manifest for '{kind}' named '{manifest['metadata']['name']}' deployed in namespace '{namespace_name}'")
+            # print(f"Manifest content: {yaml.dump(manifest, default_flow_style=False)}")
         except ApiException as e:
             print(f"Exception when calling Kubernetes API: {e}")
             deployment_status.append({
@@ -104,34 +117,54 @@ def delete_namespace(core_v1_api, proj_id):
         print(f"Exception when deleting namespace: {e}")
         return {"status": "Error", "msg": f"Exception when deleting namespace: {e}"}
 
-def check_ns_status(namespace_id, status_type, core_v1_api, apps_v1_api):
+def check_ns_status(namespace_id, status_type, core_v1_api, apps_v1_api, proj_info=None):
 
     namespace_name = f"sandbox-{namespace_id}"
 
-    if status_type == "Getting Ready":
+    if status_type == "Deleting existing namespace":
+        # Wait for the namespace to be deleted
+        start_time = time.time()
+        while time.time() - start_time < 300:  # 5 minute timeout
+            try:
+                core_v1_api.read_namespace(name=namespace_name)
+                time.sleep(2)  # Check every 2 seconds
+            except ApiException as e:
+                if e.status == 404:
+                    print(f"Namespace {namespace_name} successfully deleted, ready to redeploy")
+                    # Namespace is deleted, indicate ready for redeployment
+                    return {"status": "Ready for redeployment"}
+        
+        # Timeout - namespace still exists
+        print(f"Namespace {namespace_name} deletion timed out")
+        return {"status": "Error", "msg": "Namespace deletion timed out"}
 
-        # List all pods, services, and deployments
-        pods = core_v1_api.list_namespaced_pod(namespace=namespace_name)
+    elif status_type == "Getting Ready":
+
+        # List all deployments and services for checking
         deployments = apps_v1_api.list_namespaced_deployment(namespace=namespace_name)
         services = core_v1_api.list_namespaced_service(namespace=namespace_name)
         
-        # Wait for all pods to be ready
-        for pod in pods.items:
-            pod_name = pod.metadata.name
-            if not wait_for_pod(namespace_name, pod_name, core_v1_api):
-                return {"status": "Error"}
+        # Wait for all pods to be ready (this will fail fast if any pod fails)
+        print(f"Checking all pods in namespace: {namespace_name}")
+        if not wait_for_namespace_ready(namespace_name, core_v1_api):
+            print(f"One or more pods failed to become ready in namespace {namespace_name} - returning Error status")
+            return {"status": "Error", "failed_component": "pods"}
 
         # Wait for all deployments to be ready
         for deployment in deployments.items:
             deployment_name = deployment.metadata.name
+            print(f"Checking deployment: {deployment_name}")
             if not wait_for_deployment(namespace_name, deployment_name, apps_v1_api):
-                return {"status": "Error"}
+                print(f"Deployment {deployment_name} failed to become ready - returning Error status")
+                return {"status": "Error", "failed_deployment": deployment_name}
 
         # Wait for all services to be ready
         for service in services.items:
             service_name = service.metadata.name
+            print(f"Checking service: {service_name}")
             if not wait_for_service(namespace_name, service_name, core_v1_api):
-                return {"status": "Error"}
+                print(f"Service {service_name} failed to become ready - returning Error status")
+                return {"status": "Error", "failed_service": service_name}
 
         sandbox_app_url = f"/?ns={namespace_name}"
         sandbox_grafana_url = f"/grafana/d/{namespace_id}"

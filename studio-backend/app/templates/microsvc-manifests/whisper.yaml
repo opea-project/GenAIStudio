@@ -30,7 +30,7 @@ spec:
   type: "ClusterIP"
   ports:
     - port: "{port}"
-      targetPort: "{port}"
+      targetPort: 7066
       protocol: TCP
       name: "{endpoint}"
   selector:
@@ -58,80 +58,72 @@ spec:
     spec:
       securityContext:
         {}
-      # initContainers:
-        # - name: model-downloader
-        #   envFrom:
-        #     - configMapRef:
-        #         name: config-{endpoint}
-        #   securityContext:
-        #     readOnlyRootFilesystem: true
-        #     allowPrivilegeEscalation: false
-        #     capabilities:
-        #       drop:
-        #       - ALL
-        #       add:
-        #       - DAC_OVERRIDE
-        #       # To be able to make data model directory group writable for
-        #       # previously downloaded model by old versions of helm chart
-        #       - FOWNER
-        #     seccompProfile:
-        #       type: RuntimeDefault
-        #   image: huggingface/downloader:0.17.3
-        #   command: ['sh', '-ec']
-        #   args:
-        #     - |
-        #       echo "Huggingface log in ...";
-        #       huggingface-cli login --token $(HF_TOKEN);
-        #       echo "Download model openai/whisper-small ... ";
-        #       chmod -R g+w /data
-        #       huggingface-cli download --cache-dir /data openai/whisper-small;
-        #       echo "Change model files mode ...";
-        #       chmod -R g+w /data/models--openai--whisper-small;
-        #       # NOTE: Buggy logout command;
-        #       # huggingface-cli logout;
-          # volumeMounts:
-          #   - mountPath: /data
-          #     name: model-volume
-          #   - mountPath: /tmp
-          #     name: tmp
+      initContainers:
+        - name: model-downloader
+          envFrom:
+            - configMapRef:
+                name: config-{endpoint}
+          securityContext:
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+              - ALL
+              add:
+              - DAC_OVERRIDE
+              # To be able to make data model directory group writable for
+              # previously downloaded model by old versions of helm chart
+              - FOWNER
+            seccompProfile:
+              type: RuntimeDefault
+          image: huggingface/downloader:0.17.3
+          command: ['sh', '-ec']
+          args:
+            - |
+              echo "Download model openai/whisper-small ... ";
+              chmod -R g+w /data
+              huggingface-cli download --cache-dir /data openai/whisper-small;
+              echo "Change model files mode ...";
+              chmod -R g+w /data/models--openai--whisper-small;
+              chmod -R g+w /data/.locks;
+          volumeMounts:
+            - mountPath: /data
+              name: model-volume
+            - mountPath: /tmp
+              name: tmp
       containers:
         - name: whisper
           envFrom:
             - configMapRef:
                 name: config-{endpoint}
           securityContext:
-            {}
-          image: "opea/whisper"
+            runAsUser: 0
+            runAsGroup: 0
+            allowPrivilegeEscalation: false
+          image: "${REGISTRY}/whisper:${TAG}"
           imagePullPolicy: IfNotPresent
           ports:
             - name: whisper
-              containerPort: "{port}"
+              containerPort: 7066
               protocol: TCP
           volumeMounts:
             - mountPath: /data
               name: model-volume
             - mountPath: /tmp
               name: tmp
-          livenessProbe:
-            failureThreshold: 24
-            initialDelaySeconds: 8
-            periodSeconds: 8
-            timeoutSeconds: 4
-            tcpSocket:
-              port: http
           readinessProbe:
-            initialDelaySeconds: 16
-            periodSeconds: 8
-            timeoutSeconds: 4
-            tcpSocket:
-              port: http
-          startupProbe:
-            failureThreshold: 180
-            initialDelaySeconds: 10
+            httpGet:
+              path: /health
+              port: whisper
+            initialDelaySeconds: 5
             periodSeconds: 5
-            timeoutSeconds: 2
-            tcpSocket:
-              port: http
+          startupProbe:
+            httpGet:
+              path: /health
+              port: whisper
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 120
       volumes:
         - name: model-volume
           persistentVolumeClaim:

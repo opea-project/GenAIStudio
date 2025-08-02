@@ -80,17 +80,17 @@ def find_pod_dependencies(pod, all_pods, services, namespace, core_v1_api):
                     if value:
                         configmap_env_vars.append(value)
         except Exception as e:
-            print(f"Error fetching ConfigMap {configmap_name}: {str(e)}")
+            pass
     
     # Combine all environment variables for further analysis
     all_env_vars = env_vars + init_env_vars + configmap_env_vars
     
-    # Debug output
-    print(f"Analyzing dependencies for pod: {pod.metadata.name}")
-    print(f"ConfigMap refs: {configmap_refs}")
-    print(f"Total env vars found: {len(all_env_vars)}")
-    if all_env_vars:
-        print(f"Sample env vars: {all_env_vars[:3]}")  # Show first 3 for debugging
+    # # Debug output
+    # print(f"Analyzing dependencies for pod: {pod.metadata.name}")
+    # print(f"ConfigMap refs: {configmap_refs}")
+    # print(f"Total env vars found: {len(all_env_vars)}")
+    # if all_env_vars:
+    #     print(f"Sample env vars: {all_env_vars[:3]}")  # Show first 3 for debugging
     
     # Check if environment variables reference other services
     for service in services.items:
@@ -171,7 +171,13 @@ def find_pod_dependencies(pod, all_pods, services, namespace, core_v1_api):
 @router.get("/podlogs/{namespace}", summary="Fetch all pods in a namespace")
 async def get_all_pods_in_namespace(namespace: str):
     core_v1_api = client.CoreV1Api()
-    pods = core_v1_api.list_namespaced_pod(namespace=namespace)
+    
+    # Fetch pods with include_uninitialized to catch terminating pods
+    try:
+        pods = core_v1_api.list_namespaced_pod(namespace=namespace, include_uninitialized=True)
+    except Exception:
+        # Fallback to standard call if include_uninitialized is not supported
+        pods = core_v1_api.list_namespaced_pod(namespace=namespace)
 
     if not pods.items:
         return {"namespace": namespace, "pods": []}
@@ -180,7 +186,6 @@ async def get_all_pods_in_namespace(namespace: str):
     try:
         services = core_v1_api.list_namespaced_service(namespace=namespace)
     except Exception as e:
-        print(f"Error fetching services: {str(e)}")
         services = None
 
     pod_list = []
@@ -200,8 +205,7 @@ async def get_all_pods_in_namespace(namespace: str):
             else:
                 log_entries.append("** Pod has no logs available")
         except Exception as e:
-            print(f"Error fetching logs: {str(e)}")
-            log_entries.append("Unable to fetch logs: Pod may not be running or logs are not accessible")
+            pass
 
         # Fetch events related to the pod
         try:
@@ -212,7 +216,16 @@ async def get_all_pods_in_namespace(namespace: str):
                 if event.involved_object.name == pod_name
             ]
         except Exception as e:
-            print(f"Error fetching events: {str(e)}")
+            pass
+
+        # Analyze pod dependencies
+        dependencies = []
+        if services:
+            try:
+                dependencies = find_pod_dependencies(pod, pods, services, namespace, core_v1_api)
+                # print(f"Pod {pod_name} dependencies: {dependencies}")
+            except Exception as e:
+                pass
 
         # Analyze pod dependencies
         dependencies = []
@@ -227,19 +240,66 @@ async def get_all_pods_in_namespace(namespace: str):
 
         # Determine the Ready and Status of the pod
         ready_status = "Unknown"
-        pod_status = pod.status.phase
+        pod_status = pod.status.phase if pod.status.phase else "Unknown"
+        
+        # Check for terminating state first
+        is_terminating = False
         if pod.metadata.deletion_timestamp:
+            is_terminating = True
+            pod_status = "Terminating"
+        elif pod.status.phase in ["Failed", "Succeeded"]:
+            pod_status = pod.status.phase
+        
+        # Calculate ready status
+        if pod.status.init_container_statuses:
+            ready_count = sum(1 for status in pod.status.init_container_statuses if status.ready)
+            total_count = len(pod.status.init_container_statuses)
+            ready_status = f"{ready_count}/{total_count}"
+        elif pod.status.container_statuses:
+            ready_count = sum(1 for status in pod.status.container_statuses if status.ready)
+            total_count = len(pod.status.container_statuses)
+            ready_status = f"{ready_count}/{total_count}"
+        
+        # Only check for error conditions if not already terminating or in terminal state
+        has_error = False
+        if not is_terminating and pod.status.phase not in ["Failed", "Succeeded"]:
+            # Check init container statuses for errors
+            if pod.status.init_container_statuses:
+                for status in pod.status.init_container_statuses:
+                    if status.state and status.state.waiting and status.state.waiting.reason in ['ImagePullBackOff', 'ErrImagePull', 'CrashLoopBackOff', 'Error']:
+                        has_error = True
+                        break
+                    elif status.state and status.state.terminated and status.state.terminated.reason == 'Error':
+                        has_error = True
+                        break
+            
+            # Check main container statuses for errors
+            if pod.status.container_statuses:
+                for status in pod.status.container_statuses:
+                    if status.state and status.state.waiting and status.state.waiting.reason in ['ImagePullBackOff', 'ErrImagePull', 'CrashLoopBackOff', 'Error']:
+                        has_error = True
+                        break
+                    elif status.state and status.state.terminated and status.state.terminated.reason == 'Error':
+                        has_error = True
+                        break
+                    elif status.restart_count and status.restart_count > 0:
+                        # Check if the pod is restarting frequently (possible error condition)
+                        if status.state and status.state.waiting and status.state.waiting.reason == 'CrashLoopBackOff':
+                            has_error = True
+                            break
+                        has_error = True
+                        break
+        
+        # Set pod status based on conditions
+        if has_error:
+            pod_status = "Error"
+        elif pod.metadata.deletion_timestamp:
             pod_status = "Terminating"
         elif pod.status.init_container_statuses:
             ready_count = sum(1 for status in pod.status.init_container_statuses if status.ready)
             total_count = len(pod.status.init_container_statuses)
             if ready_count < total_count:
                 pod_status = f"Init:{ready_count}/{total_count}"
-            ready_status = f"{ready_count}/{total_count}"
-        elif pod.status.container_statuses:
-            ready_count = sum(1 for status in pod.status.container_statuses if status.ready)
-            total_count = len(pod.status.container_statuses)
-            ready_status = f"{ready_count}/{total_count}"
 
         pod_list.append({
             "name": pod.metadata.name,

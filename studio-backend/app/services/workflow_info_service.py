@@ -23,11 +23,13 @@ class WorkflowInfo:
         ui_config = {
             'chat_input': False,
             'chat_completion': False,
-            'doc_input': False
+            'doc_input': False,
+            'file_input': False
         }
         chat_input_ids = []
         chat_completion_ids = []
         doc_input_ids = []
+        file_input_ids = []
 
         # Ensure 'nodes' is present in flowData
         if 'nodes' not in flowData:
@@ -47,6 +49,9 @@ class WorkflowInfo:
                 elif node_name == 'chat_completion':
                     ui_config['chat_completion'] = True
                     chat_completion_ids.append(node['id'])
+                elif node_name == 'file_input':
+                    ui_config['file_input'] = True
+                    file_input_ids.append(node['id'])
             node['connected_from'] = []
             node['connected_to'] = []
             node['params'] = {}
@@ -118,5 +123,4 @@ class WorkflowInfo:
         self.chat_input_ids = chat_input_ids
         self.chat_completion_ids = chat_completion_ids
         self.doc_input_ids = doc_input_ids
-
-        
+        self.file_input_ids = file_input_ids
