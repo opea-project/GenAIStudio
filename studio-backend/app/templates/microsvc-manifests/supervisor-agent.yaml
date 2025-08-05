@@ -82,7 +82,7 @@ spec:
             runAsGroup: 0
       containers:
         - name: supervisor-agent-container
-          image: ${REGISTRY}/agent:${TAG}
+          image: opea/agent:1.3
           command: ["/bin/sh", "-c"]
           args:
             - |
