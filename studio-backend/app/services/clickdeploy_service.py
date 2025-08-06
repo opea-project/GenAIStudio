@@ -17,8 +17,7 @@ def deploy_pipeline(hostname, username, pipeline_flow):
     print("[INFO] Starting deployment to remote server...")
     remote_zip_path = f"/home/{username}/docker-compose.zip"
     temp_dir = None
-    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    remote_compose_dir = f"docker-compose-{timestamp}"
+    remote_compose_dir = "genaistudio-compose"
     try:
         print("[INFO] Creating ZIP locally...")
         zip_path, temp_dir = create_zip_locally(pipeline_flow, hostname)
@@ -38,28 +37,27 @@ def deploy_pipeline(hostname, username, pipeline_flow):
         sftp.close()
         print("[INFO] SFTP session closed.")
 
-        commands = [
-            f"mkdir {remote_compose_dir}",
-            f"unzip -o {remote_zip_path} -d {remote_compose_dir}",
-            f"rm -f {remote_zip_path}",
-            f"cd {remote_compose_dir} && nohup docker compose up -d & sleep 0.1"
-        ]
-        for cmd in commands:
-            print(f"[INFO] Executing remote command: {cmd}")
-            _, stdout, stderr = ssh.exec_command(cmd, get_pty=True)
+        # Check if genaistudio-compose directory exists
+        print(f"[INFO] Checking if {remote_compose_dir} directory exists...")
+        _, stdout, stderr = ssh.exec_command(f"ls -d {remote_compose_dir}", get_pty=True)
+        exit_status = stdout.channel.recv_exit_status()
+        # Only upload and ensure directory, do not stop services here
+        if exit_status != 0:
+            print(f"[INFO] {remote_compose_dir} does not exist, will create new directory")
+            _, stdout, stderr = ssh.exec_command(f"mkdir -p {remote_compose_dir}", get_pty=True)
             exit_status = stdout.channel.recv_exit_status()
             stderr_str = stderr.read().decode().strip()
             print(f"[INFO] Command exit status: {exit_status}")
-            if stderr_str:
-                print(f"[ERROR] Stderr: {stderr_str}")
-
+            if exit_status != 0:
+                print(f"[ERROR] Failed to create directory: {stderr_str}")
+                raise Exception(f"Failed to create remote directory: {stderr_str}")
         ssh.close()
         print("[INFO] SSH connection closed.")
-
         return {
             "status": "success",
-            "message": "docker compose up -d has been started.",
-            "compose_dir": remote_compose_dir
+            "message": "docker-compose.zip uploaded and directory ensured.",
+            "compose_dir": remote_compose_dir,
+            "remote_zip_path": remote_zip_path
         }
     except Exception as e:
         print(f"[ERROR] An error: {e}")

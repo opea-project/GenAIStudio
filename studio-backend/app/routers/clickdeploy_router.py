@@ -34,27 +34,76 @@ async def check_clickdeploy_status(websocket: WebSocket):
         remote_host = data["hostname"]
         remote_user = data["username"]
         compose_dir = data["compose_dir"]
+        remote_zip_path = data.get("remote_zip_path", f"/home/{remote_user}/docker-compose.zip")
 
+        # Step 1: Connect SSH
+        ssh = paramiko.SSHClient()
+        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        ssh.connect(remote_host, username=remote_user)
+
+        # Step 2: Stop existing services if directory exists
+        await websocket.send_json({"status": "Preparing", "message": "Checking for existing services..."})
+        # Clean up old nohup.out file
+        _, stdout, _ = ssh.exec_command(f"rm -f {compose_dir}/nohup.out", get_pty=True)
+        print(f"[DEBUG] Checking if {compose_dir} directory exists...")
+        _, stdout, _ = ssh.exec_command(f"ls -d {compose_dir}", get_pty=True)
+        exit_status = stdout.channel.recv_exit_status()
+        if exit_status == 0:
+            _, stdout, _ = ssh.exec_command(f"cd {compose_dir} && docker compose down", get_pty=True)
+            while not stdout.channel.exit_status_ready():
+                await websocket.send_json({"status": "Preparing", "message": "Stopping any existing services..."})
+                time.sleep(2)
+        else:
+            pass
+
+        # Step 3: Extract files
+        await websocket.send_json({"status": "Preparing", "message": "Extracting files..."})
+        extract_cmd = f"python3 -c \"import zipfile; zipfile.ZipFile('{remote_zip_path}').extractall('{compose_dir}')\""
+        _, stdout, _ = ssh.exec_command(extract_cmd, get_pty=True)
+        if stdout.channel.recv_exit_status() != 0:
+            await websocket.send_json({"status": "Error", "error": "Failed to extract files using Python."})
+            ssh.close()
+            await websocket.close()
+            return
+        await websocket.send_json({"status": "Preparing", "message": "Extraction complete."})
+        # Clean up the uploaded docker-compose.zip file
+        _, stdout, _ = ssh.exec_command(f"rm -f {remote_zip_path}", get_pty=True)
+
+        # Step 4: Start services
+        _, stdout, _ = ssh.exec_command(f"cd {compose_dir} && nohup docker compose up -d & sleep 0.1", get_pty=True)
+        ssh.close()
+        await websocket.send_json({"status": "Preparing", "message": "Deployment steps complete. Monitoring status..."})
+
+        # Continue with status polling
         def check_status():
             ssh = paramiko.SSHClient()
             ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
             ssh.connect(remote_host, username=remote_user)
+
+            # Verify the directory exists and has content
+            print(f"[DEBUG] Checking directory: {compose_dir}")
+            _, stdout_ls, _ = ssh.exec_command(f"ls -la {compose_dir}")
+            ls_output = stdout_ls.read().decode().strip()
+            print(f"[DEBUG] Directory contents: {ls_output}")
 
             # Get the number of services defined in compose.yaml
             _, stdout_num, _ = ssh.exec_command(f"cd {compose_dir} && docker compose config --services | wc -l")
             num_services_output = stdout_num.read().decode().strip().splitlines()
             num_services_lines = [line for line in num_services_output if not line.startswith('WARN') and line.strip()]
             num_services_str = num_services_lines[-1] if num_services_lines else '0'
+            print(f"[DEBUG] Number of services defined: {num_services_str}")
             
             # Run docker compose ps to get service status
             _, stdout_ps, _ = ssh.exec_command(f"cd {compose_dir} && docker compose ps --all --format json")
             out = stdout_ps.read().decode()
             json_lines = [line for line in out.strip().splitlines() if line.strip() and not line.strip().startswith('WARN')]
             out_filtered = '\n'.join(json_lines)
+            print(f"[DEBUG] Docker compose ps output: {out_filtered}")
             
             # Read nohup.out for progress logs (always fetch latest 10 lines)
             _, stdout_nohup, _ = ssh.exec_command(f"cd {compose_dir} && tail -n 10 nohup.out")
             nohup_out_lines = stdout_nohup.read().decode().splitlines()
+            print(f"[DEBUG] Nohup output: {nohup_out_lines}")
 
             ssh.close()
             

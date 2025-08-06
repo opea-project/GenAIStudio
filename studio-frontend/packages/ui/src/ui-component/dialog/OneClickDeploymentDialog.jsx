@@ -96,6 +96,8 @@ const OneClickDeploymentDialog = ({ show, dialogProps, onCancel, onConfirm, depl
                     setDeploying(false);
                 } else if (data.status === 'In Progress') {
                     setDeployStatus(['Info', data.nohup_out]);
+                } else if (data.status === 'Preparing') {
+                    setDeployStatus(['Info', data.message]);
                 }
             };
             wsInstance.onerror = () => {
