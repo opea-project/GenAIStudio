@@ -148,7 +148,10 @@ const ChatAssistant: React.FC<ChatMessageProps> = ({
       } else {
         return (
           <Box ref={heightCheck}>
-            <ChatMarkdown content={assistantMessage} />
+            <ChatMarkdown 
+              content={assistantMessage} 
+              isStreaming={!!onGoingResult} 
+            />
           </Box>
         );
       }
