@@ -21,11 +21,13 @@ export const CODE_GEN_URL = import.meta.env.VITE_BACKEND_SERVICE_URL
 // export const DOC_SUM_URL = import.meta.env.VITE_BACKEND_SERVICE_ENDPOINT_DOCSUM;
 export const DOC_SUM_URL = import.meta.env.VITE_BACKEND_SERVICE_URL
 export const UI_SELECTION = import.meta.env.VITE_UI_SELECTION;
+export const DEFAULT_UI_TYPE = import.meta.env.VITE_DEFAULT_UI_TYPE;
 
 console.log ("BACKEND_SERVICE_URL", import.meta.env.VITE_BACKEND_SERVICE_URL);
 console.log ("DATA_PREP_SERVICE_URL", import.meta.env.VITE_DATAPREP_SERVICE_URL);
 console.log ("CHAT_HISTORY_SERVICE_URL", import.meta.env.VITE_CHAT_HISTORY_SERVICE_URL);
 console.log ("UI_SELECTION", import.meta.env.VITE_UI_SELECTION);
+console.log ("DEFAULT_UI_TYPE", import.meta.env.VITE_DEFAULT_UI_TYPE);
 
 // export const FAQ_GEN_URL = import.meta.env.VITE_BACKEND_SERVICE_ENDPOINT_FAQGEN;
 export const DATA_PREP_URL = import.meta.env.VITE_DATAPREP_SERVICE_URL;

@@ -30,6 +30,7 @@ import config, {
   CHAT_HISTORY_DELETE,
   CODE_GEN_URL,
   DOC_SUM_URL,
+  DEFAULT_UI_TYPE,
   // FAQ_GEN_URL,
 } from "@root/config";
 import { NotificationSeverity, notify } from "@components/Notification/Notification";
@@ -71,6 +72,18 @@ const interactionTypes = [
   // },
 ];
 
+// Determine default type from environment variable, fallback to chat
+const getDefaultType = (): string => {
+  const envDefault = DEFAULT_UI_TYPE?.toLowerCase();
+  const validTypes = ["chat", "summary", "code"];
+  console.log("getDefaultType - DEFAULT_UI_TYPE:", DEFAULT_UI_TYPE);
+  console.log("getDefaultType - envDefault:", envDefault);
+  console.log("getDefaultType - validTypes.includes(envDefault):", validTypes.includes(envDefault));
+  const result = validTypes.includes(envDefault) ? envDefault : "chat";
+  console.log("getDefaultType - returning:", result);
+  return result;
+};
+
 const initialState: ConversationReducer = {
   conversations: [],
   sharedConversations: [],
@@ -85,7 +98,7 @@ const initialState: ConversationReducer = {
   useCases: [],
   model: "",
   models: [],
-  type: "chat",
+  type: getDefaultType(),
   types: interactionTypes,
   systemPrompt: config.defaultChatPrompt,
   minToken: 100,

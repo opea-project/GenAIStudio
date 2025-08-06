@@ -69,8 +69,9 @@ class WorkflowInfo:
                             node_data['connected_from'].append(connected_from_id)
                             dag_nodes[connected_from_id]['connected_to'].append(id)
                             continue
-                    #skip ui_choice inputs
+                    # Include ui_choice inputs in params for default UI type detection
                     if input_key == 'ui_choice':
+                        node_data['params'][input_key] = input_value
                         continue
 
                     if input_key == 'huggingFaceToken' and not input_value:
@@ -110,7 +111,7 @@ class WorkflowInfo:
                                     node_data['params'].pop(input_key, None)
                                     continue
                 # Handle imageRepository specific logic
-                print(f"imageRepository: {node_data.get('imageRepository')}")
+                # print(f"imageRepository: {node_data.get('imageRepository')}")
                 if node_data.get('imageRepository'):
                     node_data['params']['IMAGE_REPOSITORY'] = node_data['imageRepository']
                 del node_data['inputParams']

@@ -124,8 +124,6 @@ spec:
       containers:
       - name: app-frontend
         env:
-        # - name: VITE_APP_BACKEND_SERVICE_URL
-        #   value: "/v1/app-backend"
         - name: APP_BACKEND_SERVICE_URL
           value: "/v1/app-backend"
         - name: APP_DATAPREP_SERVICE_URL
@@ -134,7 +132,8 @@ spec:
           value: "/v1/chathistory"
         - name: APP_UI_SELECTION
           value: "chat,summary,code"
-        __UI_CONFIG_INFO_ENV_PLACEHOLDER__
+        - name: APP_DEFAULT_UI_TYPE
+          value: __DEFAULT_UI_TYPE_PLACEHOLDER__
         securityContext: {}
         image: __APP_FRONTEND_IMAGE__
         imagePullPolicy: Always
