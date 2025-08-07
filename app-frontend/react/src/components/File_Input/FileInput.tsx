@@ -47,6 +47,7 @@ interface FileInputProps {
   maxFileCount?: number;
   confirmationModal?: boolean;
   dataManagement?: boolean;
+  onSend?: (messageContent: string) => Promise<void>;
 }
 
 const summaryFileExtensions = [
@@ -84,6 +85,7 @@ const FileInput: React.FC<FileInputProps> = ({
   imageInput,
   summaryInput,
   dataManagement,
+  onSend,
 }) => {
   const { model, models, useCase, filesInDataSource, uploadInProgress, type } =
     useAppSelector(conversationSelector);
@@ -346,6 +348,29 @@ const FileInput: React.FC<FileInputProps> = ({
               disabled={filesToUpload.length === 0}
             >
               <FileUploadOutlined sx={{ marginRight: "5px" }} /> Upload
+            </SolidButton>
+          )}
+
+          {summaryInput && (
+            <SolidButton
+              className={styles.upload}
+              onClick={async () => {
+                if (filesToUpload.length > 0) {
+                  if (onSend) {
+                    await onSend(`Summarizing "${filesToUpload[0].file?.name || filesToUpload[0].name}"..`);
+                    setFilesToUpload([]);
+                    dispatch(setSourceFiles([]));
+                  } else {
+                    notify(
+                      "ERROR: onSend prop not provided to FileInput component. Check parent component implementation.",
+                      NotificationSeverity.ERROR
+                    );
+                  }
+                }
+              }}
+              disabled={filesToUpload.length === 0}
+            >
+              <FileUploadOutlined sx={{ marginRight: "5px" }} /> Summarize
             </SolidButton>
           )}
         </div>

@@ -76,11 +76,7 @@ const interactionTypes = [
 const getDefaultType = (): string => {
   const envDefault = DEFAULT_UI_TYPE?.toLowerCase();
   const validTypes = ["chat", "summary", "code"];
-  console.log("getDefaultType - DEFAULT_UI_TYPE:", DEFAULT_UI_TYPE);
-  console.log("getDefaultType - envDefault:", envDefault);
-  console.log("getDefaultType - validTypes.includes(envDefault):", validTypes.includes(envDefault));
   const result = validTypes.includes(envDefault) ? envDefault : "chat";
-  console.log("getDefaultType - returning:", result);
   return result;
 };
 
