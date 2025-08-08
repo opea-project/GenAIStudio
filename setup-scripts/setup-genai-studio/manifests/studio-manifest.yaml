@@ -33,7 +33,7 @@ data:
             index index.html;
         }
 
-        # Location block for studio-appbuilder and app-frontend
+        # Location block for studio-frontend and app-frontend
         location / {
             # Initialize the default variable for namespace
             set $namespace "";
@@ -52,6 +52,13 @@ data:
             set $target_host http://${STUDIO_FRONTEND_DNS};
             if ($namespace != "") {
                 set $target_host http://${APP_FRONTEND_DNS};
+            }
+
+            # Prevent caching when namespace is present
+            if ($namespace != "") {
+                add_header Cache-Control "no-cache, no-store, must-revalidate";
+                add_header Pragma "no-cache";
+                add_header Expires "0";
             }
     
             # Rewrite the request to include the namespace

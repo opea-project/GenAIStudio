@@ -205,8 +205,13 @@ export const ConversationSlice = createSlice({
           break;
       }
 
+      // Optimize model selection to avoid array searches
       let firstModel = state.models.find((model: Model) => model.types.includes(action.payload));
-      state.model = firstModel?.model_name || state.models[0].model_name;
+      if (firstModel) {
+        state.model = firstModel.model_name;
+      } else if (state.models.length > 0) {
+        state.model = state.models[0].model_name;
+      }
     },
     setUploadInProgress: (state, action: PayloadAction<boolean>) => {
       state.uploadInProgress = action.payload;
