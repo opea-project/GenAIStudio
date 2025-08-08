@@ -45,10 +45,15 @@ def convert_proj_info_to_manifest(proj_info_json, output_file=None):
                     continue
                 print(f"Processing {metadata['name']} service")
 
-        # Remove HF_TOKEN if hugging_face_token is 'NA'
+        # Remove HF_TOKEN if it's 'NA' and TEI_EMBEDDING_ENDPOINT is not present
         if doc.get('kind') == 'ConfigMap' and 'data' in doc:
-            if 'HF_TOKEN' in doc['data'] and doc['data']['HF_TOKEN'] == 'NA':
+            if (
+                'HF_TOKEN' in doc['data'] and 
+                doc['data']['HF_TOKEN'] == 'NA' and 
+                'TEI_EMBEDDING_ENDPOINT' not in doc['data']
+            ):
                 del doc['data']['HF_TOKEN']
+
                 
         # Accumulate the YAML document in the manifest string
         manifest_string += '---\n'
@@ -79,7 +84,7 @@ def convert_proj_info_to_compose(proj_info_json, output_file=None):
         service_file_path = os.path.join(TEMPLATES_DIR, compose_map[service_info["service_type"]])
         with open(service_file_path, "r") as service_file:
             service_compose_read = service_file.read()
-        service_compose_raw = list(ordered_load_all(replace_dynamic_compose_placeholder(service_compose_read, service_info), yaml.SafeLoader))
+        service_compose_raw = list(ordered_load_all(replace_dynamic_compose_placeholder(service_compose_read, service_info, proj_info_json), yaml.SafeLoader))
         service_compose = [replace_compose_placeholders(doc, service_info) for doc in service_compose_raw]
         output_compose.extend((doc, service_name) for doc in service_compose)
 
@@ -92,9 +97,11 @@ def convert_proj_info_to_compose(proj_info_json, output_file=None):
 
     combined_services = {}
     for doc, service_name in (output_compose):
-        # Remove HF_TOKEN if hugging_face_token is 'NA'
+        # Remove HF_TOKEN if hugging_face_token is 'NA' and TEI_EMBEDDING_ENDPOINT is not present
         for _, service_data in doc.items():
-            if 'environment' in service_data and 'HF_TOKEN' in service_data['environment'] and service_data['environment']['HF_TOKEN'] == 'NA':
+            if ('environment' in service_data and 'HF_TOKEN' in service_data['environment'] and 
+                service_data['environment']['HF_TOKEN'] == 'NA' and
+                'TEI_EMBEDDING_ENDPOINT' not in service_data.get('environment', {})):
                 del service_data['environment']['HF_TOKEN']
         combined_services.update(doc)
 

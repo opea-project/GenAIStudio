@@ -1,6 +1,5 @@
 
 import yaml
-import textwrap
 import json
 import re
 import os
@@ -33,6 +32,22 @@ def ordered_load_all(stream, Loader=yaml.SafeLoader, object_pairs_hook=OrderedDi
         yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG,
         construct_mapping)
     return yaml.load_all(stream, OrderedLoader)
+
+# Detect UI choice
+def detect_default_ui_type(proj_info_json):
+    default_type = "chat"
+    nodes = proj_info_json.get('nodes', {})
+    
+    # Look for chat_completion nodes
+    for node_name, node_data in nodes.items():
+        if node_data.get('name') == 'chat_completion':
+            # Check if ui_choice parameter is set in params
+            params = node_data.get('params', {})
+            ui_choice = params.get('ui_choice')
+            if ui_choice and ui_choice in ['chat', 'summary', 'code']:
+                return ui_choice
+
+    return default_type
 
 # Recursive function to replace placeholders in manifest templates
 def replace_manifest_placeholders(obj, variables):
@@ -81,25 +96,8 @@ def replace_dynamic_manifest_placeholder(value_str, service_info, proj_info_json
         # For __TELEMETRY_ENDPOINT_ENV_PLACEHOLDER__
         telemetry_endpoint_env_str = f"- name: TELEMETRY_ENDPOINT\n{indent_str}  value: {os.getenv('TELEMETRY_ENDPOINT', '')}\n"
 
-        # For __DEFAULT_UI_TYPE_PLACEHOLDER__ - Dynamic detection based on chat_completion node's ui_choice parameter
-        def detect_default_ui_type():
-            default_type = "chat"
-            # Check workflow nodes for chat_completion node and its ui_choice parameter
-            nodes = proj_info_json.get('nodes', {})
-            
-            # Look for chat_completion nodes
-            for node_name, node_data in nodes.items():
-                if node_data.get('name') == 'chat_completion':
-                    # Check if ui_choice parameter is set in params
-                    params = node_data.get('params', {})
-                    ui_choice = params.get('ui_choice')
-                    if ui_choice and ui_choice in ['chat', 'summary', 'code']:
-                        return ui_choice
-
-            print("placeholders_utils.py: detect_default_ui_type - ui_choice not set, using default 'chat'")
-            return default_type
-        
-        default_ui_type = detect_default_ui_type()
+        # For __DEFAULT_UI_TYPE_PLACEHOLDER__
+        default_ui_type = detect_default_ui_type(proj_info_json)
 
         # Replace the unique placeholders with the actual strings
         final_config = value_str.replace(
@@ -134,7 +132,7 @@ def replace_compose_placeholders(obj, variables):
         return value
     return obj
 
-def replace_dynamic_compose_placeholder(value_str, service_info):
+def replace_dynamic_compose_placeholder(value_str, service_info, proj_info_json):
     indent_str = ' ' * 2
 
     if 'supervisor_agent' in service_info['service_type']:
@@ -160,30 +158,8 @@ def replace_dynamic_compose_placeholder(value_str, service_info):
         app_frontend_image = os.getenv("APP_FRONTEND_IMAGE", "opea/app-frontend:latest")
         app_backend_image = os.getenv("APP_BACKEND_IMAGE", "opea/app-backend:latest")
 
-        # For __DEFAULT_UI_TYPE_PLACEHOLDER__ - Dynamic detection based on chat_completion node's ui_choice parameter
-        def detect_default_ui_type():
-            default_type = "chat"
-            # For compose generation, we need to get the workflow info from the service_info
-            # First try to find the workflow info in the service_info context
-            if 'workflow_info' in service_info:
-                workflow_info = service_info['workflow_info']
-                nodes = workflow_info.get('nodes', {})
-                
-                # Look for chat_completion nodes
-                for node_name, node_data in nodes.items():
-                    print(f"placeholders_utils.py: compose detect_default_ui_type - node_name: {node_name}")
-                    if node_data.get('name') == 'chat_completion':
-                        # Check if ui_choice parameter is set in params
-                        params = node_data.get('params', {})
-                        ui_choice = params.get('ui_choice')
-                        print(f"placeholders_utils.py: compose detect_default_ui_type - ui_choice: {ui_choice}")
-                        if ui_choice and ui_choice in ['chat', 'summary', 'code']:
-                            print(f"placeholders_utils.py: compose detect_default_ui_type - returning: {ui_choice}")
-                            return ui_choice
-            
-            return default_type
-        
-        default_ui_type = detect_default_ui_type()
+        # For __DEFAULT_UI_TYPE_PLACEHOLDER__
+        default_ui_type = detect_default_ui_type(proj_info_json)
 
         # Replace the unique placeholders with the actual strings
         final_config = value_str.replace("__BACKEND_ENDPOINTS_LIST_PLACEHOLDER__", backend_endpoint_list_str.strip()).replace(

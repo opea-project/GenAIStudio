@@ -268,6 +268,7 @@ export const FlowListTable = ({ data, images, isLoading, filterFunction, updateF
 
     const [deployStatusById, setDeployStatusById] = useState({});
     const [deployConfigById, setDeployConfigById] = useState({});
+    const [deployWebSocketsById, setDeployWebSocketsById] = useState({}); // Store WebSocket references
 
     const setDeployStatusForId = (id, status) => {
         setDeployStatusById((prev) => ({ ...prev, [id]: status }));
@@ -276,6 +277,22 @@ export const FlowListTable = ({ data, images, isLoading, filterFunction, updateF
     const setDeployConfigForId = (id, config) => {
         setDeployConfigById((prev) => ({ ...prev, [id]: config }));
     };
+
+    const setDeployWebSocketForId = (id, ws) => {
+        setDeployWebSocketsById((prev) => ({ ...prev, [id]: ws }));
+    };
+
+    // Cleanup deployment WebSockets when component unmounts
+    useEffect(() => {
+        return () => {
+            // Close all deployment WebSockets when component unmounts
+            Object.values(deployWebSocketsById).forEach(ws => {
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    ws.close();
+                }
+            });
+        };
+    }, [deployWebSocketsById]);
 
     useEffect(() => {
         setSortedData(handleSortData());
@@ -655,17 +672,31 @@ export const FlowListTable = ({ data, images, isLoading, filterFunction, updateF
                                                 justifyContent='center'
                                                 alignItems='center'
                                             >
-                                                <Tooltip title={"1 Click Deployment"}>
-                                                    <span>
+                                                {deployWebSocketsById[row.id] && deployWebSocketsById[row.id].readyState === WebSocket.OPEN ? (
+                                                    <Tooltip title="Deployment in progress - click to monitor">
                                                         <Button
-                                                            startIcon={<InstallDesktopOutlined />}
+                                                            startIcon={<CircularProgress size={16} />}
                                                             onClick={() => {
                                                                 handleOneClickDeployment(row.id);
                                                             }}
+                                                            color="primary"
+                                                            variant="outlined"
                                                         >
                                                         </Button>
-                                                    </span>
-                                                </Tooltip>
+                                                    </Tooltip>
+                                                ) : (
+                                                    <Tooltip title={"1 Click Deployment"}>
+                                                        <span>
+                                                            <Button
+                                                                startIcon={<InstallDesktopOutlined />}
+                                                                onClick={() => {
+                                                                    handleOneClickDeployment(row.id);
+                                                                }}
+                                                            >
+                                                            </Button>
+                                                        </span>
+                                                    </Tooltip>
+                                                )}
                                             </Stack>
                                         </StyledTableCell>
                                         <StyledTableCell key='6'>
@@ -711,6 +742,8 @@ export const FlowListTable = ({ data, images, isLoading, filterFunction, updateF
                 setDeployStatus={(status) => setDeployStatusForId(oneClickDeploymentDialogProps.id, status)}
                 deploymentConfig={deployConfigById[oneClickDeploymentDialogProps.id] || { hostname: '', username: '' }}
                 setDeploymentConfig={(config) => setDeployConfigForId(oneClickDeploymentDialogProps.id, config)}
+                deployWebSocket={deployWebSocketsById[oneClickDeploymentDialogProps.id]}
+                setDeployWebSocket={(ws) => setDeployWebSocketForId(oneClickDeploymentDialogProps.id, ws)}
             />
         </>
     )

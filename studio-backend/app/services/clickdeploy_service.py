@@ -13,7 +13,7 @@ from app.services.exporter_service import convert_proj_info_to_compose
 from app.services.workflow_info_service import WorkflowInfo
 from app.utils.exporter_utils import process_opea_services
 
-def deploy_pipeline(hostname, username, pipeline_flow):
+def upload_pipeline_zip(hostname, username, pipeline_flow):
     print("[INFO] Starting deployment to remote server...")
     remote_zip_path = f"/home/{username}/docker-compose.zip"
     temp_dir = None
@@ -71,6 +71,7 @@ def create_zip_locally(request, hostname):
     env_file_path = os.path.join(temp_dir, ".env")
     compose_file_path = os.path.join(temp_dir, "compose.yaml")
     workflow_info_file_path = os.path.join(temp_dir, "workflow-info.json")
+    nginx_conf_path = os.path.join(temp_dir, "app.nginx.conf.template")
     zip_path = os.path.join(temp_dir, "docker-compose.zip")
 
     # Only keep large objects in memory as long as needed
@@ -94,6 +95,16 @@ def create_zip_locally(request, hostname):
         with open(workflow_info_file_path, 'w') as f:
             f.write(json.dumps(workflow_info, indent=4))
 
+        # Read app.nginx.conf.template template and copy to temp directory
+        nginx_template_path = os.path.join(os.path.dirname(__file__), '..', 'templates', 'app', 'app.nginx.conf.template')
+        if os.path.exists(nginx_template_path):
+            with open(nginx_template_path, 'r') as template_file:
+                nginx_conf_content = template_file.read()
+            with open(nginx_conf_path, 'w') as f:
+                f.write(nginx_conf_content)
+        else:
+            raise FileNotFoundError(f"app.nginx.conf.template template not found at {nginx_template_path}")
+
         # Free up memory from large objects as soon as possible
         del workflow_info_raw, workflow_info_json, workflow_info, services_info, ports_info
 
@@ -102,6 +113,7 @@ def create_zip_locally(request, hostname):
             zipf.write(env_file_path, arcname=".env")
             zipf.write(compose_file_path, arcname="compose.yaml")
             zipf.write(workflow_info_file_path, arcname="workflow-info.json")
+            zipf.write(nginx_conf_path, arcname="app.nginx.conf.template")
 
             for file_info in additional_files_info:
                 source_path = file_info["source"]

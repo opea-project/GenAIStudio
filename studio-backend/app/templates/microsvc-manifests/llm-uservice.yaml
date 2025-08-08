@@ -10,7 +10,7 @@ metadata:
 data:
   HEALTHCHECK_ENDPOINT: "{llm_endpoint}:{llm_port}"
   LLM_ENDPOINT: "http://{llm_endpoint}:{llm_port}"
-  HUGGINGFACEHUB_API_TOKEN: "{huggingFaceToken}"
+  HF_TOKEN: "{huggingFaceToken}"
   HF_HOME: "/tmp/.cache/huggingface"
   http_proxy: "${HTTP_PROXY}"
   https_proxy: "${HTTP_PROXY}"

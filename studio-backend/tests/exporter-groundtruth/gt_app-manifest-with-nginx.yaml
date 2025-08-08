@@ -634,7 +634,7 @@ data:
   INDEX_NAME: rag-redis
   KEY_INDEX_NAME: file-keys
   SEARCH_BATCH_SIZE: '10'
-  HUGGINGFACEHUB_API_TOKEN: NA
+  HF_TOKEN: NA
   HF_HOME: /tmp/.cache/huggingface
   http_proxy: ''
   https_proxy: ''
@@ -973,7 +973,7 @@ data:
   https_proxy: ''
   no_proxy: ''
   HF_HOME: /tmp/.cache/huggingface
-  HUGGINGFACEHUB_API_TOKEN: NA
+  HF_TOKEN: NA
   LOGFLAG: ''
   RETRIEVER_COMPONENT_NAME: OPEA_RETRIEVER_REDIS
 ---

@@ -18,7 +18,7 @@ data:
   https_proxy: ""
   no_proxy: ""
   HF_HOME: "/tmp/.cache/huggingface"
-  HUGGINGFACEHUB_API_TOKEN: "{huggingFaceToken}"
+  HF_TOKEN: "{huggingFaceToken}"
   LOGFLAG: "True"
   RETRIEVER_COMPONENT_NAME: "OPEA_RETRIEVER_REDIS"
 ---

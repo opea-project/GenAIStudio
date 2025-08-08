@@ -41,6 +41,8 @@ app-nginx:
     - app-backend
   ports:
     - 8090:80
+  volumes:
+    - ./app.nginx.conf.template:/etc/nginx/nginx.conf.template:ro
   environment:
     - no_proxy=${no_proxy}
     - https_proxy=${https_proxy}

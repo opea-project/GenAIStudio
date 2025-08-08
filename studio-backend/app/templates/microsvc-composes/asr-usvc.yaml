@@ -1,0 +1,22 @@
+"{{endpoint}}":
+  image: "${REGISTRY}/asr:${TAG}"
+  container_name: "{{endpoint}}"
+  ports:
+    - "{{port_key}}:9099"
+  environment:
+    no_proxy: ${no_proxy}
+    http_proxy: ${http_proxy}
+    https_proxy: ${https_proxy}
+    HEALTHCHECK_ENDPOINT: "{{whisper_endpoint}}:{{whisper_port}}"
+    ASR_ENDPOINT: "http://{{whisper_endpoint}}:{{whisper_port}}"
+    LOGFLAG: "True"
+  depends_on:
+    "{{whisper_endpoint}}":
+      condition: service_healthy
+  healthcheck:
+    test: ["CMD", "curl", "-f", "http://localhost:9099/v1/health_check"]
+    interval: 30s
+    retries: 24
+    timeout: 10s
+    start_period: 30s
+  restart: unless-stopped
