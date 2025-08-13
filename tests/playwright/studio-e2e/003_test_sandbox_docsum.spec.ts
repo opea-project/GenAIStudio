@@ -3,7 +3,7 @@ import { waitForStatusText } from '../utils';
 import path from 'path';
 
 const sampleWorkflow = path.resolve(__dirname, '../../../sample-workflows/sample_workflow_docsum.json');//this workflow consists of Hugging Face token! cannot deploy as off now.
-const uploadtxt1 = path.resolve(__dirname, '../../test-files/Little Red Ridding Hood.txt');
+const uploadtxt1 = path.resolve(__dirname, '../../test-files/Little Red Riding Hood.txt');
 
 const keywords = ["Little Red Riding Hood", "sick grandmother", "wolf", "woodcutter", "hunter", "closet", "food"]; // more keywords needed
 
