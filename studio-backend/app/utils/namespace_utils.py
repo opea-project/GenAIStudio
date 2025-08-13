@@ -49,7 +49,6 @@ def wait_for_all_pods(namespace, core_v1_api):
             
             for pod in pods.items:
                 pod_name = pod.metadata.name
-                
                 # print(f"Pod {pod_name} - Phase: {pod.status.phase}")
                 
                 # Check for terminal failed states first
@@ -72,6 +71,7 @@ def wait_for_all_pods(namespace, core_v1_api):
                         if container_status.state.waiting:
                             waiting_reason = container_status.state.waiting.reason
                             # print(f"Pod {pod_name} container {container_name} is waiting: {waiting_reason}")
+                            
                             # Only fail on waiting states that indicate permanent failures
                             if waiting_reason in [
                                 "ErrImagePull", "ImagePullBackOff", "InvalidImageName", 
