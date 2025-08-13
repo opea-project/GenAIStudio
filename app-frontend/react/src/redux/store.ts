@@ -4,14 +4,12 @@
 import { combineReducers, configureStore } from "@reduxjs/toolkit";
 import userReducer from "@redux/User/userSlice";
 import conversationReducer from "@redux/Conversation/ConversationSlice";
-import promptReducer from "@redux/Prompt/PromptSlice";
 import { TypedUseSelectorHook, useDispatch, useSelector } from "react-redux";
 
 export const store = configureStore({
   reducer: combineReducers({
     userReducer,
     conversationReducer,
-    promptReducer,
   }),
   devTools: import.meta.env.PROD || true,
   // preloadedState: loadFromLocalStorage(),

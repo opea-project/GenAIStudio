@@ -12,7 +12,6 @@ import {
   getSupportedModels,
   getSupportedUseCases,
 } from "@redux/Conversation/ConversationSlice";
-import { getPrompts } from "@redux/Prompt/PromptSlice";
 
 import MainLayout from "@layouts/Main/MainLayout";
 import MinimalLayout from "@layouts/Minimal/MinimalLayout";
@@ -60,7 +59,6 @@ const App = () => {
     if (isAuthenticated) {
       dispatch(getSupportedUseCases());
       dispatch(getSupportedModels());
-      dispatch(getPrompts());
     }
   };
 
@@ -74,7 +72,7 @@ const App = () => {
     // }
     dispatch(getAllConversations({ user: name}));
 
-    console.log ("on reload")
+    // console.log ("on reload")
   }, [useCase, name, isAuthenticated]);
 
   return  (

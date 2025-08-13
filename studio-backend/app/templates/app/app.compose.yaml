@@ -27,7 +27,7 @@ app-frontend:
     - https_proxy=${https_proxy}
     - http_proxy=${http_proxy}
     - APP_BACKEND_SERVICE_URL=/v1/app-backend
-    - APP_DATAPREP_SERVICE_URL=/v1/dataprep
+    - APP_DATAPREP_SERVICE_URL=__APP_DATAPREP_SERVICE_URL_PLACEHOLDER__
     - APP_CHAT_HISTORY_SERVICE_URL=/v1/chathistory
     - APP_UI_SELECTION=chat,summary,code
     - APP_DEFAULT_UI_TYPE=__DEFAULT_UI_TYPE_PLACEHOLDER__

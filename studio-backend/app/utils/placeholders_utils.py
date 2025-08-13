@@ -99,6 +99,14 @@ def replace_dynamic_manifest_placeholder(value_str, service_info, proj_info_json
         # For __DEFAULT_UI_TYPE_PLACEHOLDER__
         default_ui_type = detect_default_ui_type(proj_info_json)
 
+        # For __APP_DATAPREP_SERVICE_URL_PLACEHOLDER__ - Check if dataprep service exists
+        dataprep_service_url = "NA"
+        nodes = proj_info_json.get('nodes', {})
+        for node_name, node_data in nodes.items():
+            if node_data.get('name') == 'opea_service@prepare_doc_redis_prep':
+                dataprep_service_url = "/v1/dataprep"
+                break
+
         # Replace the unique placeholders with the actual strings
         final_config = value_str.replace(
             "__PORTS_INFO_JSON_PLACEHOLDER__", ports_info_str.strip()).replace(
@@ -106,7 +114,8 @@ def replace_dynamic_manifest_placeholder(value_str, service_info, proj_info_json
             "__APP_FRONTEND_IMAGE__", app_frontend_image).replace(
             "__APP_BACKEND_IMAGE__", app_backend_image).replace(
             "__TELEMETRY_ENDPOINT__", telemetry_endpoint_env_str).replace(
-            "__DEFAULT_UI_TYPE_PLACEHOLDER__", default_ui_type)    
+            "__DEFAULT_UI_TYPE_PLACEHOLDER__", default_ui_type).replace(
+            "__APP_DATAPREP_SERVICE_URL_PLACEHOLDER__", dataprep_service_url)    
     else:
         final_config = value_str
 
@@ -161,11 +170,20 @@ def replace_dynamic_compose_placeholder(value_str, service_info, proj_info_json)
         # For __DEFAULT_UI_TYPE_PLACEHOLDER__
         default_ui_type = detect_default_ui_type(proj_info_json)
 
+        # For __APP_DATAPREP_SERVICE_URL_PLACEHOLDER__ - Check if dataprep service exists
+        dataprep_service_url = "NA"
+        nodes = proj_info_json.get('nodes', {})
+        for node_name, node_data in nodes.items():
+            if node_data.get('name') == 'opea_service@prepare_doc_redis_prep':
+                dataprep_service_url = "/v1/dataprep"
+                break
+
         # Replace the unique placeholders with the actual strings
         final_config = value_str.replace("__BACKEND_ENDPOINTS_LIST_PLACEHOLDER__", backend_endpoint_list_str.strip()).replace(
             "__APP_FRONTEND_IMAGE__", app_frontend_image).replace(
             "__APP_BACKEND_IMAGE__", app_backend_image).replace(
-            "__DEFAULT_UI_TYPE_PLACEHOLDER__", default_ui_type)
+            "__DEFAULT_UI_TYPE_PLACEHOLDER__", default_ui_type).replace(
+            "__APP_DATAPREP_SERVICE_URL_PLACEHOLDER__", dataprep_service_url)
     
     else:
         final_config = value_str

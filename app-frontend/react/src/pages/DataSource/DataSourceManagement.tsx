@@ -74,9 +74,14 @@ const DataSourceManagement = () => {
     return dataList.map((file: file) => {
       const isChecked = !!checkedItems[file.id];
 
+      // Remove .txt extension from web files for display
+      const displayName = activeSourceType === "web" && file.name.endsWith(".txt") 
+        ? file.name.slice(0, -4) 
+        : file.name;
+
       const fileText = (
         <>
-          <Typography variant="h2">{file.name}</Typography>
+          <Typography variant="h2">{displayName}</Typography>
           {/* TODO: timestamp for all conversations? */}
           {/* <Typography variant="caption">Last message {convertTime(conversation.updated_at)}</Typography> */}
         </>

@@ -127,7 +127,7 @@ spec:
         - name: APP_BACKEND_SERVICE_URL
           value: "/v1/app-backend"
         - name: APP_DATAPREP_SERVICE_URL
-          value: "/v1/dataprep"
+          value: "__APP_DATAPREP_SERVICE_URL_PLACEHOLDER__"
         - name: APP_CHAT_HISTORY_SERVICE_URL
           value: "/v1/chathistory"
         - name: APP_UI_SELECTION
