@@ -90,7 +90,7 @@ services:
       http_proxy: ${http_proxy}
       https_proxy: ${https_proxy}
       TGI_LLM_ENDPOINT: http://${public_host_ip}:3081
-      HUGGINGFACEHUB_API_TOKEN: NA
+      HF_TOKEN: NA
       HF_HUB_DISABLE_PROGRESS_BARS: 1
       HF_HUB_ENABLE_HF_TRANSFER: 0
     restart: unless-stopped
@@ -110,7 +110,7 @@ services:
       REDIS_HOST: ${public_host_ip}
       INDEX_NAME: rag-redis
       TEI_ENDPOINT: http://${public_host_ip}:2081
-      HUGGINGFACEHUB_API_TOKEN: NA
+      HF_TOKEN: NA
   reranking-tei-0:
     image: opea/reranking:latest
     container_name: reranking-tei-0
@@ -124,7 +124,7 @@ services:
       http_proxy: ${http_proxy}
       https_proxy: ${https_proxy}
       TEI_RERANKING_ENDPOINT: http://${public_host_ip}:2082
-      HUGGINGFACEHUB_API_TOKEN: NA
+      HF_TOKEN: NA
       HF_HUB_DISABLE_PROGRESS_BARS: 1
       HF_HUB_ENABLE_HF_TRANSFER: 0
     restart: unless-stopped
@@ -144,7 +144,7 @@ services:
       REDIS_URL: redis://${public_host_ip}:6379
       INDEX_NAME: rag-redis
       TEI_EMBEDDING_ENDPOINT: http://${public_host_ip}:2083
-      HUGGINGFACEHUB_API_TOKEN: NA
+      HF_TOKEN: NA
     restart: unless-stopped
   app-backend:
     image: opea/app-backend:latest

@@ -21,7 +21,9 @@
             "id": "chat_completion_0",
             "inMegaservice": false,
             "name": "chat_completion",
-            "params": {},
+            "params": {
+                "ui_choice": "chat"
+            },
             "version": 1
         },
         "chat_input_0": {

@@ -84,7 +84,7 @@ additional_params_map = {
 }
 
 def process_opea_services(proj_info_json):
-    print("exporter_utils.py: process_opea_services")
+    # print("exporter_utils.py: process_opea_services")
     base_port = 9000
     # Create a deep copy of the proj_info_json to avoid modifying the original data
     proj_info_copy = copy.deepcopy(proj_info_json)

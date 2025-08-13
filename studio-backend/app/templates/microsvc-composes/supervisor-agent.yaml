@@ -1,5 +1,5 @@
 "{{endpoint}}":
-  image: ${REGISTRY}/agent:${TAG}
+  image: opea/agent:1.3
   container_name: "{{endpoint}}"
   depends_on:
   __AGENT_ENDPOINTS__

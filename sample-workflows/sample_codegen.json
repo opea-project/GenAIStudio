@@ -3,8 +3,8 @@
     {
       "id": "chat_input_0",
       "position": {
-        "x": -104.87337962629226,
-        "y": 133.0786252446273
+        "x": 526.4999999999999,
+        "y": 285.25
       },
       "type": "customNode",
       "data": {
@@ -12,7 +12,7 @@
         "name": "chat_input",
         "version": 1,
         "type": "ChatCompletionRequest",
-        "icon": "/usr/src/packages/server/src/nodes/opea-icon-color.svg",
+        "icon": "/usr/src/packages/server/src/nodes/assets/controls.png",
         "category": "Controls",
         "description": "User Input from Chat Window",
         "baseClasses": [
@@ -43,30 +43,29 @@
       "height": 143,
       "selected": false,
       "positionAbsolute": {
-        "x": -104.87337962629226,
-        "y": 133.0786252446273
+        "x": 526.4999999999999,
+        "y": 285.25
       },
       "dragging": false
     },
     {
-      "id": "opea_service@llm_tgi_0",
+      "id": "opea_service@llm_codegen_0",
       "position": {
-        "x": 320.28599745224875,
-        "y": 74.42581341053906
+        "x": 888.5874400000002,
+        "y": 204.56385999999998
       },
       "type": "customNode",
       "data": {
-        "label": "LLM Text Generation",
-        "name": "opea_service@llm_tgi",
+        "label": "LLM Code Generation",
+        "name": "opea_service@llm_codegen",
         "version": 1,
         "type": "GeneratedDoc",
-        "icon": "/usr/src/packages/server/src/nodes/opea-icon-color.svg",
+        "icon": "/usr/src/packages/server/src/nodes/assets/llm.png",
         "category": "LLM",
-        "description": "LLM Text Generation Inference",
+        "description": "LLM Code Generation Inference",
         "baseClasses": [
           "GeneratedDoc",
-          "StreamingResponse",
-          "ChatCompletion"
+          "StreamingResponse"
         ],
         "tags": [
           "OPEA"
@@ -75,12 +74,12 @@
         "dependent_services": {
           "tgi": {
             "modelName": "",
-            "huggingFaceToken": "NA"
+            "huggingFaceToken": ""
           }
         },
         "inputs": {
           "text": "{{chat_input_0.data.instance}}",
-          "modelName": "Intel/neural-chat-7b-v3-3",
+          "modelName": "Qwen/Qwen2.5-Coder-7B-Instruct",
           "huggingFaceToken": "",
           "max_tokens": 17,
           "top_k": 10,
@@ -92,13 +91,13 @@
           "streaming": true,
           "chat_template": "### You are a helpful, respectful and honest assistant to help the user with questions.\n### Context: {context}\n### Question: {question}\n### Answer:"
         },
-        "filePath": "/usr/src/packages/server/src/nodes/llm.js",
+        "filePath": "/usr/src/packages/server/src/nodes/llm_codegen.js",
         "inputAnchors": [
           {
             "label": "LLM Params Document",
             "name": "text",
-            "type": "LLMParamsDoc|ChatCompletionRequest|SearchedDoc",
-            "id": "opea_service@llm_tgi_0-input-text-LLMParamsDoc|ChatCompletionRequest|SearchedDoc"
+            "type": "LLMParamsDoc|ChatCompletionRequest",
+            "id": "opea_service@llm_codegen_0-input-text-LLMParamsDoc|ChatCompletionRequest"
           }
         ],
         "inputParams": [
@@ -106,15 +105,15 @@
             "label": "Model Name",
             "name": "modelName",
             "type": "string",
-            "default": "Intel/neural-chat-7b-v3-3",
-            "id": "opea_service@llm_tgi_0-input-modelName-options"
+            "default": "Qwen/Qwen2.5-Coder-7B-Instruct",
+            "id": "opea_service@llm_codegen_0-input-modelName-string"
           },
           {
             "label": "HuggingFace Token",
             "name": "huggingFaceToken",
             "type": "password",
             "optional": true,
-            "id": "opea_service@llm_tgi_0-input-huggingFaceToken-password"
+            "id": "opea_service@llm_codegen_0-input-huggingFaceToken-password"
           },
           {
             "label": "Maximum Tokens",
@@ -123,7 +122,7 @@
             "default": 17,
             "optional": true,
             "additionalParams": true,
-            "id": "opea_service@llm_tgi_0-input-max_tokens-number"
+            "id": "opea_service@llm_codegen_0-input-max_tokens-number"
           },
           {
             "label": "Top K",
@@ -132,7 +131,7 @@
             "default": 10,
             "optional": true,
             "additionalParams": true,
-            "id": "opea_service@llm_tgi_0-input-top_k-number"
+            "id": "opea_service@llm_codegen_0-input-top_k-number"
           },
           {
             "label": "Top P",
@@ -141,7 +140,7 @@
             "default": 0.95,
             "optional": true,
             "additionalParams": true,
-            "id": "opea_service@llm_tgi_0-input-top_p-number"
+            "id": "opea_service@llm_codegen_0-input-top_p-number"
           },
           {
             "label": "Typical P",
@@ -150,7 +149,7 @@
             "default": 0.95,
             "optional": true,
             "additionalParams": true,
-            "id": "opea_service@llm_tgi_0-input-typical_p-number"
+            "id": "opea_service@llm_codegen_0-input-typical_p-number"
           },
           {
             "label": "Temperature",
@@ -159,7 +158,7 @@
             "default": 0.01,
             "optional": true,
             "additionalParams": true,
-            "id": "opea_service@llm_tgi_0-input-temperature-number"
+            "id": "opea_service@llm_codegen_0-input-temperature-number"
           },
           {
             "label": "Presence Penalty",
@@ -168,7 +167,7 @@
             "default": 1.03,
             "optional": true,
             "additionalParams": true,
-            "id": "opea_service@llm_tgi_0-input-presence_penalty-number"
+            "id": "opea_service@llm_codegen_0-input-presence_penalty-number"
           },
           {
             "label": "Frequency Penalty",
@@ -177,7 +176,7 @@
             "default": 0,
             "optional": true,
             "additionalParams": true,
-            "id": "opea_service@llm_tgi_0-input-frequency_penalty-number"
+            "id": "opea_service@llm_codegen_0-input-frequency_penalty-number"
           },
           {
             "label": "Streaming",
@@ -186,7 +185,7 @@
             "default": true,
             "optional": true,
             "additionalParams": true,
-            "id": "opea_service@llm_tgi_0-input-streaming-boolean"
+            "id": "opea_service@llm_codegen_0-input-streaming-boolean"
           },
           {
             "label": "Chat Template",
@@ -196,36 +195,36 @@
             "default": "### You are a helpful, respectful and honest assistant to help the user with questions.\n### Context: {context}\n### Question: {question}\n### Answer:",
             "optional": true,
             "additionalParams": true,
-            "id": "opea_service@llm_tgi_0-input-chat_template-string"
+            "id": "opea_service@llm_codegen_0-input-chat_template-string"
           }
         ],
         "outputs": {},
         "outputAnchors": [
           {
-            "id": "opea_service@llm_tgi_0-output-opea_service@llm_tgi-GeneratedDoc|StreamingResponse|ChatCompletion",
-            "name": "opea_service@llm_tgi",
+            "id": "opea_service@llm_codegen_0-output-opea_service@llm_codegen-GeneratedDoc|StreamingResponse",
+            "name": "opea_service@llm_codegen",
             "label": "GeneratedDoc",
-            "description": "LLM Text Generation Inference",
-            "type": "GeneratedDoc | StreamingResponse | ChatCompletion"
+            "description": "LLM Code Generation Inference",
+            "type": "GeneratedDoc | StreamingResponse"
           }
         ],
-        "id": "opea_service@llm_tgi_0",
+        "id": "opea_service@llm_codegen_0",
         "selected": false
       },
       "width": 300,
       "height": 481,
       "selected": false,
       "positionAbsolute": {
-        "x": 320.28599745224875,
-        "y": 74.42581341053906
+        "x": 888.5874400000002,
+        "y": 204.56385999999998
       },
       "dragging": false
     },
     {
-      "id": "chat_completion_0",
+      "id": "chat_completion_1",
       "position": {
-        "x": 723.2775041173651,
-        "y": 161.79179483429388
+        "x": 1294.0750736940474,
+        "y": 314.4780045886494
       },
       "type": "customNode",
       "data": {
@@ -242,8 +241,8 @@
         ],
         "inMegaservice": false,
         "inputs": {
-          "llm_response": "{{opea_service@llm_tgi_0.data.instance}}",
-          "ui_choice": "chat"
+          "llm_response": "{{opea_service@llm_codegen_0.data.instance}}",
+          "ui_choice": "code"
         },
         "hideOutput": true,
         "filePath": "/usr/src/packages/server/src/nodes/chat_completion.js",
@@ -252,7 +251,7 @@
             "label": "LLM Response",
             "name": "llm_response",
             "type": "StreamingResponse|ChatCompletion",
-            "id": "chat_completion_0-input-llm_response-StreamingResponse|ChatCompletion"
+            "id": "chat_completion_1-input-llm_response-StreamingResponse|ChatCompletion"
           }
         ],
         "inputParams": [
@@ -275,21 +274,21 @@
                 "label": "Generate Code"
               }
             ],
-            "id": "chat_completion_0-input-ui_choice-options"
+            "id": "chat_completion_1-input-ui_choice-options"
           }
         ],
         "outputs": {},
         "outputAnchors": [],
-        "id": "chat_completion_0",
+        "id": "chat_completion_1",
         "selected": false
       },
       "width": 300,
       "height": 239,
-      "selected": false,
       "positionAbsolute": {
-        "x": 723.2775041173651,
-        "y": 161.79179483429388
+        "x": 1294.0750736940474,
+        "y": 314.4780045886494
       },
+      "selected": false,
       "dragging": false
     }
   ],
@@ -297,18 +296,18 @@
     {
       "source": "chat_input_0",
       "sourceHandle": "chat_input_0-output-chat_input-ChatCompletionRequest",
-      "target": "opea_service@llm_tgi_0",
-      "targetHandle": "opea_service@llm_tgi_0-input-text-LLMParamsDoc|ChatCompletionRequest|SearchedDoc",
+      "target": "opea_service@llm_codegen_0",
+      "targetHandle": "opea_service@llm_codegen_0-input-text-LLMParamsDoc|ChatCompletionRequest",
       "type": "buttonedge",
-      "id": "chat_input_0-chat_input_0-output-chat_input-ChatCompletionRequest-opea_service@llm_tgi_0-opea_service@llm_tgi_0-input-text-LLMParamsDoc|ChatCompletionRequest|SearchedDoc"
+      "id": "chat_input_0-chat_input_0-output-chat_input-ChatCompletionRequest-opea_service@llm_codegen_0-opea_service@llm_codegen_0-input-text-LLMParamsDoc|ChatCompletionRequest"
     },
     {
-      "source": "opea_service@llm_tgi_0",
-      "sourceHandle": "opea_service@llm_tgi_0-output-opea_service@llm_tgi-GeneratedDoc|StreamingResponse|ChatCompletion",
-      "target": "chat_completion_0",
-      "targetHandle": "chat_completion_0-input-llm_response-StreamingResponse|ChatCompletion",
+      "source": "opea_service@llm_codegen_0",
+      "sourceHandle": "opea_service@llm_codegen_0-output-opea_service@llm_codegen-GeneratedDoc|StreamingResponse",
+      "target": "chat_completion_1",
+      "targetHandle": "chat_completion_1-input-llm_response-StreamingResponse|ChatCompletion",
       "type": "buttonedge",
-      "id": "opea_service@llm_tgi_0-opea_service@llm_tgi_0-output-opea_service@llm_tgi-GeneratedDoc|StreamingResponse|ChatCompletion-chat_completion_0-chat_completion_0-input-llm_response-StreamingResponse|ChatCompletion"
+      "id": "opea_service@llm_codegen_0-opea_service@llm_codegen_0-output-opea_service@llm_codegen-GeneratedDoc|StreamingResponse-chat_completion_1-chat_completion_1-input-llm_response-StreamingResponse|ChatCompletion"
     }
   ]
 }

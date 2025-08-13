@@ -34,7 +34,7 @@ const Home = () => {
     ? UI_SELECTION.split(",").map((item) => item.trim())
     : ["chat", "summary", "code"];
     
-  console.log("Enabled UI:", enabledUI);
+  // console.log("Enabled UI:", enabledUI);
 
   const { type, types, token, model, temperature } =
     useAppSelector(conversationSelector);

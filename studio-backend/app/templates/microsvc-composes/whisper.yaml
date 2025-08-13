@@ -1,0 +1,62 @@
+"{{endpoint}}-model-downloader":
+  image: "huggingface/downloader:0.17.3"
+  container_name: "{{endpoint}}-model-downloader"
+  user: "0:0"
+  volumes:
+    - "./data:/data"
+  environment:
+    no_proxy: ${no_proxy}
+    http_proxy: ${http_proxy}
+    https_proxy: ${https_proxy}
+    HF_HOME: "/tmp/.cache/huggingface"
+    HUGGINGFACE_HUB_CACHE: "/data"
+    HF_TOKEN: "{{huggingFaceToken}}"
+  command:
+    - sh
+    - -ec
+    - |
+      echo "Checking for existing model openai/whisper-small ..."
+      if [ -d "/data/models--openai--whisper-small" ] && [ -f "/data/models--openai--whisper-small/snapshots/*/config.json" ]; then
+        echo "Model already exists, skipping download"
+        chmod -R 777 /data/models--openai--whisper-small || true
+        chmod -R 777 /data/.locks || true
+      else
+        echo "Model not found, downloading openai/whisper-small ..."
+        rm -rf /data/.locks /data/models--openai--whisper-small || true
+        chmod -R 777 /data || true
+        huggingface-cli download --cache-dir /data openai/whisper-small
+        echo "Download completed, setting permissions ..."
+        chmod -R 777 /data/models--openai--whisper-small || true
+        chmod -R 777 /data/.locks || true
+      fi
+      echo "Model setup completed"
+  restart: "no"
+
+"{{endpoint}}":
+  image: "${REGISTRY}/whisper:${TAG}"
+  container_name: "{{endpoint}}"
+  depends_on:
+    "{{endpoint}}-model-downloader":
+      condition: service_completed_successfully
+  ports:
+    - "{{port_key}}:7066"
+  volumes:
+    - "/tmp/.cache/huggingface:/tmp/.cache/huggingface"
+    - "./data:/data"
+  environment:
+    no_proxy: ${no_proxy}
+    http_proxy: ${http_proxy}
+    https_proxy: ${https_proxy}
+    EASYOCR_MODULE_PATH: "/tmp/.EasyOCR"
+    ASR_MODEL_PATH: "openai/whisper-small"
+    HF_HOME: "/tmp/.cache/huggingface"
+    HUGGINGFACE_HUB_CACHE: "/data"
+    HF_TOKEN: "{{huggingFaceToken}}"
+    LOGFLAG: "True"
+  user: "0:0"
+  restart: unless-stopped
+  healthcheck:
+    test: ["CMD", "curl", "-f", "http://localhost:7066/health"]
+    interval: 30s
+    retries: 20
+    timeout: 10s

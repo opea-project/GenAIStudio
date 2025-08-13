@@ -504,7 +504,7 @@ const oneClickDeploymentService = async (chatflowId: string, deploymentConfig: R
     try {
         const chatflow = await generatePipelineJson(chatflowId)
         const studioServerUrl = STUDIO_SERVER_URL
-        const endpoint = 'studio-backend/click-deploy'
+        const endpoint = 'studio-backend/upload-pipeline-files'
         console.log('chatflow', JSON.stringify(chatflow))
         console.log('studioServerUrl', studioServerUrl)
         console.log('deploymentConfig', deploymentConfig)

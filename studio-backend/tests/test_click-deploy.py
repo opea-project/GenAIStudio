@@ -8,7 +8,7 @@ import pytest
 import json
 
 from app.models.pipeline_model import PipelineFlow
-from app.services.clickdeploy_service import deploy_pipeline
+from app.services.clickdeploy_service import upload_pipeline_zip
 
 @pytest.fixture
 def setup_and_teardown():
@@ -36,9 +36,9 @@ def test_click_deploy(setup_and_teardown):
         assert False, "Payload validation failed"
 
     try:
-        response = deploy_pipeline(remote_host, remote_user, payload)
-        print("Response from deploy_pipeline:\n" + json.dumps(response, indent=2, ensure_ascii=False))
+        response = upload_pipeline_zip(remote_host, remote_user, payload)
+        print("Response from upload_pipeline_zip:\n" + json.dumps(response, indent=2, ensure_ascii=False))
     except Exception as e:
-        assert False, f"deploy_pipeline failed with exception: {e}"
+        assert False, f"upload_pipeline_zip failed with exception: {e}"
 
-    assert True, "deploy_pipeline executed successfully"
+    assert True, "upload_pipeline_zip executed successfully"

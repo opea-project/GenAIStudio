@@ -30,7 +30,7 @@ const ChatUser: React.FC<ChatUserProps> = ({ content }) => {
   return (
     <div className={styles.userWrapper}>
       <UserInput className={styles.userPrompt}>
-        <ChatMarkdown content={content} />
+        <ChatMarkdown content={content} isStreaming={false} />
       </UserInput>
       {/* <Tooltip title="Save prompt" arrow>
         <IconButton className={styles.addIcon} onClick={sharePrompt}>

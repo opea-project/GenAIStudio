@@ -17,7 +17,7 @@
     REDIS_URL: "redis://${public_host_ip}:{{redis_vector_store_port}}"
     INDEX_NAME: "rag-redis"
     TEI_EMBEDDING_ENDPOINT: "http://${public_host_ip}:{{tei_port}}"
-    HUGGINGFACEHUB_API_TOKEN: "{{huggingFaceToken}}"
+    HF_TOKEN: "{{huggingFaceToken}}"
     LOGFLAG: "True"
     RETRIEVER_COMPONENT_NAME: "OPEA_RETRIEVER_REDIS"
   restart: unless-stopped

@@ -49,8 +49,7 @@ def wait_for_all_pods(namespace, core_v1_api):
             
             for pod in pods.items:
                 pod_name = pod.metadata.name
-                
-                print(f"Pod {pod_name} - Phase: {pod.status.phase}")
+                # print(f"Pod {pod_name} - Phase: {pod.status.phase}")
                 
                 # Check for terminal failed states first
                 if pod.status.phase in ["Failed", "Unknown"]:
@@ -67,11 +66,12 @@ def wait_for_all_pods(namespace, core_v1_api):
                 if pod.status.container_statuses:
                     for i, container_status in enumerate(pod.status.container_statuses):
                         container_name = container_status.name if container_status.name else f"container-{i}"
-                        print(f"Pod {pod_name} container {container_name} - Ready: {container_status.ready}")
+                        # print(f"Pod {pod_name} container {container_name} - Ready: {container_status.ready}")
                         
                         if container_status.state.waiting:
                             waiting_reason = container_status.state.waiting.reason
-                            print(f"Pod {pod_name} container {container_name} is waiting: {waiting_reason}")
+                            # print(f"Pod {pod_name} container {container_name} is waiting: {waiting_reason}")
+                            
                             # Only fail on waiting states that indicate permanent failures
                             if waiting_reason in [
                                 "ErrImagePull", "ImagePullBackOff", "InvalidImageName", 
@@ -99,7 +99,8 @@ def wait_for_all_pods(namespace, core_v1_api):
                                     pod_failed = True
                                     break
                             elif waiting_reason in ["PodInitializing", "ContainerCreating"]:
-                                print(f"Pod {pod_name} container {container_name} is initializing")
+                                pass
+                                # print(f"Pod {pod_name} container {container_name} is initializing")
                         elif container_status.state.terminated:
                             terminated_reason = container_status.state.terminated.reason
                             exit_code = container_status.state.terminated.exit_code
@@ -116,7 +117,8 @@ def wait_for_all_pods(namespace, core_v1_api):
                                 pod_failed = True
                                 break
                         elif container_status.state.running:
-                            print(f"Pod {pod_name} container {container_name} is running")
+                            pass
+                            # print(f"Pod {pod_name} container {container_name} is running")
                 else:
                     print(f"Pod {pod_name} has no container statuses yet")
                 
@@ -126,7 +128,8 @@ def wait_for_all_pods(namespace, core_v1_api):
                 # Check if pod is running and ready
                 if pod.status.phase == "Running":
                     if pod.status.container_statuses and all(container.ready for container in pod.status.container_statuses):
-                        print(f"Pod {pod_name} is ready!")
+                        pass
+                        # print(f"Pod {pod_name} is ready!")
                     else:
                         pending_pods.append(pod_name)
                 else:

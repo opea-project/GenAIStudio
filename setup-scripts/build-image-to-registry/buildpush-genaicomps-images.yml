@@ -32,7 +32,7 @@
           - { name: 'retriever', dockerfile: 'comps/retrievers/src/Dockerfile' }
           - { name: 'llm-textgen', dockerfile: 'comps/llms/src/text-generation/Dockerfile' }
           - { name: 'dataprep', dockerfile: 'comps/dataprep/src/Dockerfile' }
-          - { name: 'agent', dockerfile: 'comps/agent/src/Dockerfile' }
+          # - { name: 'agent', dockerfile: 'comps/agent/src/Dockerfile' }   # temporary hardcoded in agent templates to v1.3
           - { name: 'whisper', dockerfile: 'comps/third_parties/whisper/src/Dockerfile' }
           - { name: 'llm-docsum', dockerfile: 'comps/llms/src/doc-summarization/Dockerfile' }
           - { name: 'asr', dockerfile: 'comps/asr/src/Dockerfile' }

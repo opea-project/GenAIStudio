@@ -6,6 +6,23 @@ type ThinkCardProps = {
 };
 
 const ThinkCard = ({ content }: ThinkCardProps) => {
+  // Safety net: if </think> is leaked, do not display the text before it
+  const cleanContent = (text: string): string => {
+    const thinkEndIndex = text.lastIndexOf('</think>');
+    if (thinkEndIndex !== -1) {
+      // Return everything after the last </think> tag
+      return text.substring(thinkEndIndex + 8).trim();
+    }
+    return text;
+  };
+
+  const safeContent = cleanContent(content);
+  
+  // Don't render the card if there's no content after filtering
+  if (!safeContent.trim()) {
+    return null;
+  }
+
   return (
     <Card
       variant="outlined"
@@ -19,7 +36,7 @@ const ThinkCard = ({ content }: ThinkCardProps) => {
     >
       <CardContent>
         <Typography variant="body2" sx={{ whiteSpace: "pre-wrap", color: "#333" }}>
-          {content}
+          {safeContent}
         </Typography>
       </CardContent>
     </Card>

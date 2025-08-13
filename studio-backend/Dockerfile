@@ -9,7 +9,7 @@ COPY app /usr/src/app
 
 # Upgrade libsqlite3 to a safe version
 RUN apt-get update -y && apt-get install -y --no-install-recommends --fix-missing \
-    libsqlite3-0=3.40.1-2+deb12u1 openssh-client && \
+    libsqlite3-0 openssh-client && \
     rm -rf /var/lib/apt/lists/*
 
 # Upgrade setuptools to a safe version and install any needed packages specified in requirements.txt

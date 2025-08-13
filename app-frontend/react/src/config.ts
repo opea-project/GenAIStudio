@@ -12,7 +12,11 @@ const config = {
 
 export default config;
 
-
+console.log ("BACKEND_SERVICE_URL", import.meta.env.VITE_BACKEND_SERVICE_URL);
+console.log ("DATA_PREP_SERVICE_URL", import.meta.env.VITE_DATAPREP_SERVICE_URL);
+console.log ("CHAT_HISTORY_SERVICE_URL", import.meta.env.VITE_CHAT_HISTORY_SERVICE_URL);
+console.log ("UI_SELECTION", import.meta.env.VITE_UI_SELECTION);
+console.log ("DEFAULT_UI_TYPE", import.meta.env.VITE_DEFAULT_UI_TYPE);
 
 // export const CHAT_QNA_URL = import.meta.env.VITE_BACKEND_SERVICE_ENDPOINT_CHATQNA;
 export const CHAT_QNA_URL = import.meta.env.VITE_BACKEND_SERVICE_URL
@@ -21,11 +25,7 @@ export const CODE_GEN_URL = import.meta.env.VITE_BACKEND_SERVICE_URL
 // export const DOC_SUM_URL = import.meta.env.VITE_BACKEND_SERVICE_ENDPOINT_DOCSUM;
 export const DOC_SUM_URL = import.meta.env.VITE_BACKEND_SERVICE_URL
 export const UI_SELECTION = import.meta.env.VITE_UI_SELECTION;
-
-console.log ("BACKEND_SERVICE_URL", import.meta.env.VITE_BACKEND_SERVICE_URL);
-console.log ("DATA_PREP_SERVICE_URL", import.meta.env.VITE_DATAPREP_SERVICE_URL);
-console.log ("CHAT_HISTORY_SERVICE_URL", import.meta.env.VITE_CHAT_HISTORY_SERVICE_URL);
-console.log ("UI_SELECTION", import.meta.env.VITE_UI_SELECTION);
+export const DEFAULT_UI_TYPE = import.meta.env.VITE_DEFAULT_UI_TYPE;
 
 // export const FAQ_GEN_URL = import.meta.env.VITE_BACKEND_SERVICE_ENDPOINT_FAQGEN;
 export const DATA_PREP_URL = import.meta.env.VITE_DATAPREP_SERVICE_URL;
@@ -34,22 +34,10 @@ export const DATA_PREP_INGEST_URL = DATA_PREP_URL + "/ingest";
 export const DATA_PREP_GET_URL = DATA_PREP_URL + "/get";
 export const DATA_PREP_DELETE_URL = DATA_PREP_URL + "/delete";
 
-console.log ("DATA_PREP_INGEST_URL", DATA_PREP_INGEST_URL);
-console.log ("DATA_PREP_GET_URL", DATA_PREP_GET_URL);
-console.log ("DATA_PREP_DELETE_URL", DATA_PREP_DELETE_URL);
-
 export const CHAT_HISTORY_URL = import.meta.env.VITE_CHAT_HISTORY_SERVICE_URL;
 // export const CHAT_HISTORY_URL = "http://localhost:6012/v1/chathistory/";
 export const CHAT_HISTORY_CREATE = CHAT_HISTORY_URL + "/create";
 export const CHAT_HISTORY_GET = CHAT_HISTORY_URL + "/get";
 export const CHAT_HISTORY_DELETE = CHAT_HISTORY_URL + "/delete";
-
-console.log ("CHAT_HISTORY_CREATE", CHAT_HISTORY_CREATE);
-console.log ("CHAT_HISTORY_GET", CHAT_HISTORY_GET);
-console.log ("CHAT_HISTORY_DELETE", CHAT_HISTORY_DELETE);
-
-export const PROMPT_MANAGER_GET = import.meta.env.VITE_PROMPT_SERVICE_GET_ENDPOINT;
-export const PROMPT_MANAGER_CREATE = import.meta.env.VITE_PROMPT_SERVICE_CREATE_ENDPOINT;
-export const PROMPT_MANAGER_DELETE = import.meta.env.VITE_PROMPT_SERVICE_DELETE_ENDPOINT;
 
 

@@ -26,11 +26,15 @@ class OPEAChatCompletion {
                 options: [
                     {
                         name: 'chat',
-                        label: 'Chat'
+                        label: 'Chat Q&A'
                     },
                     {
-                        name: 'columns',
-                        label: 'Two Columns (For Document Sumarization or Translation)'
+                        name: 'summary',
+                        label: 'Summarize Content'
+                    },
+                    {
+                        name: 'code',
+                        label: 'Generate Code'
                     }
                 ]
             }

@@ -27,6 +27,7 @@ import { Conversation } from "@redux/Conversation/Conversation";
 import { KeyboardBackspace } from "@mui/icons-material";
 import { useDispatch } from "react-redux";
 import { useNavigateWithQuery, useToWithQuery } from "@utils/navigationAndAxiosWithQuery";
+import { DATA_PREP_URL } from "@root/config";
 
 interface SideBarProps {
   asideOpen: boolean;
@@ -97,6 +98,8 @@ const SideBar: React.FC<SideBarProps> = ({
   // const { keycloak } = useKeycloak();
   const { role } = useAppSelector(userSelector);
   const { conversations } = useAppSelector(conversationSelector);
+  
+  const isDataPrepEnabled = DATA_PREP_URL.trim() !== "NA";
 
   const asideBackgroundColor = {
     backgroundColor: theme.customStyles.aside?.main,
@@ -193,14 +196,30 @@ const SideBar: React.FC<SideBarProps> = ({
 
         {role === "Admin" && (
           <>
-            <LinkedMenuItem
-              open={asideOpen}
-              to="/data"
-              onClick={handleLinkedMenuItemClick}
-            >
-              <NavIcon component={DatabaseIcon} />
-              <ListItemText>Data Management</ListItemText>
-            </LinkedMenuItem>
+            {isDataPrepEnabled ? (
+              <LinkedMenuItem
+                open={asideOpen}
+                to="/data"
+                onClick={handleLinkedMenuItemClick}
+              >
+                <NavIcon component={DatabaseIcon} />
+                <ListItemText>Data Management</ListItemText>
+              </LinkedMenuItem>
+            ) : (
+              <MenuItem
+                disabled
+                sx={{
+                  opacity: 0.5,
+                  cursor: 'not-allowed',
+                  '&:hover': {
+                    backgroundColor: 'transparent'
+                  }
+                }}
+              >
+                <NavIcon component={DatabaseIcon} />
+                <ListItemText>Data Management</ListItemText>
+              </MenuItem>
+            )}
           </>
         )}
 

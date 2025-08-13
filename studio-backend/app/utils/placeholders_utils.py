@@ -1,6 +1,5 @@
 
 import yaml
-import textwrap
 import json
 import re
 import os
@@ -34,6 +33,22 @@ def ordered_load_all(stream, Loader=yaml.SafeLoader, object_pairs_hook=OrderedDi
         construct_mapping)
     return yaml.load_all(stream, OrderedLoader)
 
+# Detect UI choice
+def detect_default_ui_type(proj_info_json):
+    default_type = "chat"
+    nodes = proj_info_json.get('nodes', {})
+    
+    # Look for chat_completion nodes
+    for node_name, node_data in nodes.items():
+        if node_data.get('name') == 'chat_completion':
+            # Check if ui_choice parameter is set in params
+            params = node_data.get('params', {})
+            ui_choice = params.get('ui_choice')
+            if ui_choice and ui_choice in ['chat', 'summary', 'code']:
+                return ui_choice
+
+    return default_type
+
 # Recursive function to replace placeholders in manifest templates
 def replace_manifest_placeholders(obj, variables):
     # print("placeholders_utils.py: replace_manifest_placeholders", obj, variables)
@@ -65,38 +80,9 @@ def replace_manifest_placeholders(obj, variables):
     return obj
 
 def replace_dynamic_manifest_placeholder(value_str, service_info, proj_info_json):
-    # print("placeholders_utils.py: replace_dynamic_manifest_placeholder")
     indent_str = ' ' * 8
-
+    
     if service_info['service_type'] == 'app':
-        ui_env_config_info_str = ""
-        ui_nginx_config_info_str = ""
-        backend_workflow_info_str = ""
-        for key, value in service_info['ui_config_info'].items():
-            if 'agent' in key:
-                continue
-            
-            # For __UI_CONFIG_INFO_ENV_PLACEHOLDER__
-            url_name = value['url_name']
-            endpoint_path = value['endpoint_path']
-            env_block = f"{indent_str}- name: VITE_{url_name}\n{indent_str}  value: {endpoint_path}\n"
-            ui_env_config_info_str += env_block
-
-            # For __UI_CONFIG_INFO_ENV_PLACEHOLDER__
-            endpoint_path = value['endpoint_path']
-            port = value['port']
-            location_block = textwrap.dedent(f"""
-            location {endpoint_path} {{
-                proxy_pass http://{key}:{port};
-                proxy_set_header Host $host;
-                proxy_set_header X-Real-IP $remote_addr;
-                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-                proxy_set_header X-Forwarded-Proto $scheme;
-            }}
-            """)
-            indented_location_block = textwrap.indent(location_block, indent_str)
-            ui_nginx_config_info_str += indented_location_block
-
         # For __PORTS_INFO_JSON_PLACEHOLDER__
         ports_info_str = "\n    ".join([f'{key}={value}' for key, value in service_info['ports_info'].items()])
         
@@ -110,14 +96,26 @@ def replace_dynamic_manifest_placeholder(value_str, service_info, proj_info_json
         # For __TELEMETRY_ENDPOINT_ENV_PLACEHOLDER__
         telemetry_endpoint_env_str = f"- name: TELEMETRY_ENDPOINT\n{indent_str}  value: {os.getenv('TELEMETRY_ENDPOINT', '')}\n"
 
+        # For __DEFAULT_UI_TYPE_PLACEHOLDER__
+        default_ui_type = detect_default_ui_type(proj_info_json)
+
+        # For __APP_DATAPREP_SERVICE_URL_PLACEHOLDER__ - Check if dataprep service exists
+        dataprep_service_url = "NA"
+        nodes = proj_info_json.get('nodes', {})
+        for node_name, node_data in nodes.items():
+            if node_data.get('name') == 'opea_service@prepare_doc_redis_prep':
+                dataprep_service_url = "/v1/dataprep"
+                break
+
         # Replace the unique placeholders with the actual strings
-        final_config = value_str.replace("__UI_CONFIG_INFO_ENV_PLACEHOLDER__", ui_env_config_info_str.strip()).replace(
-            "__UI_CONFIG_INFO_NGINX_PLACEHOLDER__", ui_nginx_config_info_str.strip()).replace(
+        final_config = value_str.replace(
             "__PORTS_INFO_JSON_PLACEHOLDER__", ports_info_str.strip()).replace(
             "__BACKEND_PROJECT_INFO_JSON_PLACEHOLDER__", backend_workflow_info_str.replace(f"\n", f"\n{indent_str}")).replace(
             "__APP_FRONTEND_IMAGE__", app_frontend_image).replace(
             "__APP_BACKEND_IMAGE__", app_backend_image).replace(
-            "__TELEMETRY_ENDPOINT__", telemetry_endpoint_env_str)    
+            "__TELEMETRY_ENDPOINT__", telemetry_endpoint_env_str).replace(
+            "__DEFAULT_UI_TYPE_PLACEHOLDER__", default_ui_type).replace(
+            "__APP_DATAPREP_SERVICE_URL_PLACEHOLDER__", dataprep_service_url)    
     else:
         final_config = value_str
 
@@ -143,7 +141,7 @@ def replace_compose_placeholders(obj, variables):
         return value
     return obj
 
-def replace_dynamic_compose_placeholder(value_str, service_info):
+def replace_dynamic_compose_placeholder(value_str, service_info, proj_info_json):
     indent_str = ' ' * 2
 
     if 'supervisor_agent' in service_info['service_type']:
@@ -158,31 +156,34 @@ def replace_dynamic_compose_placeholder(value_str, service_info):
         value_str = value_str.replace("__AGENT_ENDPOINTS__", dependent_endpoints_str.strip())
 
     if service_info['service_type'] == 'app':
-        backend_endpoint_list_str = ""
-        ui_env_config_info_str = ""
+        
         # For __BACKEND_ENDPOINTS_LIST_PLACEHOLDER__
+        backend_endpoint_list_str = ""
         for endpoint in service_info['endpoint_list']:
             endpoint_block = f"{indent_str}- {endpoint}\n"
             backend_endpoint_list_str += endpoint_block
-
-        # For __UI_CONFIG_INFO_ENV_PLACEHOLDER__
-        for key, value in service_info['ui_config_info'].items():
-            if 'agent' in key:
-                continue
-            url_name = value['url_name']
-            endpoint_path = value['endpoint_path']
-            endpoint_block = f"{indent_str}  - VITE_{url_name}={endpoint_path}\n"
-            ui_env_config_info_str += endpoint_block
         
         # Get app images from environment variables
         app_frontend_image = os.getenv("APP_FRONTEND_IMAGE", "opea/app-frontend:latest")
         app_backend_image = os.getenv("APP_BACKEND_IMAGE", "opea/app-backend:latest")
 
+        # For __DEFAULT_UI_TYPE_PLACEHOLDER__
+        default_ui_type = detect_default_ui_type(proj_info_json)
+
+        # For __APP_DATAPREP_SERVICE_URL_PLACEHOLDER__ - Check if dataprep service exists
+        dataprep_service_url = "NA"
+        nodes = proj_info_json.get('nodes', {})
+        for node_name, node_data in nodes.items():
+            if node_data.get('name') == 'opea_service@prepare_doc_redis_prep':
+                dataprep_service_url = "/v1/dataprep"
+                break
+
         # Replace the unique placeholders with the actual strings
         final_config = value_str.replace("__BACKEND_ENDPOINTS_LIST_PLACEHOLDER__", backend_endpoint_list_str.strip()).replace(
-            "__UI_CONFIG_INFO_ENV_PLACEHOLDER__", ui_env_config_info_str.strip()).replace(
             "__APP_FRONTEND_IMAGE__", app_frontend_image).replace(
-            "__APP_BACKEND_IMAGE__", app_backend_image)
+            "__APP_BACKEND_IMAGE__", app_backend_image).replace(
+            "__DEFAULT_UI_TYPE_PLACEHOLDER__", default_ui_type).replace(
+            "__APP_DATAPREP_SERVICE_URL_PLACEHOLDER__", dataprep_service_url)
     
     else:
         final_config = value_str

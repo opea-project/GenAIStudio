@@ -26,9 +26,11 @@ app-frontend:
     - no_proxy=${no_proxy}
     - https_proxy=${https_proxy}
     - http_proxy=${http_proxy}
-    - VITE_UI_SELECTION=${ui_selection}
-    - VITE_APP_BACKEND_SERVICE_URL=/v1/app-backend
-    __UI_CONFIG_INFO_ENV_PLACEHOLDER__
+    - APP_BACKEND_SERVICE_URL=/v1/app-backend
+    - APP_DATAPREP_SERVICE_URL=__APP_DATAPREP_SERVICE_URL_PLACEHOLDER__
+    - APP_CHAT_HISTORY_SERVICE_URL=/v1/chathistory
+    - APP_UI_SELECTION=chat,summary,code
+    - APP_DEFAULT_UI_TYPE=__DEFAULT_UI_TYPE_PLACEHOLDER__
   ipc: host
   restart: always
 app-nginx:
@@ -39,6 +41,8 @@ app-nginx:
     - app-backend
   ports:
     - 8090:80
+  volumes:
+    - ./app.nginx.conf.template:/etc/nginx/nginx.conf.template:ro
   environment:
     - no_proxy=${no_proxy}
     - https_proxy=${https_proxy}

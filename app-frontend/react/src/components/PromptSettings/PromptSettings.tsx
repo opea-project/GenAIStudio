@@ -112,7 +112,7 @@ const PromptSettings: React.FC<PromptSettingsProps> = ({
     // if (sourceType === "web") input = <WebInput />;
     // if (sourceType === "images" && type === "summary")
     //   input = <FileInput imageInput={true} />;
-    input = <FileInput maxFileCount={1} summaryInput />;
+    //input = <FileInput maxFileCount={1} summaryInput />;
 
     return <div className={styles.summarySource}>
       {input}

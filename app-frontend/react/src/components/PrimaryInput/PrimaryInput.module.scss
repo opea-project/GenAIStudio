@@ -42,3 +42,13 @@
     }
   }
 }
+
+.orDivider {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 16px 0;
+  width: 100%;
+  font-weight: bold;
+  opacity: 0.8;
+}

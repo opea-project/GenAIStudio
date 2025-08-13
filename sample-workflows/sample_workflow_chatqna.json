@@ -97,52 +97,6 @@
       "dragging": false
     },
     {
-      "id": "chat_completion_0",
-      "position": {
-        "x": 2189.1354963026597,
-        "y": 297.4088827779505
-      },
-      "type": "customNode",
-      "data": {
-        "label": "Chat Completion",
-        "name": "chat_completion",
-        "version": 1,
-        "type": "ChatCompletion",
-        "icon": "/usr/src/packages/server/src/nodes/opea-icon-color.svg",
-        "category": "Controls",
-        "description": "Send Chat Response to UI",
-        "baseClasses": [],
-        "tags": [
-          "OPEA"
-        ],
-        "inMegaservice": false,
-        "inputs": {
-          "llm_response": "{{opea_service@llm_tgi_0.data.instance}}"
-        },
-        "hideOutput": true,
-        "filePath": "/usr/src/packages/server/src/nodes/chat_completion.js",
-        "inputAnchors": [
-          {
-            "label": "LLM Response",
-            "name": "llm_response",
-            "type": "ChatCompletion",
-            "id": "chat_completion_0-input-llm_response-ChatCompletion"
-          }
-        ],
-        "inputParams": [],
-        "outputs": {},
-        "outputAnchors": [],
-        "id": "chat_completion_0",
-        "selected": false
-      },
-      "width": 300,
-      "height": 143,
-      "positionAbsolute": {
-        "x": 2189.1354963026597,
-        "y": 297.4088827779505
-      }
-    },
-    {
       "id": "opea_service@prepare_doc_redis_prep_0",
       "position": {
         "x": 228.6922323555503,
@@ -214,7 +168,7 @@
         "selected": false
       },
       "width": 300,
-      "height": 427,
+      "height": 428,
       "selected": false,
       "positionAbsolute": {
         "x": 228.6922323555503,
@@ -296,7 +250,7 @@
         "selected": false
       },
       "width": 300,
-      "height": 427,
+      "height": 428,
       "selected": false,
       "positionAbsolute": {
         "x": 296.4444521798094,
@@ -469,7 +423,7 @@
         "selected": false
       },
       "width": 300,
-      "height": 476,
+      "height": 481,
       "selected": false,
       "positionAbsolute": {
         "x": 1811.03439857373,
@@ -587,7 +541,7 @@
         "selected": false
       },
       "width": 300,
-      "height": 530,
+      "height": 531,
       "selected": false,
       "positionAbsolute": {
         "x": 917.1422079891504,
@@ -680,7 +634,7 @@
         "selected": false
       },
       "width": 300,
-      "height": 479,
+      "height": 481,
       "selected": false,
       "positionAbsolute": {
         "x": 1380.4799693679547,
@@ -737,13 +691,83 @@
         "selected": false
       },
       "width": 300,
-      "height": 230,
+      "height": 231,
       "selected": false,
       "positionAbsolute": {
         "x": 565.2677759986439,
         "y": 568.4177620749867
       },
       "dragging": false
+    },
+    {
+      "id": "chat_completion_0",
+      "position": {
+        "x": 2185.13954097024,
+        "y": 201.18618923430142
+      },
+      "type": "customNode",
+      "data": {
+        "label": "Chat Completion",
+        "name": "chat_completion",
+        "version": 1,
+        "type": "ChatCompletion",
+        "icon": "/usr/src/packages/server/src/nodes/assets/controls.png",
+        "category": "Controls",
+        "description": "Send Chat Response to UI",
+        "baseClasses": [],
+        "tags": [
+          "OPEA"
+        ],
+        "inMegaservice": false,
+        "inputs": {
+          "llm_response": "{{opea_service@llm_tgi_0.data.instance}}",
+          "ui_choice": "chat"
+        },
+        "hideOutput": true,
+        "filePath": "/usr/src/packages/server/src/nodes/chat_completion.js",
+        "inputAnchors": [
+          {
+            "label": "LLM Response",
+            "name": "llm_response",
+            "type": "StreamingResponse|ChatCompletion",
+            "id": "chat_completion_0-input-llm_response-StreamingResponse|ChatCompletion"
+          }
+        ],
+        "inputParams": [
+          {
+            "label": "UI Choice",
+            "name": "ui_choice",
+            "type": "options",
+            "default": "chat",
+            "options": [
+              {
+                "name": "chat",
+                "label": "Chat Q&A"
+              },
+              {
+                "name": "summary",
+                "label": "Summarize Content"
+              },
+              {
+                "name": "code",
+                "label": "Generate Code"
+              }
+            ],
+            "id": "chat_completion_0-input-ui_choice-options"
+          }
+        ],
+        "outputs": {},
+        "outputAnchors": [],
+        "id": "chat_completion_0",
+        "selected": false
+      },
+      "width": 300,
+      "height": 239,
+      "positionAbsolute": {
+        "x": 2185.13954097024,
+        "y": 201.18618923430142
+      },
+      "selected": false
     }
   ],
   "edges": [
@@ -807,9 +831,9 @@
       "source": "opea_service@llm_tgi_0",
       "sourceHandle": "opea_service@llm_tgi_0-output-opea_service@llm_tgi-GeneratedDoc|StreamingResponse|ChatCompletion",
       "target": "chat_completion_0",
-      "targetHandle": "chat_completion_0-input-llm_response-ChatCompletion",
+      "targetHandle": "chat_completion_0-input-llm_response-StreamingResponse|ChatCompletion",
       "type": "buttonedge",
-      "id": "opea_service@llm_tgi_0-opea_service@llm_tgi_0-output-opea_service@llm_tgi-GeneratedDoc|StreamingResponse|ChatCompletion-chat_completion_0-chat_completion_0-input-llm_response-ChatCompletion"
+      "id": "opea_service@llm_tgi_0-opea_service@llm_tgi_0-output-opea_service@llm_tgi-GeneratedDoc|StreamingResponse|ChatCompletion-chat_completion_0-chat_completion_0-input-llm_response-StreamingResponse|ChatCompletion"
     }
   ]
 }

@@ -17,6 +17,7 @@ import {
   NotificationSeverity,
   notify,
 } from "@components/Notification/Notification";
+import FileInput from "@components/File_Input/FileInput";
 
 const InputWrapper = styled(Box)(({ theme }) => ({
   ...theme.customStyles.primaryInput.inputWrapper,
@@ -132,7 +133,8 @@ const PrimaryInput: React.FC<PrimaryInputProps> = ({
   };
 
   const placeHolderCopy = () => {
-    if (home && (isSummary || isFaq)) return "Enter text here or sources below";
+    if (home && isSummary) return "Enter text here";
+    else if (home && isFaq) return "Enter your text here or sources below";
     else return "Enter your message";
   };
 
@@ -185,6 +187,15 @@ const PrimaryInput: React.FC<PrimaryInputProps> = ({
               {submitButton()}
             </Box>
           </InputWrapper>
+
+          {home && (isSummary) && (
+            <>
+              <Box className={styles.orDivider}>
+                OR
+              </Box>
+              <FileInput summaryInput onSend={onSend} />
+            </>
+          )}
 
           {/* {home && !isSummary && !isFaq && (
             <PromptSelector setSearchText={updatePromptText} />

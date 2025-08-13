@@ -30,6 +30,7 @@ import config, {
   CHAT_HISTORY_DELETE,
   CODE_GEN_URL,
   DOC_SUM_URL,
+  DEFAULT_UI_TYPE,
   // FAQ_GEN_URL,
 } from "@root/config";
 import { NotificationSeverity, notify } from "@components/Notification/Notification";
@@ -71,6 +72,14 @@ const interactionTypes = [
   // },
 ];
 
+// Determine default type from environment variable, fallback to chat
+const getDefaultType = (): string => {
+  const envDefault = DEFAULT_UI_TYPE?.toLowerCase();
+  const validTypes = ["chat", "summary", "code"];
+  const result = validTypes.includes(envDefault) ? envDefault : "chat";
+  return result;
+};
+
 const initialState: ConversationReducer = {
   conversations: [],
   sharedConversations: [],
@@ -85,7 +94,7 @@ const initialState: ConversationReducer = {
   useCases: [],
   model: "",
   models: [],
-  type: "chat",
+  type: getDefaultType(),
   types: interactionTypes,
   systemPrompt: config.defaultChatPrompt,
   minToken: 100,
@@ -196,8 +205,13 @@ export const ConversationSlice = createSlice({
           break;
       }
 
+      // Optimize model selection to avoid array searches
       let firstModel = state.models.find((model: Model) => model.types.includes(action.payload));
-      state.model = firstModel?.model_name || state.models[0].model_name;
+      if (firstModel) {
+        state.model = firstModel.model_name;
+      } else if (state.models.length > 0) {
+        state.model = state.models[0].model_name;
+      }
     },
     setUploadInProgress: (state, action: PayloadAction<boolean>) => {
       state.uploadInProgress = action.payload;
