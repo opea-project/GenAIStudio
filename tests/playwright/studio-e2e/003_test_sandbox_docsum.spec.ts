@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import { waitForStatusText } from '../utils';
 import path from 'path';
 
-const sampleWorkflow = path.resolve(__dirname, '../../../sample-workflows/sample_workflow_docsum.json');//this workflow consists of Hugging Face token! cannot deploy as off now.
+const sampleWorkflow = path.resolve(__dirname, '../../../sample-workflows/sample_docsum.json');
 const uploadtxt1 = path.resolve(__dirname, '../../test-files/Little Red Riding Hood.txt');
 
 const keywords = ["Little Red Riding Hood", "sick grandmother", "wolf", "woodcutter", "hunter", "closet", "food"]; // more keywords needed
@@ -90,7 +90,7 @@ test('003_test_sandbox_docsum', async ({ browser, baseURL }) => {
 //Summarization Generation and Response Validation
     await page2.waitForTimeout(60000); 
     let responseContainsKeyword = apiResponse && containsAnyKeyword(apiResponse.value, keywords);
-    console.log ('response:', apiResponse.value);
+    // console.log ('response:', apiResponse.value);
     await page2.screenshot({ path: 'screenshot_docsum_attempt1.png' });
 
     if (!responseContainsKeyword) {
