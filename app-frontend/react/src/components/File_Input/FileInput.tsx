@@ -232,16 +232,23 @@ const FileInput: React.FC<FileInputProps> = ({
   const uploadFiles = async () => {
     dispatch(setUploadInProgress(true));
 
-    const responses = await Promise.all(
-      filesToUpload.map((file: any) => {
-        dispatch(uploadFile({ file: file.file }));
-      }),
-    );
+    try {
+      const responses = await Promise.all(
+        filesToUpload.map((file: any) => {
+          return dispatch(uploadFile({ file: file.file }));
+        }),
+      );
 
-    dispatch(setUploadInProgress(false));
+      // Wait a brief moment to ensure notifications are displayed
+      await new Promise(resolve => setTimeout(resolve, 100));
 
-    setConfirmUpload(false);
-    setFilesToUpload([]);
+      dispatch(setUploadInProgress(false));
+      setConfirmUpload(false);
+      setFilesToUpload([]);
+    } catch (error) {
+      dispatch(setUploadInProgress(false));
+      setConfirmUpload(false);
+    }
   };
 
   const showConfirmUpload = () => {

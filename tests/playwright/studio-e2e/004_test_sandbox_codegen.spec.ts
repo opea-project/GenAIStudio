@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import { waitForStatusText } from '../utils';
 import path from 'path';
 
-const sampleWorkflow = path.resolve(__dirname, '../../../sample-workflows/sample_workflow_codegen.json');
+const sampleWorkflow = path.resolve(__dirname, '../../../sample-workflows/sample_codegen.json');
 const question = "write me a python function for fibonacci loop";
 const keywords = ["Python", "Fibonacci", "iterative", "if", "<=", "=", "(", ")", "[", "]"]; // more keywords needed
 
@@ -81,7 +81,7 @@ test('004_test_sandbox_codegen', async ({ browser, baseURL }) => {
     await page2.getByRole('button').filter({ hasText: /^$/ }).nth(2).click(); //end here
     await page2.waitForTimeout(60000); 
     let responseContainsKeyword = apiResponse && containsAnyKeyword(apiResponse.value, keywords);
-    console.log ('response:', apiResponse.value);
+    // console.log ('response:', apiResponse.value);
     await page2.screenshot({ path: 'screenshot_codegen_attempt1.png' });
 
     if (!responseContainsKeyword) {

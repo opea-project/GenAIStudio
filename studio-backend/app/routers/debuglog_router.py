@@ -225,15 +225,6 @@ async def get_all_pods_in_namespace(namespace: str):
                 dependencies = find_pod_dependencies(pod, pods, services, namespace, core_v1_api)
                 # print(f"Pod {pod_name} dependencies: {dependencies}")
             except Exception as e:
-                pass
-
-        # Analyze pod dependencies
-        dependencies = []
-        if services:
-            try:
-                dependencies = find_pod_dependencies(pod, pods, services, namespace, core_v1_api)
-                # print(f"Pod {pod_name} dependencies: {dependencies}")
-            except Exception as e:
                 print(f"Error analyzing dependencies for pod {pod_name}: {str(e)}")
                 import traceback
                 traceback.print_exc()
@@ -260,41 +251,71 @@ async def get_all_pods_in_namespace(namespace: str):
             total_count = len(pod.status.container_statuses)
             ready_status = f"{ready_count}/{total_count}"
         
-        # Only check for error conditions if not already terminating or in terminal state
-        has_error = False
+        # Determine detailed pod status based on current container states
+        has_current_error = False
+        is_running = False
+        is_pending = False
+        
         if not is_terminating and pod.status.phase not in ["Failed", "Succeeded"]:
-            # Check init container statuses for errors
+            # Check init container statuses for current errors (not historical)
             if pod.status.init_container_statuses:
                 for status in pod.status.init_container_statuses:
                     if status.state and status.state.waiting and status.state.waiting.reason in ['ImagePullBackOff', 'ErrImagePull', 'CrashLoopBackOff', 'Error']:
-                        has_error = True
+                        has_current_error = True
                         break
                     elif status.state and status.state.terminated and status.state.terminated.reason == 'Error':
-                        has_error = True
+                        has_current_error = True
                         break
             
-            # Check main container statuses for errors
-            if pod.status.container_statuses:
+            # Check main container statuses for current state - prioritize running state
+            if pod.status.container_statuses and not has_current_error:
+                containers_running = 0
+                containers_with_current_errors = 0
+                containers_with_high_restarts = 0
+                total_containers = len(pod.status.container_statuses)
+                
                 for status in pod.status.container_statuses:
-                    if status.state and status.state.waiting and status.state.waiting.reason in ['ImagePullBackOff', 'ErrImagePull', 'CrashLoopBackOff', 'Error']:
-                        has_error = True
-                        break
+                    # Priority 1: Check if container is currently running (this overrides restart history)
+                    if status.state and status.state.running:
+                        containers_running += 1
+                        # Even if running, check if it has excessive restarts (indicates instability)
+                        if status.restart_count and status.restart_count > 1:
+                            containers_with_high_restarts += 1
+                    # Priority 2: Check for current error states only if not running
+                    elif status.state and status.state.waiting:
+                        if status.state.waiting.reason in ['ImagePullBackOff', 'ErrImagePull', 'CrashLoopBackOff']:
+                            # These are current errors only if container is not running
+                            containers_with_current_errors += 1
+                        elif status.state.waiting.reason in ['ContainerCreating', 'PodInitializing']:
+                            is_pending = True
+                        # Other waiting reasons are treated as pending, not errors
                     elif status.state and status.state.terminated and status.state.terminated.reason == 'Error':
-                        has_error = True
-                        break
-                    elif status.restart_count and status.restart_count > 0:
-                        # Check if the pod is restarting frequently (possible error condition)
-                        if status.state and status.state.waiting and status.state.waiting.reason == 'CrashLoopBackOff':
-                            has_error = True
-                            break
-                        has_error = True
-                        break
+                        # Only count as error if container is currently terminated with error
+                        containers_with_current_errors += 1
+                
+                # Determine overall status based on current state (ignore restart history if currently running)
+                if containers_running == total_containers:
+                    # All containers running - but check if any have high restart counts
+                    if containers_with_high_restarts > 0:
+                        # Containers are running but unstable (high restarts)
+                        has_current_error = True  # This will show as "Error" status
+                    else:
+                        is_running = True
+                elif containers_with_current_errors > 0:
+                    has_current_error = True
+                elif containers_running > 0:
+                    # Some containers running, some pending - consider it as pending/starting
+                    is_pending = True
         
-        # Set pod status based on conditions
-        if has_error:
-            pod_status = "Error"
-        elif pod.metadata.deletion_timestamp:
+        # Set pod status based on current conditions (prioritize current state over history)
+        if pod.metadata.deletion_timestamp:
             pod_status = "Terminating"
+        elif has_current_error:
+            pod_status = "Error"
+        elif is_running:
+            pod_status = "Running"
+        elif is_pending:
+            pod_status = "Pending"
         elif pod.status.init_container_statuses:
             ready_count = sum(1 for status in pod.status.init_container_statuses if status.ready)
             total_count = len(pod.status.init_container_statuses)

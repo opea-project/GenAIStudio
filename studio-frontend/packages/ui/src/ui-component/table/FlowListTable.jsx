@@ -515,7 +515,7 @@ export const FlowListTable = ({ data, images, isLoading, filterFunction, updateF
                                                 justifyContent='center'
                                                 alignItems='center'
                                             >
-                                                {row.sandboxStatus === "Getting Ready" || row.sandboxStatus === "Stopping" || row.sandboxStatus === "Deleting existing namespace" ? (
+                                                {row.sandboxStatus === "Getting Ready" || row.sandboxStatus === "Stopping" || row.sandboxStatus === "Deleting existing namespace" || row.sandboxStatus === "Sending Request" ? (
                                                     <CircularProgress size={20} />
                                                 ) : null
                                                 }
@@ -549,7 +549,7 @@ export const FlowListTable = ({ data, images, isLoading, filterFunction, updateF
                                                                 window.open(`/debuglogs/sandbox-${row.id}`, '_blank');
                                                                 handleRunSandbox(row.id);
                                                             }}
-                                                            disabled={row.sandboxStatus === 'Stopping'}
+                                                            disabled={row.sandboxStatus === 'Stopping' || row.sandboxStatus === 'Sending Request'}
                                                         >
                                                         </Button>
                                                     </Tooltip>

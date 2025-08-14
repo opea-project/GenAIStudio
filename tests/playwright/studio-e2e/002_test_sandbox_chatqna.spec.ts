@@ -25,8 +25,10 @@ async function setupResponseListener(page, apiResponse) {
                     const lines = event.split('\n');
                     for (const line of lines) {
                         if (line.startsWith('data: ')) {
-                            const cleanedData = line.slice(6, -1).trim(); // Remove 'data: ' prefix
-                            apiResponse.value += cleanedData + " ";
+                            const cleanedData = line.slice(6).trim(); // Remove 'data: ' prefix only
+                            if (cleanedData && cleanedData !== '[DONE]') {
+                                apiResponse.value += cleanedData;
+                            }
                         }
                     }
                 }
@@ -212,31 +214,36 @@ test('002_test_sandbox_chatqna', async ({ browser, baseURL }) => {
     //     }
     // }
     console.log ('Chat Attempt 2-------------------');
+    apiResponse.value = ""; // Clear the response listener buffer
     await page2.getByRole('button', { name: 'New Chat' }).click();
     await page2.getByRole('textbox', { name: 'Enter your message' }).fill(question);
     await page2.getByRole('button').filter({ hasText: /^$/ }).nth(2).click();
-    await page2.waitForTimeout(30000);
+    
+    // Wait for the Copy button to appear, indicating response is complete
+    await page2.getByRole('button', { name: 'Copy' }).waitFor({ state: 'visible'});
     responseContainsKeyword = apiResponse && containsAnyKeyword(apiResponse.value, keywords);
     console.log ('response:', apiResponse.value);
     console.log ("responseContainsKeyword:", responseContainsKeyword);
-
     if (!responseContainsKeyword) {
         console.log('First attempt failed. Asking a follow-up question...');
         apiResponse.value = ""; // Clear the response listener buffer
-    
         // Ask another question
         const followUpQuestion = "How is Intel performing in Q3 2024?";
         await page2.getByRole('textbox', { name: 'Enter your message' }).fill(followUpQuestion);
-        await page2.getByRole('button').filter({ hasText: /^$/ }).nth(2).click();
-        await page2.waitForTimeout(30000);
+        await page2.locator('.MuiButtonBase-root.MuiButton-root').click();
+        
+        // Wait for the second Copy button to appear, indicating follow-up response is complete
+        await page2.getByRole('button', { name: 'Copy' }).nth(1).waitFor({ state: 'visible'});
     
         responseContainsKeyword = apiResponse && containsAnyKeyword(apiResponse.value, keywords);
-        console.log ('response:', apiResponse.value);
-        console.log ("responseContainsKeyword:", responseContainsKeyword);
+        console.log ('Follow-up response:', apiResponse.value);
+        console.log ("Follow-up responseContainsKeyword:", responseContainsKeyword);
 
         if (!responseContainsKeyword) {
             throw new Error('RAG failed after follow-up question');
         }
+    } else {
+        console.log('First attempt succeeded - RAG is working correctly');
     }
     await page2.screenshot({ path: 'screenshot_chat_attempt2.png' });
 
