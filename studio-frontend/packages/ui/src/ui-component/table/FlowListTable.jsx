@@ -99,7 +99,8 @@ export const FlowListTable = ({ data, images, isLoading, filterFunction, updateF
         // console.log('handleSortData', data);
         const sorted = [...data].map((row) => ({
             ...row,
-            sandboxStatus: row.sandboxStatus || 'Not Running' // Ensure initial status
+            sandboxStatus: row.sandboxStatus || 'Not Running', // Ensure initial status
+            deploymentStatus: row.deploymentStatus || 'Not Started' // Ensure initial deployment status
         })).sort((a, b) => {
             if (orderBy === 'name') {
                 return order === 'asc' ? (a.name || '').localeCompare(b.name || '') : (b.name || '').localeCompare(a.name || '');
@@ -149,9 +150,42 @@ export const FlowListTable = ({ data, images, isLoading, filterFunction, updateF
             return ws;
         };
         sortedData.map((row) => {
+            // Handle sandbox websockets
             if (row.sandboxStatus === 'Getting Ready' || row.sandboxStatus === 'Stopping' || row.sandboxStatus === 'Deleting existing namespace') {
                 const ws = openWebSocketConnection(row.id, row.sandboxStatus);
                 openConnections.push(ws);
+            }
+            
+            // Handle deployment websockets
+            if (row.deploymentStatus === 'In Progress' && (!deployWebSocketsById[row.id] || deployWebSocketsById[row.id].readyState !== WebSocket.OPEN)) {
+                console.log(`Found in-progress deployment for chatflow ${row.id}, creating websocket...`);
+                
+                // Parse deployment config if available
+                let deploymentConfig = { hostname: '', username: '' };
+                if (row.deploymentConfig) {
+                    try {
+                        deploymentConfig = JSON.parse(row.deploymentConfig);
+                    } catch (e) {
+                        console.warn('Failed to parse deployment config for websocket reconnection');
+                    }
+                }
+
+                // Set initial status from existing logs
+                if (row.deploymentLogs) {
+                    try {
+                        const logs = JSON.parse(row.deploymentLogs);
+                        const logText = logs.length > 0 ? logs.join('\n') : 'Deployment in progress...';
+                        setDeployStatusForId(row.id, ['Info', logText]);
+                    } catch (e) {
+                        setDeployStatusForId(row.id, ['Info', 'Deployment in progress...']);
+                    }
+                } else {
+                    setDeployStatusForId(row.id, ['Info', 'Deployment in progress...']);
+                }
+
+                // Create websocket connection to monitor existing deployment
+                const deployWs = startClickDeploymentMonitoring(row.id, deploymentConfig);
+                openConnections.push(deployWs);
             }
         });
         return () => {
@@ -172,6 +206,21 @@ export const FlowListTable = ({ data, images, isLoading, filterFunction, updateF
                           sandboxGrafanaUrl: sandboxGrafanaUrl || row.sandboxGrafanaUrl,
                           sandboxTracerUrl: sandboxTracerUrl || row.sandboxTracerUrl,
                           sandboxDebugLogsUrl: sandboxDebugLogsUrl || row.sandboxDebugLogsUrl
+                      }
+                    : row
+            )
+        );
+    };
+
+    const updateDeploymentStatus = (id, newStatus, deploymentConfig = null, deploymentLogs = null) => {
+        setSortedData((prevData) =>
+            prevData.map((row) =>
+                row.id === id
+                    ? {
+                          ...row,
+                          deploymentStatus: newStatus,
+                          deploymentConfig: deploymentConfig || row.deploymentConfig,
+                          deploymentLogs: deploymentLogs || row.deploymentLogs
                       }
                     : row
             )
@@ -242,11 +291,34 @@ export const FlowListTable = ({ data, images, isLoading, filterFunction, updateF
 
     const oneClickDeployment = async (id, deploymentConfig) => {
         try {
-            // Only call the backend API and return the response (including compose_dir)
-            const response = await chatflowsApi.clickDeployment(id, deploymentConfig)
+            // Update table data to show loading icon immediately
+            updateDeploymentStatus(id, 'In Progress', JSON.stringify(deploymentConfig), JSON.stringify(['Deployment initiated...']));
+            
+            // Proactively update database to prevent race condition on page refresh
+            await chatflowsApi.updateDeploymentStatus(id, {
+                status: 'In Progress',
+                message: 'Deployment initiated...',
+                logs: ['Deployment initiated...']
+            }).catch(error => {
+                console.error('Failed to update deployment status before API call:', error);
+            });
+            
+            // Set initial deploy status
+            setDeployStatusForId(id, ['Info', 'Deployment initiated...']);
+            
+            // Call the backend API
+            const response = await chatflowsApi.clickDeployment(id, deploymentConfig);
+            
+            if (response.data && !response.data.error) {
+                // Start WebSocket monitoring immediately after deployment is triggered
+                startClickDeploymentMonitoring(id, deploymentConfig);
+            }
+            
             return response.data; // Pass compose_dir and other info to the dialog
         } catch (error) {
-            // Optionally show error
+            setDeployStatusForId(id, ['Error', error?.message || 'Failed to start deployment']);
+            // Update table data to remove loading icon on error
+            updateDeploymentStatus(id, 'Error', null, JSON.stringify([error?.message || 'Failed to start deployment']));
             return { error: error?.message || 'Deployment failed' };
         }
     }
@@ -282,6 +354,135 @@ export const FlowListTable = ({ data, images, isLoading, filterFunction, updateF
         setDeployWebSocketsById((prev) => ({ ...prev, [id]: ws }));
     };
 
+    // Monitor click deployment WebSocket connections
+    const startClickDeploymentMonitoring = useCallback((id, deploymentConfig) => {
+        // Close any existing WebSocket for this ID
+        if (deployWebSocketsById[id]) {
+            deployWebSocketsById[id].close();
+        }
+
+        const wsUrl = `${window.location.origin.replace(/^http/, 'ws')}/studio-backend/ws/monitor-click-deployment`;
+        const wsInstance = new WebSocket(wsUrl);
+        
+        setDeployWebSocketForId(id, wsInstance);
+        
+        wsInstance.onopen = () => {
+            console.log('[WebSocket] Connected for click deployment monitoring', id);
+            wsInstance.send(JSON.stringify({ 
+                hostname: deploymentConfig.hostname, 
+                username: deploymentConfig.username, 
+                chatflow_id: id
+            }));
+        };
+        
+        wsInstance.onmessage = (event) => {
+            let data;
+            try { data = JSON.parse(event.data); } catch { return; }
+            console.log('[WebSocket] Click deployment message:', data);
+            
+            if (data.status === 'Success') {
+                setDeployStatusForId(id, ['Success', data.message]);
+                // Update table data to remove loading icon
+                updateDeploymentStatus(id, 'Success', null, JSON.stringify([data.message]));
+                // Update database with final status
+                chatflowsApi.updateDeploymentStatus(id, {
+                    status: 'Success',
+                    message: data.message,
+                    logs: [data.message]
+                }).catch(error => {
+                    console.error('Failed to update deployment status in database:', error);
+                });
+                // Clean up WebSocket on completion
+                wsInstance.close();
+                setDeployWebSocketForId(id, null);
+            } else if (data.status === 'Error') {
+                const errorMessage = data.message;
+                setDeployStatusForId(id, ['Error', errorMessage]);
+                // Update table data to remove loading icon
+                updateDeploymentStatus(id, 'Error', null, JSON.stringify([errorMessage]));
+                // Update database with final status
+                chatflowsApi.updateDeploymentStatus(id, {
+                    status: 'Error',
+                    message: errorMessage,
+                    logs: [errorMessage]
+                }).catch(error => {
+                    console.error('Failed to update deployment status in database:', error);
+                });
+                // Clean up WebSocket on error
+                wsInstance.close();
+                setDeployWebSocketForId(id, null);
+            } else if (data.status === 'In Progress') {
+                const progressMessage = data.message || 'Deployment in progress...';
+                const logs = data.logs || [];
+                const logText = logs.length > 0 ? logs.join('\n') : progressMessage;
+                setDeployStatusForId(id, ['Info', logText]);
+                
+                // Update database with progress logs
+                if (logs.length > 0) {
+                    chatflowsApi.updateDeploymentStatus(id, {
+                        status: 'In Progress',
+                        message: progressMessage,
+                        logs: logs
+                    }).catch(error => {
+                        console.error('Failed to update In Progress deployment status:', error);
+                    });
+                }
+            }
+        };
+        
+        wsInstance.onerror = (error) => {
+            console.error('[WebSocket] Click deployment error:', error);
+            setDeployStatusForId(id, ['Error', 'Connection error during deployment monitoring']);
+            wsInstance.close();
+            setDeployWebSocketForId(id, null);
+        };
+        
+        wsInstance.onclose = (event) => {
+            console.log(`[WebSocket] Click deployment closed: code=${event.code}, reason='${event.reason}', wasClean=${event.wasClean}`);
+            setDeployWebSocketForId(id, null);
+            
+            // Check deployment status if abnormal closure
+            if (event.code !== 1000 && event.code !== 1001) {
+                console.log('[WebSocket] Abnormal closure detected, checking deployment status...');
+                setTimeout(async () => {
+                    try {
+                        const response = await chatflowsApi.getSpecificChatflow(id);
+                        if (response.data && response.data.deploymentStatus === 'In Progress') {
+                            setDeployStatusForId(id, ['Error', 'Connection lost during deployment']);
+                            // Update table data to remove loading icon
+                            updateDeploymentStatus(id, 'Error', null, JSON.stringify(['Connection lost during deployment']));
+                            // Update database with error status
+                            chatflowsApi.updateDeploymentStatus(id, {
+                                status: 'Error',
+                                message: 'Connection lost during deployment',
+                                logs: ['Connection lost during deployment']
+                            }).catch(error => {
+                                console.error('Failed to update deployment status in database:', error);
+                            });
+                        } else if (response.data && response.data.deploymentStatus) {
+                            // Deployment completed, update with final status
+                            const finalStatus = response.data.deploymentStatus;
+                            const logs = response.data.deploymentLogs ? 
+                                JSON.parse(response.data.deploymentLogs) : 
+                                [finalStatus === 'Success' ? 'Deployment completed successfully' : 'Deployment failed'];
+                            const message = logs[0] || (finalStatus === 'Success' ? 'Deployment completed successfully' : 'Deployment failed');
+                            setDeployStatusForId(id, [finalStatus, message]);
+                            // Update table data to remove loading icon
+                            updateDeploymentStatus(id, finalStatus, null, JSON.stringify(logs));
+                        }
+                    } catch (error) {
+                        console.error('Failed to check final deployment status:', error);
+                        setDeployStatusForId(id, ['Error', 'Connection lost during deployment']);
+                        // Update table data to remove loading icon
+                        updateDeploymentStatus(id, 'Error', null, JSON.stringify(['Connection lost during deployment']));
+                    }
+                }, 1000);
+            }
+        };
+        
+        return wsInstance;
+    }, [deployWebSocketsById]);
+
     // Cleanup deployment WebSockets when component unmounts
     useEffect(() => {
         return () => {
@@ -297,6 +498,7 @@ export const FlowListTable = ({ data, images, isLoading, filterFunction, updateF
     useEffect(() => {
         setSortedData(handleSortData());
     }, [data, order, orderBy]); // Run effect when any dependency changes
+
 
     // const handleRequestSort = (property) => {
     //     const isAsc = orderBy === property && order === 'asc';
@@ -672,7 +874,8 @@ export const FlowListTable = ({ data, images, isLoading, filterFunction, updateF
                                                 justifyContent='center'
                                                 alignItems='center'
                                             >
-                                                {deployWebSocketsById[row.id] && deployWebSocketsById[row.id].readyState === WebSocket.OPEN ? (
+                                                {row.deploymentStatus === 'In Progress' || 
+                                                 (deployWebSocketsById[row.id] && deployWebSocketsById[row.id].readyState === WebSocket.OPEN) ? (
                                                     <Tooltip title="Deployment in progress - click to monitor">
                                                         <Button
                                                             startIcon={<CircularProgress size={16} />}
@@ -743,7 +946,6 @@ export const FlowListTable = ({ data, images, isLoading, filterFunction, updateF
                 deploymentConfig={deployConfigById[oneClickDeploymentDialogProps.id] || { hostname: '', username: '' }}
                 setDeploymentConfig={(config) => setDeployConfigForId(oneClickDeploymentDialogProps.id, config)}
                 deployWebSocket={deployWebSocketsById[oneClickDeploymentDialogProps.id]}
-                setDeployWebSocket={(ws) => setDeployWebSocketForId(oneClickDeploymentDialogProps.id, ws)}
             />
         </>
     )

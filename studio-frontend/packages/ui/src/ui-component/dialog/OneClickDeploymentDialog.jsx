@@ -1,6 +1,6 @@
 import { createPortal } from 'react-dom';
 import { useDispatch } from 'react-redux';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import PropTypes from 'prop-types';
 import {
     Box,
@@ -19,94 +19,36 @@ import {
 import { StyledButton } from '@/ui-component/button/StyledButton';
 import { IconCopy, IconCheck } from '@tabler/icons-react';
 import {
-    closeSnackbar as closeSnackbarAction,
     enqueueSnackbar as enqueueSnackbarAction,
     HIDE_CANVAS_DIALOG,
     SHOW_CANVAS_DIALOG
 } from '@/store/actions';
 import chatflowsApi from '@/api/chatflows';
 
-const OneClickDeploymentDialog = ({ show, dialogProps, onCancel, onConfirm, deployStatus, setDeployStatus, deploymentConfig, setDeploymentConfig, deployWebSocket, setDeployWebSocket }) => {
+const OneClickDeploymentDialog = ({ show, dialogProps, onCancel, onConfirm, deployStatus, setDeployStatus, deploymentConfig, setDeploymentConfig, deployWebSocket }) => {
     const portalElement = document.getElementById('portal');
     const dispatch = useDispatch();
     const [pubkey, setPubkey] = useState('');
     const [copied, setCopied] = useState(false);
     const [deploying, setDeploying] = useState(false);
-    const [deploymentCompleted, setDeploymentCompleted] = useState(false);
-    // Remove local ws state - use the persistent one from parent
-    const wsRef = useRef(deployWebSocket);
-    const deploymentCompletedRef = useRef(deploymentCompleted);
 
-    // Sync the ref when the parent WebSocket changes
+    // Monitor deployment status and WebSocket state from parent
     useEffect(() => {
-        wsRef.current = deployWebSocket;
-        deploymentCompletedRef.current = deploymentCompleted;
         if (deployWebSocket && deployWebSocket.readyState === WebSocket.OPEN) {
             setDeploying(true);
-            // Set up event handlers for the existing WebSocket
-            deployWebSocket.onmessage = (event) => {
-                let data;
-                try { data = JSON.parse(event.data); } catch { return; }
-                console.log('WebSocket message:', data);
-                if (data.status === 'Done') {
-                    setDeployStatus(['Success', ...(data.success || '').split(',').map(line => line.trim())]);
-                    setDeploying(false);
-                    setDeploymentCompleted(true);
-                    deploymentCompletedRef.current = true;
-                    // Clean up WebSocket on completion
-                    if (wsRef.current) {
-                        wsRef.current.close();
-                        wsRef.current = null;
-                        setDeployWebSocket(null);
-                    }
-                } else if (data.status === 'Error') {
-                    let lines = [];
-                    if (Array.isArray(data.error)) {
-                        lines = data.error;
-                    } else if (typeof data.error === 'string') {
-                        lines = data.error.split(',').map(line => line.trim());
-                    } else {
-                        lines = ['Unknown error'];
-                    }
-                    setDeployStatus(['Error', ...lines]);
-                    setDeploying(false);
-                    setDeploymentCompleted(true);
-                    deploymentCompletedRef.current = true;
-                    // Clean up WebSocket on error
-                    if (wsRef.current) {
-                        wsRef.current.close();
-                        wsRef.current = null;
-                        setDeployWebSocket(null);
-                    }
-                } else if (data.status === 'In Progress') {
-                    setDeployStatus(['Info', data.nohup_out]);
-                } else if (data.status === 'Preparing') {
-                    setDeployStatus(['Info', data.message]);
-                }
-            };
-            deployWebSocket.onerror = (error) => {
-                console.error('WebSocket error:', error);
-                setDeployStatus(['Error', 'WebSocket connection error']);
+        } else {
+            // Check if deployment has completed
+            if (deployStatus && (deployStatus[0] === 'Success' || deployStatus[0] === 'Error')) {
                 setDeploying(false);
-            };
-            deployWebSocket.onclose = (event) => {
-                console.log('WebSocket closed:', event.code, event.reason);
-                wsRef.current = null;
-                setDeployWebSocket(null);
-                // Only show error if deployment was still in progress and not completed successfully
-                if (deploying && !deploymentCompletedRef.current) {
-                    setDeployStatus(['Error', 'Connection lost during deployment']);
-                    setDeploying(false);
-                }
-            };
+            }
         }
-    }, [deployWebSocket, setDeployWebSocket, setDeployStatus, deploying, deploymentCompleted]);
+    }, [deployWebSocket, deployStatus]);
 
     useEffect(() => {
         if (show) {
             dispatch({ type: SHOW_CANVAS_DIALOG });
-            setDeploymentCompleted(false); // Reset completion flag when dialog opens
-            deploymentCompletedRef.current = false; // Reset ref too
+            
+            // Load public key
             chatflowsApi.getPublicKey().then(response => {
                 if (response.error) {
                     dispatch(enqueueSnackbarAction({
@@ -118,10 +60,51 @@ const OneClickDeploymentDialog = ({ show, dialogProps, onCancel, onConfirm, depl
                 }
             });
 
+            // Check if there's an ongoing deployment by fetching chatflow data
+            if (dialogProps.id) {
+                // Add a small delay before checking to avoid race conditions
+                setTimeout(() => {
+                    chatflowsApi.getSpecificChatflow(dialogProps.id).then(response => {
+                        if (response.data && response.data.deploymentStatus) {
+                            // Parse existing deployment config if available
+                            if (response.data.deploymentConfig) {
+                                try {
+                                    const existingConfig = JSON.parse(response.data.deploymentConfig);
+                                    setDeploymentConfig(existingConfig);
+                                } catch (e) {
+                                    console.warn('Failed to parse existing deployment config');
+                                }
+                            }
+
+                            if (response.data.deploymentStatus === 'In Progress') {
+                                setDeploying(true);
+                                // Use existing deployment logs instead of generic reconnecting message
+                                const logs = response.data.deploymentLogs ? 
+                                    JSON.parse(response.data.deploymentLogs) : 
+                                    ['Deployment in progress...'];
+                                const logText = logs.length > 0 ? logs.join('\n') : 'Deployment in progress...';
+                                setDeployStatus(['Info', logText]);
+                            } else if (response.data.deploymentStatus === 'Success' || response.data.deploymentStatus === 'Error') {
+                                // Deployment already completed, just show the final status
+                                const finalStatus = response.data.deploymentStatus;
+                                // For existing deployments, get message from logs (smart content selection)
+                                const logs = response.data.deploymentLogs ? 
+                                    JSON.parse(response.data.deploymentLogs) : 
+                                    [finalStatus === 'Success' ? 'Deployment completed successfully' : 'Deployment failed'];
+                                const message = logs[0] || (finalStatus === 'Success' ? 'Deployment completed successfully' : 'Deployment failed');
+                                setDeployStatus([finalStatus, message]);
+                                setDeploying(false);
+                            }
+                        }
+                    }).catch(error => {
+                        console.error('Failed to check deployment status:', error);
+                    });
+                }, 500); // 500ms delay to avoid race conditions
+            }
+
             // When modal reopens, check if there's a WebSocket still running
-            if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+            if (deployWebSocket && deployWebSocket.readyState === WebSocket.OPEN) {
                 setDeploying(true); // Resume showing deploying state
-                // WebSocket event handlers are already set up in the other useEffect
             }
         } else {
             dispatch({ type: HIDE_CANVAS_DIALOG });
@@ -130,16 +113,11 @@ const OneClickDeploymentDialog = ({ show, dialogProps, onCancel, onConfirm, depl
         }
         return () => {
             dispatch({ type: HIDE_CANVAS_DIALOG });
-            // Only clean up on component unmount (when parent component unmounts)
-            // Parent component will handle WebSocket cleanup
         };
-    }, [show, dispatch]);
+    }, [show, dispatch, dialogProps.id]);
 
     const handleCancel = () => {
-        // Don't clean up WebSocket - let it continue monitoring in background
-        // Just close the modal while keeping the deployment running
-        setDeploying(false); // Reset local deploying state for UI
-        onCancel(); // Call the parent's onCancel to close modal
+        onCancel();
     };
 
     const handleCopy = () => {
@@ -148,86 +126,20 @@ const OneClickDeploymentDialog = ({ show, dialogProps, onCancel, onConfirm, depl
         setTimeout(() => setCopied(false), 1500);
     };
 
+
     const handleOneClickDeploy = async () => {
         setDeploying(true);
-        setDeploymentCompleted(false); // Reset completion flag
-        deploymentCompletedRef.current = false; // Reset ref too
-        setDeployStatus(['Info', 'Connecting to machine...']);
+        
         try {
+            // Call the parent's deployment handler - it will handle WebSocket setup
             const result = await onConfirm(dialogProps.id, deploymentConfig);
             if (result && result.error) {
                 setDeployStatus(['Error', result.error]);
                 setDeploying(false);
                 return;
             }
-            const compose_dir = result?.compose_dir;
-            const wsUrl = `${window.location.origin.replace(/^http/, 'ws')}/studio-backend/ws/deploy-and-monitor`;
-            const wsInstance = new window.WebSocket(wsUrl);
-            
-            // Update parent with the WebSocket reference for persistence
-            wsRef.current = wsInstance;
-            setDeployWebSocket(wsInstance);
-
-            wsInstance.onopen = () => {
-                wsInstance.send(JSON.stringify({ hostname: deploymentConfig.hostname, username: deploymentConfig.username, compose_dir: compose_dir }));
-            };
-            wsInstance.onmessage = (event) => {
-                let data;
-                try { data = JSON.parse(event.data); } catch { return; }
-                console.log('WebSocket message:', data);
-                if (data.status === 'Done') {
-                    setDeployStatus(['Success', ...(data.success || '').split(',').map(line => line.trim())]);
-                    setDeploying(false);
-                    setDeploymentCompleted(true);
-                    deploymentCompletedRef.current = true;
-                    // Clean up WebSocket on completion
-                    if (wsRef.current) {
-                        wsRef.current.close();
-                        wsRef.current = null;
-                        setDeployWebSocket(null);
-                    }
-                } else if (data.status === 'Error') {
-                    let lines = [];
-                    if (Array.isArray(data.error)) {
-                        lines = data.error;
-                    } else if (typeof data.error === 'string') {
-                        lines = data.error.split(',').map(line => line.trim());
-                    } else {
-                        lines = ['Unknown error'];
-                    }
-                    setDeployStatus(['Error', ...lines]);
-                    setDeploying(false);
-                    setDeploymentCompleted(true);
-                    deploymentCompletedRef.current = true;
-                    // Clean up WebSocket on error
-                    if (wsRef.current) {
-                        wsRef.current.close();
-                        wsRef.current = null;
-                        setDeployWebSocket(null);
-                    }
-                } else if (data.status === 'In Progress') {
-                    setDeployStatus(['Info', data.nohup_out]);
-                } else if (data.status === 'Preparing') {
-                    setDeployStatus(['Info', data.message]);
-                }
-            };
-            wsInstance.onerror = (error) => {
-                console.error('WebSocket error:', error);
-                setDeployStatus(['Error', 'WebSocket connection error']);
-                setDeploying(false);
-            };
-            wsInstance.onclose = (event) => {
-                console.log('WebSocket closed:', event.code, event.reason);
-                wsRef.current = null;
-                setDeployWebSocket(null);
-                // Only show error if deployment was still in progress and not completed successfully
-                if (deploying && !deploymentCompletedRef.current) {
-                    setDeployStatus(['Error', 'Connection lost during deployment']);
-                    setDeploying(false);
-                }
-            };
         } catch (err) {
-            setDeployStatus(['Error', 'Deployment failed']);
+            setDeployStatus(['Error', 'Failed to start deployment']);
             setDeploying(false);
         }
     };
@@ -324,8 +236,7 @@ OneClickDeploymentDialog.propTypes = {
     setDeployStatus: PropTypes.func,
     deploymentConfig: PropTypes.object,
     setDeploymentConfig: PropTypes.func,
-    deployWebSocket: PropTypes.object,
-    setDeployWebSocket: PropTypes.func
+    deployWebSocket: PropTypes.object
 };
 
 export default OneClickDeploymentDialog;

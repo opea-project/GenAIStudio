@@ -285,6 +285,57 @@ const getPublicKey = async (req: Request, res: Response, next: NextFunction) => 
     }
 }
 
+const getDeploymentStatus = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        if (typeof req.params === 'undefined' || !req.params.id) {
+            throw new InternalFlowiseError(StatusCodes.PRECONDITION_FAILED, `Error: chatflowsRouter.getDeploymentStatus - id not provided!`)
+        }
+        const chatflow = await chatflowsService.getChatflowById(req.params.id)
+        if (!chatflow) {
+            return res.status(404).json({ error: 'Chatflow not found' })
+        }
+        
+        let config = null
+        let logs = []
+        
+        try {
+            config = chatflow.deploymentConfig ? JSON.parse(chatflow.deploymentConfig) : null
+        } catch (e) {
+            console.error('Error parsing deploymentConfig:', e)
+        }
+        
+        try {
+            logs = chatflow.deploymentLogs ? JSON.parse(chatflow.deploymentLogs) : []
+        } catch (e) {
+            console.error('Error parsing deploymentLogs:', e)
+        }
+        
+        const response = {
+            status: chatflow.deploymentStatus || 'Not Started',
+            message: '',
+            config: config,
+            logs: logs
+        }
+        
+        return res.json(response)
+    } catch (error) {
+        next(error)
+    }
+}
+
+const updateDeploymentStatus = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        if (typeof req.params === 'undefined' || !req.params.id) {
+            throw new InternalFlowiseError(StatusCodes.PRECONDITION_FAILED, `Error: chatflowsRouter.updateDeploymentStatus - id not provided!`)
+        }
+        const { status, message, logs, config } = req.body
+        const result = await chatflowsService.updateDeploymentStatus(req.params.id, status, message, logs, config)
+        return res.json(result)
+    } catch (error) {
+        next(error)
+    }
+}
+
 const oneClickDeployment = async (req: Request, res: Response, next: NextFunction) => {
     console.log('Deploying one click')
     try {
@@ -316,5 +367,7 @@ export default {
     stopChatflowSandbox,
     buildDeploymentPackage,
     getPublicKey,
+    getDeploymentStatus,
+    updateDeploymentStatus,
     oneClickDeployment
 }

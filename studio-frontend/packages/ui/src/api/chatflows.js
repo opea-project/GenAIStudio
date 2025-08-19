@@ -37,6 +37,10 @@ const getPublicKey = () => client.get('/chatflows/pubkey')
 
 const clickDeployment = (id, body) => client.post(`chatflows-sandbox/one-click-deployment/${id}`, body)
 
+const getDeploymentStatus = (id) => client.get(`/chatflows/deployment-status/${id}`)
+
+const updateDeploymentStatus = (id, body) => client.put(`/chatflows/deployment-status/${id}`, body)
+
 export default {
     getAllChatflows,
     getAllAgentflows,
@@ -55,5 +59,7 @@ export default {
     stopSandbox,
     buildDeploymentPackage,
     getPublicKey,
-    clickDeployment
+    clickDeployment,
+    getDeploymentStatus,
+    updateDeploymentStatus
 }

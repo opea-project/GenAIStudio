@@ -10,11 +10,13 @@ router.post('/importchatflows', chatflowsController.importChatflows)
 // READ
 router.get('/pubkey', chatflowsController.getPublicKey)
 router.get('/', chatflowsController.getAllChatflowsbyUserId)
+router.get('/deployment-status/:id', chatflowsController.getDeploymentStatus)
 router.get(['/', '/:id'], chatflowsController.getChatflowById)
 router.get(['/apikey/', '/apikey/:apikey'], chatflowsController.getChatflowByApiKey)
 
 // UPDATE
 router.put(['/', '/:id'], chatflowsController.updateChatflow)
+router.put('/deployment-status/:id', chatflowsController.updateDeploymentStatus)
 
 // DELETE
 router.delete(['/', '/:id'], chatflowsController.deleteChatflow)

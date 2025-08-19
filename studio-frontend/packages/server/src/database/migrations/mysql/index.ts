@@ -29,6 +29,7 @@ import { AddArtifactsToChatMessage1726156258465 } from './1726156258465-AddArtif
 import { AddStudioFieldsToChatFlow1733282099772 } from './1733282099772-AddStudioFieldsToChatFlow'
 import { AddSandboxTracerUrlToChatFlow1743740099772 } from './1743740099772-AddSandboxTracerUrlToChatFlow'
 import { AddSandboxDebugLogsUrlToChatFlow1749612373191 } from './1749612373191-AddSandboxDebugLogsUrlToChatFlow'
+import { AddDeploymentStatusToChatFlow1754700956637 } from './1754700956637-AddDeploymentStatusToChatFlow'
 
 
 export const mysqlMigrations = [
@@ -62,5 +63,6 @@ export const mysqlMigrations = [
     AddArtifactsToChatMessage1726156258465,
     AddStudioFieldsToChatFlow1733282099772,
     AddSandboxTracerUrlToChatFlow1743740099772,
-    AddSandboxDebugLogsUrlToChatFlow1749612373191
+    AddSandboxDebugLogsUrlToChatFlow1749612373191,
+    AddDeploymentStatusToChatFlow1754700956637
 ]
