@@ -504,10 +504,14 @@ const oneClickDeploymentService = async (chatflowId: string, deploymentConfig: R
     try {
         const chatflow = await generatePipelineJson(chatflowId)
         const studioServerUrl = STUDIO_SERVER_URL
-        const endpoint = 'studio-backend/upload-pipeline-files'
-        console.log('chatflow', JSON.stringify(chatflow))
-        console.log('studioServerUrl', studioServerUrl)
-        console.log('deploymentConfig', deploymentConfig)
+        const endpoint = 'studio-backend/click-deployment'
+        // console.log('chatflow', JSON.stringify(chatflow))
+        // console.log('studioServerUrl', studioServerUrl)
+        // console.log('deploymentConfig', deploymentConfig)
+        
+        // Update chatflow with deployment status and config from backend response
+        const appServer = getRunningExpressApp()
+        const chatflowEntity = await appServer.AppDataSource.getRepository(ChatFlow).findOneBy({ id: chatflowId })
         const response = await axios.post(`${studioServerUrl}/${endpoint}`, {
             remoteHost: deploymentConfig.hostname,
             remoteUser: deploymentConfig.username,
@@ -516,14 +520,69 @@ const oneClickDeploymentService = async (chatflowId: string, deploymentConfig: R
             headers: { 'Content-Type': 'application/json' },
             timeout: 60 * 1000
         })
+        if (chatflowEntity) {
+            chatflowEntity.deploymentStatus = response.data.status
+            chatflowEntity.deploymentConfig = JSON.stringify(deploymentConfig)
+            chatflowEntity.deploymentLogs = JSON.stringify([response.data.message])
+            await appServer.AppDataSource.getRepository(ChatFlow).save(chatflowEntity)
+        }
+        
         return response.data
     } catch (error: unknown) {
+        // Update chatflow with error status
+        const appServer = getRunningExpressApp()
+        const chatflowEntity = await appServer.AppDataSource.getRepository(ChatFlow).findOneBy({ id: chatflowId })
+        if (chatflowEntity) {
+            chatflowEntity.deploymentStatus = 'Error'
+            chatflowEntity.deploymentLogs = JSON.stringify([`Error: ${error instanceof Error ? error.message : String(error)}`])
+            await appServer.AppDataSource.getRepository(ChatFlow).save(chatflowEntity)
+        }
+        
         if (error instanceof Error) {
             console.error(`Error: ${error.stack}`)
         } else {
             console.error(`An error occurred: ${error}`)
         }
         throw error
+    }
+}
+
+const updateDeploymentStatus = async (chatflowId: string, status: string, message?: string, logs?: string[], config?: Record<string, any>) => {
+    try {
+        const appServer = getRunningExpressApp()
+        const chatflow = await appServer.AppDataSource.getRepository(ChatFlow).findOneBy({ id: chatflowId })
+        if (chatflow) {
+            chatflow.deploymentStatus = status
+            
+            // Update logs array - either use provided logs or append message to existing logs
+            let updatedLogs: string[] = []
+            if (logs && logs.length > 0) {
+                updatedLogs = logs
+            } else {
+                // Parse existing logs and append new message
+                try {
+                    const existingLogs = chatflow.deploymentLogs ? JSON.parse(chatflow.deploymentLogs) : []
+                    updatedLogs = Array.isArray(existingLogs) ? existingLogs : []
+                    if (message) {
+                        updatedLogs.push(message)
+                    }
+                } catch (e) {
+                    updatedLogs = message ? [message] : []
+                }
+            }
+            chatflow.deploymentLogs = JSON.stringify(updatedLogs)
+            
+            if (config) {
+                chatflow.deploymentConfig = JSON.stringify(config)
+            }
+            await appServer.AppDataSource.getRepository(ChatFlow).save(chatflow)
+        }
+        return chatflow
+    } catch (error) {
+        throw new InternalFlowiseError(
+            StatusCodes.INTERNAL_SERVER_ERROR,
+            `Error: chatflowsService.updateDeploymentStatus - ${getErrorMessage(error)}`
+        )
     }
 }
 
@@ -556,5 +615,6 @@ export default {
     stopChatflowSandboxService,
     buildDeploymentPackageService,
     getSinglePublicChatbotConfig,
-    oneClickDeploymentService
+    oneClickDeploymentService,
+    updateDeploymentStatus
 }
