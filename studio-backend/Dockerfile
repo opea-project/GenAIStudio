@@ -13,7 +13,7 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends --fix-missin
     rm -rf /var/lib/apt/lists/*
 
 # Upgrade setuptools to a safe version and install any needed packages specified in requirements.txt
-RUN pip install --no-cache-dir --upgrade pip==24.3.1 setuptools==75.3.0 && \
+RUN pip install --no-cache-dir --upgrade pip==24.3.1 setuptools==78.1.1 && \
     pip install --no-cache-dir -r /usr/src/app/requirements.txt
 
 # Define environment variable

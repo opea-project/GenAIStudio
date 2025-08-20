@@ -115,7 +115,7 @@ def click_deploy_pipeline(hostname, username, pipeline_flow, chatflow_id):
         start_cmd = f"cd {remote_compose_dir} && nohup docker compose up -d & sleep 0.1"
         _, stdout, stderr = ssh.exec_command(start_cmd, get_pty=True)
         
-        # Read successfully the output
+        # Read the output successfully
         stdout_output = stdout.read().decode().strip()
         stderr_output = stderr.read().decode().strip()
         start_exit_status = stdout.channel.recv_exit_status()
@@ -315,7 +315,7 @@ def check_deployment_status(remote_host, remote_user, compose_dir="genaistudio-c
         # Check if compose.yaml exists
         _, stdout_compose, _ = ssh_check.exec_command(f"ls {compose_dir}/nohup.out")
         if stdout_compose.channel.recv_exit_status() != 0:
-            return {"status": "In Progress", "message": "Stopping existing servicess...", "logs": ['Stopping existing services...']}
+            return {"status": "In Progress", "message": "Stopping existing services...", "logs": ['Stopping existing services...']}
 
         # Get the number of services defined in compose.yaml
         _, stdout_num, stderr_num = ssh_check.exec_command(f"cd {compose_dir} && docker compose config --services | wc -l")

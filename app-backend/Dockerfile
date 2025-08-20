@@ -14,8 +14,9 @@ WORKDIR /home/user/
 RUN git clone --depth 1 https://github.com/opea-project/GenAIComps.git
 
 WORKDIR /home/user/GenAIComps
-RUN pip install --no-cache-dir --upgrade pip==24.3.1 setuptools==75.3.0 && \
-    pip install --no-cache-dir -r /home/user/GenAIComps/requirements.txt
+RUN pip install --no-cache-dir --upgrade pip==24.3.1 setuptools==78.1.1 && \
+    pip install --no-cache-dir -r /home/user/GenAIComps/requirements.txt && \
+    pip install --no-cache-dir --upgrade mcp==1.10.0 pillow==11.3.0
 
 COPY ./templates/microservices/* /home/user/templates/microservices/
 COPY ./megaservice.py /home/user/megaservice.py
