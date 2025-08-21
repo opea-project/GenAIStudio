@@ -32,3 +32,32 @@ Run below commands to do a /health test:
 ```sh
 curl http://localhost:30007/studio-backend/health
 ```
+
+## Cleanup
+
+To completely remove GenAI Studio and all its components:
+
+```sh
+./cleanup-genai-studio.sh
+```
+
+This script will:
+- Delete all GenAI Studio namespaces (studio, monitoring, tracing, mysql)
+- Remove all sandbox namespaces
+- Clean up Helm releases
+- Remove PVCs, secrets, and configmaps
+- Provide detailed feedback on the cleanup process
+
+### Important Notes
+
+**Local Path Storage Preservation:**
+The cleanup script intentionally **does NOT** remove the `local-path-storage` namespace because:
+- It may be used by other applications beyond GenAI Studio
+- Deleting it would break existing PVCs that use the `local-path` StorageClass
+- It's a cluster-wide infrastructure component that should be managed separately
+
+If you need to remove local-path-storage after ensuring it's safe to do so:
+```sh
+kubectl delete namespace local-path-storage
+kubectl delete storageclass local-path
+```

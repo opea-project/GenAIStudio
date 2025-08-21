@@ -1,5 +1,15 @@
 FROM node:23-alpine
 
+# Accept proxy build arguments
+ARG http_proxy
+ARG https_proxy
+ARG no_proxy
+
+# Set proxy environment variables for package managers
+ENV http_proxy=${http_proxy}
+ENV https_proxy=${https_proxy}
+ENV no_proxy=${no_proxy}
+
 # Install necessary packages
 RUN apk update && apk upgrade && \
     apk add --no-cache gcompat python3 make g++ git \

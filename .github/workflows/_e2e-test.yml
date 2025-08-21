@@ -74,25 +74,10 @@ jobs:
           name: playwright-test-results
           path: ${{ github.workspace }}/tests/playwright/playwright-report
       
-      - name: Cleanup sandbox namespaces
+      - name: Cleanup GenAI Studio
         if: always()
         run: |
-          if kubectl get namespace mysql; then
-            kubectl delete ns mysql || true
-          fi
-          if kubectl get namespace tracing; then
-            kubectl delete ns tracing || true
-          fi
-          for ns in $(kubectl get namespaces -o jsonpath='{.items[*].metadata.name}' | tr ' ' '\n' | grep '^sandbox-'); do
-            kubectl delete namespace $ns || true
-          done
-          if kubectl get namespace studio; then
-            kubectl delete -f manifests/studio-manifest.yaml || true
-            kubectl wait --for=delete pod --all --namespace=studio --timeout=300s
-          fi
-          if kubectl get namespace monitoring; then
-            kubectl delete -f manifests/monitoring-manifest.yaml || true
-            kubectl wait --for=delete pod --all --namespace=monitoring --timeout=300s
-          fi
+          echo "Running GenAI Studio cleanup script..."
+          ./cleanup-genai-studio.sh || echo "Cleanup script completed with warnings"
         working-directory: ${{ github.workspace }}/setup-scripts/setup-genai-studio/
 

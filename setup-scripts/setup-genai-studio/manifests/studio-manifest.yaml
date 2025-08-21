@@ -502,6 +502,13 @@ spec:
             DOWNLOAD_URL="https://codeload.github.com/${OWNER}/${REPO}/tar.gz/${BRANCH}"
             curl "${DOWNLOAD_URL}" | tar -xz --strip-components=4 -C /opt/keycloak/themes "${REPO}-${BRANCH}/${KC_ASSETS_DIR}/themes"
             curl "${DOWNLOAD_URL}" | tar -xz --strip-components=4 -C /opt/keycloak/data "${REPO}-${BRANCH}/${KC_ASSETS_DIR}/data"
+        env:
+        - name: http_proxy
+          value: "${HTTP_PROXY}"
+        - name: https_proxy
+          value: "${HTTP_PROXY}"
+        - name: no_proxy
+          value: "${NO_PROXY}"
         envFrom:
         - configMapRef:
             name: studio-config

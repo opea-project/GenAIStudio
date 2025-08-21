@@ -1,3 +1,9 @@
+- name: Install prerequisites (Helm, etc.)
+  import_playbook: playbooks/install-prerequisites.yml
+
+- name: Setup local path storage provisioner
+  import_playbook: playbooks/setup-local-storageclass.yml
+
 - name: Create ssh secrets
   import_playbook: playbooks/create-ssh-secrets.yml
 

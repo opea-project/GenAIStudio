@@ -1,5 +1,7 @@
-container_registry: 'opea'
+# Container registry configuration  
+# Replace {{ ansible_default_ipv4.address }} with your Kubernetes master/API endpoint IP if needed
+container_registry: '{{ ansible_default_ipv4.address }}:5000/opea'
 container_tag: 'latest'
-http_proxy: ''
-no_proxy: ''
 mysql_host: 'mysql.mysql.svc.cluster.local'
+http_proxy: ''
+no_proxy: 'localhost,127.0.0.1,.local,.svc.cluster.local,{{ ansible_default_ipv4.address }}'

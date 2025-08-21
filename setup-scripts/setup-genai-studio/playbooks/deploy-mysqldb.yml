@@ -1,25 +1,11 @@
 - name: Deploy mysql database
   hosts: localhost
+  vars_files:
+    - ../vars.yml
   tasks:
-    - name: Check if local-path-storage namespace exists
-      shell: kubectl get namespace local-path-storage --ignore-not-found
-      register: namespace_check
-      ignore_errors: yes
-      changed_when: false
-    
-    - name: Install local-path-provisioner if namespace does not exist
-      shell: kubectl apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/v0.0.30/deploy/local-path-storage.yaml
-      when: namespace_check.stdout == ""
-      register: apply_output
-    
-    - name: Wait for local-path-provisioner to be ready
-      shell: kubectl wait --for=condition=Ready pod -l app=local-path-provisioner -n local-path-storage --timeout=120s
-      when: namespace_check.stdout == ""
-    
     - name: Check if mysql namespace exists
       shell: kubectl get namespace mysql --ignore-not-found
       register: namespace_check
-      ignore_errors: yes
       changed_when: false
 
     - name: End playbook if mysql namespace exists
@@ -28,15 +14,27 @@
 
     - name: Add bitnami Helm repository
       command: helm repo add bitnami https://charts.bitnami.com/bitnami
+      environment:
+        http_proxy: "{{ http_proxy }}"
+        https_proxy: "{{ http_proxy }}"
+        no_proxy: "{{ no_proxy }}"
 
     - name: Update Helm repositories
       command: helm repo update
+      environment:
+        http_proxy: "{{ http_proxy }}"
+        https_proxy: "{{ http_proxy }}"
+        no_proxy: "{{ no_proxy }}"
 
     - name: Create 'mysql' namespace
       command: kubectl create ns mysql
 
     - name: Install MySQL using Helm
       command: helm install mysql bitnami/mysql -n mysql -f ../helm-values/mysqldb.yaml
+      environment:
+        http_proxy: "{{ http_proxy }}"
+        https_proxy: "{{ http_proxy }}"
+        no_proxy: "{{ no_proxy }}"
 
     - name: Wait for mysql-0 pod to be ready
       command: kubectl wait --for=condition=ready pod -l app.kubernetes.io/instance=mysql -n mysql --timeout=300s

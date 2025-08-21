@@ -15,6 +15,10 @@
         dest: /tmp/GenAIComps
         clone: yes
         update: no
+      environment:
+        http_proxy: "{{ http_proxy }}"
+        https_proxy: "{{ http_proxy }}"
+        no_proxy: "{{ no_proxy }}"
       when: not genaicomp_dir.stat.exists
 
     - name: Pull latest changes in GenAIComps repo
@@ -22,6 +26,10 @@
         repo: https://github.com/opea-project/GenAIComps.git
         dest: /tmp/GenAIComps
         update: yes
+      environment:
+        http_proxy: "{{ http_proxy }}"
+        https_proxy: "{{ http_proxy }}"
+        no_proxy: "{{ no_proxy }}"
       when: genaicomp_dir.stat.exists
 
     - name: Build and push GenAIComps images
@@ -38,11 +46,25 @@
           - { name: 'asr', dockerfile: 'comps/asr/src/Dockerfile' }
       block:
         - name: Build image
-          command: docker build -t {{ container_registry }}/{{ item.name }}:{{ container_tag }} -f {{ item.dockerfile }} .
+          command: >
+            docker build 
+            --build-arg http_proxy="{{ http_proxy }}"
+            --build-arg https_proxy="{{ http_proxy }}"
+            --build-arg no_proxy="{{ no_proxy }}"
+            -t {{ container_registry }}/{{ item.name }}:{{ container_tag }} 
+            -f {{ item.dockerfile }} .
           args:
             chdir: /tmp/GenAIComps
+          environment:
+            http_proxy: "{{ http_proxy }}"
+            https_proxy: "{{ http_proxy }}"
+            no_proxy: "{{ no_proxy }}"
           loop: "{{ genaicomp_images }}"
 
         - name: Push image
           command: docker push {{ container_registry }}/{{ item.name }}:{{ container_tag }}
+          environment:
+            http_proxy: "{{ http_proxy }}"
+            https_proxy: "{{ http_proxy }}"
+            no_proxy: "{{ no_proxy }}"
           loop: "{{ genaicomp_images }}"
