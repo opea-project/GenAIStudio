@@ -361,7 +361,7 @@ spec:
         - name: SBX_HTTP_PROXY
           value: ${HTTP_PROXY}
         - name: SBX_NO_PROXY
-          value: ${NO_PROXY}      
+          value: ${NO_PROXY}
         envFrom:
         - configMapRef:
             name: studio-config
@@ -449,6 +449,12 @@ spec:
           value: studio
         - name: DATABASE_SSL
           value: "false"
+        - name: HTTP_PROXY
+          value: "${HTTP_PROXY}"
+        - name: HTTPS_PROXY
+          value: "${HTTP_PROXY}"
+        - name: NO_PROXY
+          value: "${NO_PROXY}"
         ports:
         - name: studio-frontend
           containerPort: 8080
@@ -504,11 +510,11 @@ spec:
             curl "${DOWNLOAD_URL}" | tar -xz --strip-components=4 -C /opt/keycloak/data "${REPO}-${BRANCH}/${KC_ASSETS_DIR}/data"
         env:
         - name: http_proxy
-          value: "${HTTP_PROXY}"
+          value: ${HTTP_PROXY}
         - name: https_proxy
-          value: "${HTTP_PROXY}"
-        - name: no_proxy
-          value: "${NO_PROXY}"
+          value: ${HTTP_PROXY}
+        - name: NO_PROXY
+          value: ${NO_PROXY}
         envFrom:
         - configMapRef:
             name: studio-config

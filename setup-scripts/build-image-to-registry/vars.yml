@@ -2,5 +2,6 @@
 # Replace {{ ansible_default_ipv4.address }} with your Kubernetes master/API endpoint IP if needed
 container_registry: '{{ ansible_default_ipv4.address }}:5000/opea'
 container_tag: 'latest'
+genaicomps_tag: 'main'
 http_proxy: ''
 no_proxy: 'localhost,127.0.0.1,.local,.svc.cluster.local,{{ ansible_default_ipv4.address }}'

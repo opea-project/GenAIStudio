@@ -272,7 +272,6 @@ class ServiceOrchestrator(DAG):
                         url=endpoint,
                         data=json.dumps(inputs),
                         headers={"Content-type": "application/json", "Authorization": f"Bearer {access_token}"},
-                        proxies={"http": None},
                         stream=True,
                         timeout=2000,
                     )
@@ -283,7 +282,6 @@ class ServiceOrchestrator(DAG):
                         headers={
                             "Content-type": "application/json",
                         },
-                        proxies={"http": None},
                         stream=True,
                         timeout=2000,
                     )
@@ -316,7 +314,6 @@ class ServiceOrchestrator(DAG):
                                                 "Content-type": "application/json",
                                                 "Authorization": f"Bearer {access_token}",
                                             },
-                                            proxies={"http": None},
                                             timeout=2000,
                                         )
                                     else:
@@ -326,7 +323,6 @@ class ServiceOrchestrator(DAG):
                                             headers={
                                                 "Content-type": "application/json",
                                             },
-                                            proxies={"http": None},
                                             timeout=2000,
                                         )
                                     res_json = res.json()

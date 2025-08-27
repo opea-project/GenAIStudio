@@ -21,11 +21,11 @@
         no_proxy: "{{ no_proxy }}"
       when: not genaicomp_dir.stat.exists
 
-    - name: Pull latest changes in GenAIComps repo
+    - name: Checkout specific GenAIComps tag
       git:
         repo: https://github.com/opea-project/GenAIComps.git
         dest: /tmp/GenAIComps
-        update: yes
+        version: "{{ genaicomps_tag }}"
       environment:
         http_proxy: "{{ http_proxy }}"
         https_proxy: "{{ http_proxy }}"

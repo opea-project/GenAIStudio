@@ -53,6 +53,12 @@ spec:
           value: 'true'
         - name: LOGFLAG
           value: 'True'
+        - name: http_proxy
+          value: "${HTTP_PROXY}"
+        - name: https_proxy
+          value: "${HTTP_PROXY}"
+        - name: no_proxy
+          value: "${NO_PROXY}"
         __TELEMETRY_ENDPOINT__
         securityContext:
           allowPrivilegeEscalation: false

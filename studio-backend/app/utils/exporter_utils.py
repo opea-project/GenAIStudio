@@ -206,7 +206,7 @@ def process_opea_services(proj_info_json):
         # Remove the 'opea_service@' prefix and append the node_name suffix if any
         node_suffix = node_name.split('_')[-1] if '_' in node_name else ''
         service_type_cleaned = node_info['service_type'].replace('opea_service@', '')
-        opea_service_endpoint = f"{service_type_cleaned.replace('_','-')}-{node_suffix}".strip('-')
+        opea_service_endpoint = f"opea-{service_type_cleaned.replace('_','-')}-{node_suffix}".strip('-')
         
         # Iterate through the dependent_services to map to the service info
         for service_type, service_info in node_info.get('dependent_services', {}).items():
