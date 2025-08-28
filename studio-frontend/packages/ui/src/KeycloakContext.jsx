@@ -1,8 +1,32 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import Keycloak from 'keycloak-js';
 
 // Create the Keycloak context
 const KeycloakContext = createContext(null);
+
+// Check if Keycloak is disabled via environment variable
+const isKeycloakDisabled = import.meta.env.VITE_DISABLE_KEYCLOAK === 'true';
+console.log('isKeycloakDisabled: ', isKeycloakDisabled);
+
+// Simple user object for when Keycloak is disabled
+const createAdminUser = () => ({
+    authenticated: true,
+    tokenParsed: {
+        email: 'admin@admin.com',
+        preferred_username: 'admin',
+        name: 'Admin User',
+        given_name: 'Admin',
+        family_name: 'User',
+        resource_access: {
+            genaistudio: {
+                roles: ['admin']
+            }
+        }
+    },
+    logout: () => {
+        console.log('Logout called - refreshing page');
+        window.location.href = '/';
+    }
+});
 
 // Provide the Keycloak context to the application
 export const KeycloakProvider = ({ children }) => {
@@ -10,42 +34,56 @@ export const KeycloakProvider = ({ children }) => {
     const [isInitialized, setIsInitialized] = useState(false);
 
     useEffect(() => {
-        if (!window.crypto || !window.crypto.subtle) {
-            console.error("Web Crypto API is not available. This may cause security issues.");
+        // If Keycloak is disabled, use simple admin user
+        if (isKeycloakDisabled) {
+            console.info("Keycloak authentication is disabled. Using admin@admin.com as default user.");
+            const adminUser = createAdminUser();
+            setKeycloak(adminUser);
+            setIsInitialized(true);
+            return;
         }
 
-        const initOptions = {
-            url: '/auth/',
-            realm: 'genaistudio',
-            clientId: 'genaistudio',
-            onLoad: 'login-required', // check-sso | login-required
-            responseType: 'code', // Corrected from KeycloakResponseType to responseType
-            silentCheckSsoRedirectUri: window.location.origin + "/silent-check-sso.html",
-            checkLoginIframe: false,
-        };
+        // Keycloak is enabled - dynamically import and initialize
+        import('keycloak-js').then((KeycloakModule) => {
+            const Keycloak = KeycloakModule.default;
 
-        const kc = new Keycloak(initOptions);
-
-        kc.init({
-            onLoad: initOptions.onLoad,
-            responseType: 'code', // Corrected from KeycloakResponseType to responseType
-        }).then((auth) => {
-            if (!auth) {
-                window.location.reload();
-            } else {
-                console.info("Authenticated");
-                console.log('auth', auth);
-                console.log('Keycloak', kc);
-
-                kc.onTokenExpired = () => {
-                    console.log('token expired');
-                };
-
-                setKeycloak(kc); // Set the Keycloak instance in state
-                setIsInitialized(true); // Mark initialization as complete
+            if (!window.crypto || !window.crypto.subtle) {
+                console.error("Web Crypto API is not available. This may cause security issues.");
             }
-        }).catch((error) => {
-            console.error("Authentication Failed", error);
+
+            const initOptions = {
+                url: '/auth/',
+                realm: 'genaistudio',
+                clientId: 'genaistudio',
+                onLoad: 'login-required',
+                responseType: 'code',
+                silentCheckSsoRedirectUri: window.location.origin + "/silent-check-sso.html",
+                checkLoginIframe: false,
+            };
+
+            const kc = new Keycloak(initOptions);
+
+            kc.init({
+                onLoad: initOptions.onLoad,
+                responseType: 'code',
+            }).then((auth) => {
+                if (!auth) {
+                    window.location.reload();
+                } else {
+                    console.info("Authenticated with Keycloak");
+                    console.log('auth', auth);
+                    console.log('Keycloak', kc);
+
+                    kc.onTokenExpired = () => {
+                        console.log('token expired');
+                    };
+
+                    setKeycloak(kc);
+                    setIsInitialized(true);
+                }
+            }).catch((error) => {
+                console.error("Authentication Failed", error);
+            });
         });
     }, []);
 

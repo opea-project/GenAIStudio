@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  studio-frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - http_proxy=${http_proxy}
+        - https_proxy=${https_proxy}
+        - no_proxy=${no_proxy}
+    container_name: studio-frontend-dev
+    ports:
+      - "3000:3000"
+      - "8088:8088"
+    volumes:
+      - .:/usr/src
+      - /usr/src/node_modules
+      - /usr/src/.pnpm-store
+      - /usr/src/packages/ui/build
+    command: ["sh", "-c", "pnpm dev"]
+    environment:
+      - http_proxy=${http_proxy}
+      - https_proxy=${https_proxy}
+      - no_proxy=${no_proxy}
+    stdin_open: true
+    tty: true
+    restart: unless-stopped
