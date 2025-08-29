@@ -2,6 +2,7 @@ version: '3.8'
 
 services:
   studio-frontend:
+    image: studio-frontend:latest
     build:
       context: .
       dockerfile: Dockerfile
