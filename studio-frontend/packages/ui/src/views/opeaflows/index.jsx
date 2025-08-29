@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 // material-ui
-import { Box, Skeleton, Stack, ToggleButton, ToggleButtonGroup } from '@mui/material'
+import { Box, Skeleton, Stack, Input, Typography } from '@mui/material'
 import { useTheme } from '@mui/material/styles'
 
 // project imports
@@ -27,7 +27,7 @@ import useApi from '@/hooks/useApi'
 import { baseURL } from '@/store/constant'
 
 // icons
-import { IconPlus, IconLayoutGrid, IconList } from '@tabler/icons-react'
+import { IconPlus, IconLayoutGrid, IconList, IconSearch } from '@tabler/icons-react'
 
 //keycloak
 import { useKeycloak } from '../../KeycloakContext'
@@ -161,47 +161,58 @@ const Opeaflows = () => {
                 <ErrorBoundary error={error} />
             ) : (
                 <Stack flexDirection='column' sx={{ gap: 3 }}>
-                    <ViewHeader onSearchChange={onSearchChange} search={true} searchPlaceholder='Search Name or Category' title='OPEA GenAI Studio'>
-                        {/* <ToggleButtonGroup
-                            sx={{ borderRadius: 2, maxHeight: 40 }}
-                            value={view}
-                            color='primary'
-                            exclusive
-                            onChange={handleChange}
+                    <Box>
+                        <Typography 
+                            sx={{
+                                fontSize: '1.5rem',
+                                color: '#1162cc',
+                                fontWeight: 600,
+                                mb: 2,
+                                mt: 1.5
+                            }}
+                            variant='h1'
                         >
-                            <ToggleButton
-                                sx={{
-                                    borderColor: theme.palette.grey[900] + 25,
-                                    borderRadius: 2,
-                                    color: theme?.customization?.isDarkMode ? 'white' : 'inherit'
-                                }}
-                                variant='contained'
-                                value='card'
-                                title='Card View'
-                            >
-                                <IconLayoutGrid />
-                            </ToggleButton>
-                            <ToggleButton
-                                sx={{
-                                    borderColor: theme.palette.grey[900] + 25,
-                                    borderRadius: 2,
-                                    color: theme?.customization?.isDarkMode ? 'white' : 'inherit'
-                                }}
-                                variant='contained'
-                                value='list'
-                                title='List View'
-                            >
-                                <IconList />
-                            </ToggleButton>
-                        </ToggleButtonGroup> */}
-                    </ViewHeader>
-                    <Box sx={{ display: 'flex', gap: 2 }}>
-                        <StyledButton variant='contained' onClick={addNew} startIcon={<IconPlus />} sx={{ borderRadius: 2, height: 40, width: 250 }}>
-                            Create New Workflow
-                        </StyledButton>
-                        <StyledButton variant='contained' onClick={importSamples} startIcon={<IconPlus />} sx={{ borderRadius: 2, height: 40, width: 250 }}>
-                            Import Sample Workflows
-                        </StyledButton>
+                            OPEA Flows
+                        </Typography>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 2 }}>
+                        <Box sx={{ display: 'flex', gap: 2 }}>
+                            <StyledButton variant='contained' onClick={addNew} startIcon={<IconPlus />} sx={{ borderRadius: 2, height: 40, width: 250 }}>
+                                Create New Workflow
+                            </StyledButton>
+                            <StyledButton variant='contained' onClick={importSamples} startIcon={<IconPlus />} sx={{ borderRadius: 2, height: 40, width: 250 }}>
+                                Import Sample Workflows
+                            </StyledButton>
+                        </Box>
+                        
+                        <Input
+                            size='small'
+                            sx={{
+                                width: '280px',
+                                height: '40px',
+                                borderRadius: 2,
+                                '& .MuiOutlinedInput-notchedOutline': {
+                                    borderRadius: 2
+                                }
+                            }}
+                            placeholder='Search Name or Category'
+                            onChange={onSearchChange}
+                            value={search}
+                            endAdornment={
+                                <Box
+                                    sx={{
+                                        color: theme.palette.grey[400],
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        mr: 1
+                                    }}
+                                >
+                                    <IconSearch style={{ color: 'inherit', width: 16, height: 16 }} />
+                                </Box>
+                            }
+                            type='search'
+                        />
+                        </Box>
                     </Box>
                     {!view || view === 'card' ? (
                         <>

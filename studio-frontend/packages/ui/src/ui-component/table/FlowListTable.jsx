@@ -617,11 +617,10 @@ export const FlowListTable = ({ data, images, isLoading, filterFunction, updateF
                                 </TableSortLabel>
                             </StyledTableCell>
                             {userRole === 'admin' &&
-                                <StyledTableCell style={{ width: '25%' }} key='8'>
+                                <StyledTableCell style={{ width: '15%' }} key='8'>
                                     <Stack
                                         direction={{ xs: 'column', sm: 'row' }}
                                         spacing={1}
-                                        justifyContent='center'
                                     >
                                         User
                                     </Stack>

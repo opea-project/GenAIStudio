@@ -24,17 +24,18 @@ const ViewHeader = ({
     const theme = useTheme()
 
     return (
-        <Box sx={{ flexGrow: 1, py: 1.25, width: '100%' }}>
+        <Box sx={{ flexGrow: 1, py: 0.5, width: '100%' }}>
             <Toolbar
                 disableGutters={true}
                 sx={{
                     p: 0,
                     display: 'flex',
                     justifyContent: 'space-between',
+                    alignItems: 'flex-start',
                     width: '100%'
                 }}
             >
-                <Box sx={{ display: 'flex', alignItems: 'center', flexDirection: 'row' }}>
+                <Box sx={{ display: 'flex', alignItems: 'flex-start', flexDirection: 'row' }}>
                     {isBackButton && (
                         <StyledFab sx={{ mr: 3 }} size='small' color='secondary' aria-label='back' title='Back' onClick={onBack}>
                             <IconArrowLeft />
