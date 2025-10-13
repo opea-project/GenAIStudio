@@ -172,7 +172,7 @@ const Opeaflows = () => {
                             }}
                             variant='h1'
                         >
-                            OPEA Flows
+                            Workflows
                         </Typography>
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 2 }}>
                         <Box sx={{ display: 'flex', gap: 2 }}>

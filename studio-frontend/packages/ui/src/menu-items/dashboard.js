@@ -25,7 +25,7 @@ const dashboard = {
     children: [
         {
             id: 'opeaflows',
-            title: 'OPEA Flows',
+            title: 'Workflows',
             type: 'item',
             url: '/opeaflows',
             icon: icons.IconApps,

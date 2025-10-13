@@ -19,7 +19,7 @@ services:
       - /usr/src/node_modules
       - /usr/src/.pnpm-store
       - /usr/src/packages/ui/build
-    command: ["sh", "-c", "pnpm dev"]
+    command: ["sh", "-c", "cp /usr/src/.env.development /usr/src/packages/ui/.env; cp /usr/src/.env.development /usr/src/packages/server/.env; pnpm dev"]
     environment:
       - http_proxy=${http_proxy}
       - https_proxy=${https_proxy}
