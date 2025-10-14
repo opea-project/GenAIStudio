@@ -16,10 +16,10 @@ services:
       - "8088:8088"
     volumes:
       - .:/usr/src
-      - /usr/src/node_modules
-      - /usr/src/.pnpm-store
+      - node_modules:/usr/src/node_modules
+      - pnpm_store:/usr/src/.pnpm-store
       - /usr/src/packages/ui/build
-    command: ["sh", "-c", "cp /usr/src/.env.development /usr/src/packages/ui/.env; cp /usr/src/.env.development /usr/src/packages/server/.env; pnpm dev"]
+    command: ["sh", "-c", "cp /usr/src/.env.development /usr/src/packages/ui/.env; cp /usr/src/.env.development /usr/src/packages/server/.env; pnpm install; pnpm dev"]
     environment:
       - http_proxy=${http_proxy}
       - https_proxy=${https_proxy}
@@ -27,3 +27,7 @@ services:
     stdin_open: true
     tty: true
     restart: unless-stopped
+
+volumes:
+  node_modules:
+  pnpm_store:

@@ -63,7 +63,30 @@ const Finetuning = () => {
         try {
             setLoading(true)
             const response = await getAllJobsApi.request()
-            setJobs(response || [])
+            // Normalize server objects (TypeORM entities or external API objects)
+            const normalizeJob = (j) => {
+                if (!j) return null
+                const id = j.id || j.job_id || j.fine_tuning_job_id || String(Date.now())
+                const name = j.name || id
+                const status = j.status || j.state || 'pending'
+                const model = j.model || 'N/A'
+                const dataset = j.dataset || j.training_file || j.trainingFile || 'N/A'
+                const progress = typeof j.progress === 'number' ? `${j.progress}%` : (j.progress || '0%')
+                const createdDate = j.createdDate || j.created_at || j.createdAt || new Date().toISOString()
+                return {
+                    ...j,
+                    id,
+                    name,
+                    status,
+                    model,
+                    dataset,
+                    progress,
+                    createdDate
+                }
+            }
+
+            const jobsData = Array.isArray(response) ? response.map(normalizeJob).filter(Boolean) : []
+            setJobs(jobsData)
             setLoading(false)
         } catch (error) {
             console.error('Error loading fine-tuning jobs:', error)
@@ -74,7 +97,14 @@ const Finetuning = () => {
     }
 
     const handleCreateJob = () => {
-        setJobModalOpen(true)
+        try {
+            if (document.activeElement instanceof HTMLElement) {
+                document.activeElement.blur()
+            }
+        } catch (e) {
+            // ignore in non-browser environments
+        }
+        setTimeout(() => setJobModalOpen(true), 0)
     }
 
     const handleJobCreated = (newJob) => {
@@ -83,7 +113,12 @@ const Finetuning = () => {
     }
 
     const filterJobs = (jobs) => {
-        return jobs.filter((job) => job.name.toLowerCase().includes(search.toLowerCase()))
+        if (!search || search.trim() === '') return jobs
+        const q = search.toLowerCase()
+        return jobs.filter((job) => {
+            const name = (job?.name || job?.id || '').toString().toLowerCase()
+            return name.includes(q)
+        })
     }
 
     return (
@@ -149,6 +184,7 @@ const Finetuning = () => {
                                 <FinetuningJobsTable 
                                     data={filterJobs(jobs)} 
                                     isLoading={isLoading}
+                                    onRefresh={loadJobs}
                                 />
                             )}
                         </Stack>

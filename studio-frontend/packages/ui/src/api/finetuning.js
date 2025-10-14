@@ -1,62 +1,90 @@
 import client from './client'
 
 const finetuningApi = {
-    // Get all fine-tuning jobs
-    getAllJobs: () => client.get('/finetuning/jobs'),
+    // Upload training file
+    uploadFile: (file, purpose = 'fine-tune', onUploadProgress) => {
+        const formData = new FormData()
+        formData.append('file', file)
+        formData.append('purpose', purpose)
+        
+        return client.post('/finetuning/files', formData, {
+            // DO NOT set Content-Type here; letting axios set it ensures the multipart boundary is included
+            onUploadProgress
+        })
+    },
 
-    // Create new fine-tuning job with OpenAI API format
+    // Create new fine-tuning job
     createJob: (jobData) => {
         const payload = {
-            model: jobData.model,
-            training_file: jobData.training_file_id,
-            validation_file: jobData.validation_file_id,
-            hyperparameters: {
-                n_epochs: jobData.hyperparameters.n_epochs,
-                batch_size: jobData.hyperparameters.batch_size,
-                learning_rate_multiplier: jobData.hyperparameters.learning_rate_multiplier,
-                prompt_loss_weight: jobData.hyperparameters.prompt_loss_weight
-            },
-            suffix: jobData.suffix
+            training_file: jobData.training_file,
+            // forward training_file_id when available (server will prefer id)
+            ...(jobData.training_file_id ? { training_file_id: jobData.training_file_id } : {}),
+            model: jobData.model
+        }
+
+        // Add optional General configuration
+        if (jobData.General) {
+            payload.General = jobData.General
+        }
+
+        // Add optional Dataset configuration
+        if (jobData.Dataset) {
+            payload.Dataset = jobData.Dataset
+        }
+
+        // Add optional Training configuration
+        if (jobData.Training) {
+            payload.Training = jobData.Training
         }
         
         return client.post('/finetuning/jobs', payload)
     },
 
-    // Get specific fine-tuning job
-    getJob: (jobId) => client.get(`/finetuning/jobs/${jobId}`),
+    // List all fine-tuning jobs
+    getAllJobs: () => client.get('/finetuning/jobs'),
 
-    // Delete fine-tuning job
-    deleteJob: (jobId) => client.delete(`/finetuning/jobs/${jobId}`),
-
-    // Upload dataset file with suffix
-    uploadFile: (file, suffix, onUploadProgress) => {
-        const formData = new FormData()
-        
-        // Generate suffixed filename
-        const fileExtension = '.' + file.name.split('.').pop()
-        const baseFileName = file.name.replace(fileExtension, '')
-        const suffixedFileName = `${baseFileName}-${suffix}${fileExtension}`
-        
-        // Append file with suffixed name
-        formData.append('file', file, suffixedFileName)
-        formData.append('purpose', 'fine-tune') // OpenAI API requirement
-        formData.append('suffix', suffix)
-        
-        return client.post('/files/upload', formData, {
-            headers: {
-                'Content-Type': 'multipart/form-data'
-            },
-            onUploadProgress
+    // Retrieve specific fine-tuning job
+    getJob: (fineTuningJobId) => {
+        return client.post('/finetuning/jobs/retrieve', {
+            fine_tuning_job_id: fineTuningJobId
         })
     },
 
-    // Get available base models
-    getBaseModels: () => client.get('/finetuning/models'),
+    // Cancel a fine-tuning job
+    cancelJob: (fineTuningJobId) => {
+        return client.post('/finetuning/jobs/cancel', {
+            fine_tuning_job_id: fineTuningJobId
+        })
+    },
 
-    // Download fine-tuned model
-    downloadModel: (jobId) => client.get(`/finetuning/jobs/${jobId}/download`, {
-        responseType: 'blob'
-    })
+    // List checkpoints of a fine-tuning job
+    listCheckpoints: (fineTuningJobId) => {
+        return client.post('/finetuning/jobs/checkpoints', {
+            fine_tuning_job_id: fineTuningJobId
+        })
+    },
+
+    // Legacy compatibility methods
+    deleteJob: (jobId) => {
+        // Call the backend delete endpoint which will cancel remote job (best-effort) and remove local DB records
+        return client.post('/finetuning/jobs/delete', { fine_tuning_job_id: jobId })
+    },
+
+    // Get available base models (to be implemented on backend)
+    getBaseModels: () => {
+        // Return common models for now
+        return Promise.resolve({
+            data: [
+                'meta-llama/Llama-2-7b-chat-hf',
+                'meta-llama/Llama-2-7b-hf',
+                'meta-llama/Llama-2-13b-hf',
+                'BAAI/bge-reranker-large',
+                'BAAI/bge-base-en-v1.5',
+                'Qwen/Qwen2.5-3B',
+                'Qwen/Qwen2.5-7B'
+            ]
+        })
+    }
 }
 
 export default finetuningApi

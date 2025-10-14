@@ -95,25 +95,21 @@ const FileUploadArea = ({
         }, 100)
 
         try {
-            // Create file object with original name (server will handle suffix)
-            const fileForUpload = {
-                ...file,
-                originalName: file.name,
-                id: `file-${Date.now()}` // Simple ID for tracking
-            }
-
             // Simulate upload delay
             await new Promise(resolve => setTimeout(resolve, 1000))
-            
+
             setUploadProgress(100)
-            setUploadedFile(fileForUpload)
-            
+
+            // Store the actual File object so parent can upload the real Blob/File
+            setUploadedFile(file)
+
             // Generate preview
             await previewFile(file)
-            
-            // Notify parent component
-            onFileUpload(fileForUpload)
-            
+
+            // Notify parent with the real File object (not a plain JS object)
+            // Parent will perform the FormData upload and receive server response
+            onFileUpload(file)
+
             setTimeout(() => setUploadProgress(0), 500)
         } catch (error) {
             console.error('Upload error:', error)
@@ -243,8 +239,8 @@ const FileUploadArea = ({
                                 </Typography>
                                 <Chip
                                     icon={<IconCheck />}
-                                    label="Uploaded"
-                                    color="success"
+                                    label="Selected"
+                                    color="primary"
                                     size="small"
                                     variant="outlined"
                                 />

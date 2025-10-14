@@ -13,6 +13,7 @@ import documentStoreRouter from './documentstore'
 import exportImportRouter from './export-import'
 import feedbackRouter from './feedback'
 import fetchLinksRouter from './fetch-links'
+import finetuningRouter from './finetuning'
 import flowConfigRouter from './flow-config'
 import getUploadFileRouter from './get-upload-file'
 import getUploadPathRouter from './get-upload-path'
@@ -59,6 +60,7 @@ router.use('/document-store', documentStoreRouter)
 router.use('/export-import', exportImportRouter)
 router.use('/feedback', feedbackRouter)
 router.use('/fetch-links', fetchLinksRouter)
+router.use('/finetuning', finetuningRouter)
 router.use('/flow-config', flowConfigRouter)
 router.use('/internal-chatmessage', internalChatmessagesRouter)
 router.use('/internal-prediction', internalPredictionRouter)

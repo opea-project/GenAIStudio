@@ -6,7 +6,7 @@ import { Collapse, Fade, Box, Grow, Slide, Zoom } from '@mui/material'
 
 // ==============================|| TRANSITIONS ||============================== //
 
-const Transitions = forwardRef(function Transitions({ children, position, type, direction, ...others }, ref) {
+const Transitions = forwardRef(function Transitions({ children, position = 'top-left', type = 'grow', direction = 'up', ...others }, ref) {
     let positionSX = {
         transformOrigin: '0 0 0'
     }
@@ -98,10 +98,6 @@ Transitions.propTypes = {
     direction: PropTypes.oneOf(['up', 'down', 'left', 'right'])
 }
 
-Transitions.defaultProps = {
-    type: 'grow',
-    position: 'top-left',
-    direction: 'up'
-}
+// defaults handled via function parameter defaults
 
 export default Transitions

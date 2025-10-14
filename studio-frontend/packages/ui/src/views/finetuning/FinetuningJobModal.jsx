@@ -16,7 +16,10 @@ import {
     MenuItem,
     Typography,
     Stack,
+    Checkbox,
+    FormControlLabel,
     IconButton,
+    CircularProgress,
     Grid
 } from '@mui/material'
 import { useTheme } from '@mui/material/styles'
@@ -88,14 +91,26 @@ const FinetuningJobModal = ({ open, onClose, onJobCreated }) => {
     const [errors, setErrors] = useState({})
     const [isSubmitting, setIsSubmitting] = useState(false)
 
+    const [loraEnabled, setLoraEnabled] = useState(false)
+
+
     const baseModels = [
-        'gpt-3.5-turbo',
-        'gpt-4',
-        'llama-2-7b',
-        'llama-2-13b',
-        'mistral-7b',
-        'codellama-7b',
-        'falcon-7b'
+        'meta-llama/Llama-2-7b-chat-hf',
+        'meta-llama/Llama-2-7b-hf',
+        'meta-llama/Llama-2-13b-hf',
+        'BAAI/bge-reranker-large',
+        'BAAI/bge-base-en-v1.5',
+        'Qwen/Qwen2.5-3B',
+        'Qwen/Qwen2.5-7B'
+    ]
+    
+    const taskTypes = [
+        { value: 'instruction_tuning', label: 'Instruction Tuning' },
+        { value: 'rerank', label: 'Reranking' },
+        { value: 'embedding', label: 'Embedding' },
+        { value: 'pretraining', label: 'Pretraining' },
+        { value: 'dpo', label: 'Direct Preference Optimization (DPO)' },
+        { value: 'reasoning', label: 'Reasoning' }
     ]
 
     const handleInputChange = (field, value) => {
@@ -133,13 +148,29 @@ const FinetuningJobModal = ({ open, onClose, onJobCreated }) => {
         }))
     }
 
+    // When a file is selected in FileUploadArea, just store the File object locally.
+    // The actual upload to the server will happen when the user clicks Create Job.
     const handleFileUpload = (fileType, file) => {
+        if (!file) {
+            setFormData(prev => ({
+                ...prev,
+                [fileType]: null
+            }))
+            return
+        }
+
+        // Store the raw File object and its name; do not upload now
+        const fileEntry = {
+            file,
+            name: file.name
+        }
+
         setFormData(prev => ({
             ...prev,
-            [fileType]: file
+            [fileType]: fileEntry
         }))
-        
-        // Clear error for this field
+
+        // Clear any previous error for this field
         if (errors[fileType]) {
             setErrors(prev => ({
                 ...prev,
@@ -186,17 +217,19 @@ const FinetuningJobModal = ({ open, onClose, onJobCreated }) => {
             newErrors.logging_steps = 'Logging steps must be greater than 0'
         }
 
-        // LoRA parameters validation
-        if (formData.lora.r <= 0) {
-            newErrors.lora_r = 'LoRA rank must be greater than 0'
-        }
+        // LoRA parameters validation (only when enabled)
+        if (loraEnabled) {
+            if (formData.lora.r <= 0) {
+                newErrors.lora_r = 'LoRA rank must be greater than 0'
+            }
 
-        if (formData.lora.lora_alpha <= 0) {
-            newErrors.lora_alpha = 'LoRA alpha must be greater than 0'
-        }
+            if (formData.lora.lora_alpha <= 0) {
+                newErrors.lora_alpha = 'LoRA alpha must be greater than 0'
+            }
 
-        if (formData.lora.lora_dropout < 0 || formData.lora.lora_dropout > 1) {
-            newErrors.lora_dropout = 'LoRA dropout must be between 0 and 1'
+            if (formData.lora.lora_dropout < 0 || formData.lora.lora_dropout > 1) {
+                newErrors.lora_dropout = 'LoRA dropout must be between 0 and 1'
+            }
         }
 
         setErrors(newErrors)
@@ -211,40 +244,69 @@ const FinetuningJobModal = ({ open, onClose, onJobCreated }) => {
         setIsSubmitting(true)
         
         try {
-            // TODO: Replace with actual API call
-            // const response = await finetuningApi.createJob({
-            //     model: formData.baseModel,
-            //     training_file_id: formData.trainingDataset?.id,
-            //     General: formData.general,
-            //     Dataset: formData.dataset,
-            //     Training: formData.training,
-            //     openai_params: formData.openai_params,
-            //     lora_config: formData.lora
-            // })
+            // Create the job configuration payload
+            // Build General object and set lora_config based on the LoRA checkbox
+            const generalPayload = { ...formData.general }
+            // If user enabled LoRA, include the object; otherwise send explicit null
+            generalPayload.lora_config = loraEnabled ? formData.lora : null
 
-            // Generate job name automatically based on model and timestamp for simulation
-            const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
-            const jobId = `ft-${formData.baseModel}-${timestamp}`
+            // If the user selected a file but hasn't uploaded it yet, upload it now
+            let trainingFileName = formData.trainingDataset?.uploadedName || formData.trainingDataset?.name
+            let trainingFileId = formData.trainingDataset?.id
+            if (formData.trainingDataset && formData.trainingDataset.file) {
+                try {
+                    setIsSubmitting(true)
+                    const uploadResp = await finetuningApi.uploadFile(formData.trainingDataset.file, 'fine-tune', (progressEvent) => {
+                        // we could wire progress to UI if desired
+                    })
+                    trainingFileName = uploadResp.data?.filename || trainingFileName || formData.trainingDataset.file.name
+                    trainingFileId = uploadResp.data?.id || trainingFileId
+                } catch (err) {
+                    console.error('Error uploading training file before job creation:', err)
+                    setErrors(prev => ({ ...prev, trainingDataset: 'Failed to upload training file: ' + (err.message || 'Unknown') }))
+                    setIsSubmitting(false)
+                    return
+                }
+            }
+
+            const jobPayload = {
+                model: formData.baseModel,
+                // Use uploaded filename/id (if available)
+                training_file: trainingFileName,
+                training_file_id: trainingFileId,
+                General: generalPayload,
+                Dataset: {
+                    max_length: formData.dataset.max_length,
+                    query_max_len: formData.dataset.query_max_len,
+                    passage_max_len: formData.dataset.passage_max_len,
+                    padding: formData.dataset.padding_side
+                },
+                Training: {
+                    epochs: formData.training.epochs,
+                    batch_size: formData.openai_params.batch_size,
+                    gradient_accumulation_steps: formData.training.gradient_accumulation_steps
+                }
+            }
+
+            // Call the actual API
+            const response = await finetuningApi.createJob(jobPayload)
             
+            // Create job object from response
             const newJob = {
-                id: jobId,
-                name: jobId,
-                status: 'pending',
+                id: response.data?.id || response.data?.fine_tuning_job_id || Date.now().toString(),
+                name: response.data?.id || response.data?.fine_tuning_job_id || `ft-${formData.baseModel}`,
+                status: response.data?.status || 'pending',
                 model: formData.baseModel,
                 dataset: formData.trainingDataset?.suffixedName || formData.trainingDataset?.name || 'Unknown',
                 progress: '0%',
-                createdDate: new Date().toISOString(),
+                createdDate: response.data?.created_at || new Date().toISOString(),
                 // Include all configuration sections
                 openai_params: formData.openai_params,
                 general: formData.general,
                 dataset_config: formData.dataset,
                 training: formData.training,
-                lora: formData.lora,
-                training_file_id: formData.trainingDataset?.id
+                training_file: jobPayload.training_file
             }
-
-            // Simulate API call delay
-            await new Promise(resolve => setTimeout(resolve, 1000))
 
             onJobCreated(newJob)
             handleClose()
@@ -300,14 +362,10 @@ const FinetuningJobModal = ({ open, onClose, onJobCreated }) => {
                 accelerate_mode: 'DDP',
                 hpu_execution_mode: 'lazy',
                 num_training_workers: 1
-            },
-            lora: {
-                r: 8,
-                lora_alpha: 32,
-                lora_dropout: 0.1,
-                task_type: 'CAUSAL_LM'
             }
         })
+        setLoraEnabled(false)
+        setFormData(prev => ({ ...prev, lora: { r: 8, lora_alpha: 32, lora_dropout: 0.1, task_type: 'CAUSAL_LM' } }))
         setErrors({})
         setIsSubmitting(false)
         onClose()
@@ -488,18 +546,31 @@ const FinetuningJobModal = ({ open, onClose, onJobCreated }) => {
                                         fullWidth
                                         size="medium"
                                     />
+                                <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
+                                    <Typography variant="subtitle1">LoRA Configuration</Typography>
+                                    <FormControlLabel
+                                        control={
+                                            <Checkbox
+                                                checked={loraEnabled}
+                                                onChange={(e) => setLoraEnabled(e.target.checked)}
+                                            />
+                                        }
+                                        label="Enable LoRA"
+                                    />
+                                </Stack>
                                 <Stack alignItems="center">
                                     <Grid container spacing={2} justifyContent="center">
                                         <Grid item xs={4}>
                                             <TextField
                                                 label="LoRA Rank (r)"
-                                                    type="number"
-                                                    value={formData.lora.r}
-                                                    onChange={(e) => handleConfigChange('lora', 'r', parseInt(e.target.value))}
-                                                    error={!!errors.lora_r}
-                                                    inputProps={{ min: 1, max: 128, step: 1 }}
-                                                    size="medium"
+                                                type="number"
+                                                value={formData.lora.r}
+                                                onChange={(e) => handleConfigChange('lora', 'r', parseInt(e.target.value))}
+                                                error={!!errors.lora_r}
+                                                inputProps={{ min: 1, max: 128, step: 1 }}
+                                                size="medium"
                                                 fullWidth
+                                                disabled={!loraEnabled}
                                             />
                                         </Grid>
                                         <Grid item xs={4}>
@@ -512,7 +583,7 @@ const FinetuningJobModal = ({ open, onClose, onJobCreated }) => {
                                                 inputProps={{ min: 1, max: 256, step: 1 }}
                                                 size="medium"
                                                 fullWidth
-                                                sx={{ '& .MuiInputBase-root': { minHeight: 48 } }}
+                                                disabled={!loraEnabled}
                                             />
                                         </Grid>
                                         <Grid item xs={4}>
@@ -525,7 +596,7 @@ const FinetuningJobModal = ({ open, onClose, onJobCreated }) => {
                                                 inputProps={{ min: 0, max: 1, step: 0.01 }}
                                                 size="medium"
                                                 fullWidth
-                                                sx={{ '& .MuiInputBase-root': { minHeight: 48 } }}
+                                                disabled={!loraEnabled}
                                             />
                                         </Grid>
                                     </Grid>
@@ -685,7 +756,14 @@ const FinetuningJobModal = ({ open, onClose, onJobCreated }) => {
                     size="large"
                     sx={{ minWidth: 140 }}
                 >
-                    {isSubmitting ? 'Creating...' : 'Create Job'}
+                    {isSubmitting ? (
+                        <>
+                            <CircularProgress size={18} color="inherit" sx={{ mr: 1 }} />
+                            Creating...
+                        </>
+                    ) : (
+                        'Create Job'
+                    )}
                 </Button>
             </DialogActions>
         </Dialog>

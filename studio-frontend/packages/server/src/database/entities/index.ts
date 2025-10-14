@@ -11,6 +11,8 @@ import { Lead } from './Lead'
 import { UpsertHistory } from './UpsertHistory'
 import { ApiKey } from './ApiKey'
 import { CustomTemplate } from './CustomTemplate'
+import { FineTuningJob } from './FineTuningJob'
+import { FineTuningCheckpoint } from './FineTuningCheckpoint'
 
 export const entities = {
     ChatFlow,
@@ -25,5 +27,7 @@ export const entities = {
     Lead,
     UpsertHistory,
     ApiKey,
-    CustomTemplate
+    CustomTemplate,
+    FineTuningJob,
+    FineTuningCheckpoint
 }
