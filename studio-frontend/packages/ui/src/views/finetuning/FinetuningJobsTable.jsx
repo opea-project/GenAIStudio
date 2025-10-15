@@ -143,6 +143,7 @@ const FinetuningJobsTable = ({ data, isLoading = false, onRefresh = null }) => {
     const getStatusColor = (status) => {
         switch (status?.toLowerCase()) {
             case 'completed':
+            case 'succeeded':
                 return 'success'
             case 'running':
                 return 'primary'
@@ -184,15 +185,17 @@ const FinetuningJobsTable = ({ data, isLoading = false, onRefresh = null }) => {
     }
 
     return (
-        <TableContainer component={Paper}>
+        <>
+            <style>{`@keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.2; } 100% { opacity: 1; } }`}</style>
+            <TableContainer component={Paper}>
             <Table>
                 <TableHead>
                         <TableRow>
-                        <TableCell><strong>Job Name</strong></TableCell>
+                        <TableCell><strong>Job ID</strong></TableCell>
                         <TableCell><strong>Status</strong></TableCell>
                         <TableCell><strong>Model</strong></TableCell>
+                        <TableCell><strong>Task</strong></TableCell>
                         <TableCell><strong>Dataset</strong></TableCell>
-                        <TableCell><strong>Progress</strong></TableCell>
                         <TableCell><strong>Checkpoints</strong></TableCell>
                         <TableCell><strong>Actions</strong></TableCell>
                         <TableCell><strong>Created Date</strong></TableCell>
@@ -203,39 +206,49 @@ const FinetuningJobsTable = ({ data, isLoading = false, onRefresh = null }) => {
                         <TableRow key={job.id} hover>
                             <TableCell>
                                 <Typography variant="subtitle2" fontWeight="600">
-                                    {job.name}
+                                    {job.id}
                                 </Typography>
                             </TableCell>
                             <TableCell>
-                                <Chip
-                                    label={job.status}
-                                    color={getStatusColor(job.status)}
-                                    size="small"
-                                    variant="outlined"
-                                />
+                                {/* Status with blinking indicator when running; show Chip only for other statuses */}
+                                {String(job.status).toLowerCase() === 'running' ? (
+                                    <Stack direction="row" alignItems="center" spacing={1}>
+                                        <Box
+                                            sx={{
+                                                width: 10,
+                                                height: 10,
+                                                borderRadius: '50%',
+                                                backgroundColor: theme.palette.primary.main,
+                                                animation: 'blink 1s infinite'
+                                            }}
+                                        />
+                                        <Typography variant="body2">{job.status}</Typography>
+                                    </Stack>
+                                ) : (
+                                    <Chip
+                                        label={job.status}
+                                        color={getStatusColor(job.status)}
+                                        size="small"
+                                        variant="outlined"
+                                    />
+                                )}
                             </TableCell>
                             <TableCell>
                                 <Typography variant="body2">
                                     {job.model || 'N/A'}
                                 </Typography>
                             </TableCell>
+                                <TableCell>
+                                    <Typography variant="body2">
+                                        {job.task || job.task_type || job.taskType || 'N/A'}
+                                    </Typography>
+                                </TableCell>
                             <TableCell>
                                 <Typography variant="body2">
                                     {job.dataset || 'N/A'}
                                 </Typography>
                             </TableCell>
-                            <TableCell>
-                                <Stack spacing={1} sx={{ minWidth: 120 }}>
-                                    <LinearProgress
-                                        variant="determinate"
-                                        value={getProgressValue(job.progress)}
-                                        sx={{ height: 6, borderRadius: 3 }}
-                                    />
-                                    <Typography variant="caption" color="textSecondary">
-                                        {job.progress || '0%'}
-                                    </Typography>
-                                </Stack>
-                            </TableCell>
+                            {/* Progress column removed per request */}
                             <TableCell>
                                 <Button
                                     size="small"
@@ -254,7 +267,7 @@ const FinetuningJobsTable = ({ data, isLoading = false, onRefresh = null }) => {
                                 </IconButton>
                             </TableCell>
                             <TableCell>
-                                <Typography variant="body2" color="textSecondary">
+                                <Typography variant="body2">
                                     {job.createdDate ? formatDate(job.createdDate) : 'Unknown'}
                                 </Typography>
                             </TableCell>
@@ -339,7 +352,8 @@ const FinetuningJobsTable = ({ data, isLoading = false, onRefresh = null }) => {
                     <Button onClick={() => setCheckpointsOpen(false)}>Close</Button>
                 </DialogActions>
             </Dialog>
-        </TableContainer>
+            </TableContainer>
+        </>
     )
 }
 

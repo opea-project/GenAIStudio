@@ -5,22 +5,15 @@ export class AddFineTuningTables1760424809635 implements MigrationInterface {
         await queryRunner.query(
             `CREATE TABLE IF NOT EXISTS "fine_tuning_job" (
                 "id" varchar PRIMARY KEY NOT NULL,
-                "name" varchar,
                 "model" varchar,
                 "task" varchar,
                 "status" varchar,
                 "training_file" varchar,
-                "training_file_id" varchar,
-                "lora_config" text,
                 "hyperparameters" text,
                 "result_files" text,
                 "error" text,
-                "progress" integer,
                 "trained_tokens" integer,
-                "estimated_finish" datetime,
-                "finishedDate" datetime,
-                "createdDate" datetime NOT NULL DEFAULT (datetime('now')),
-                "updatedDate" datetime NOT NULL DEFAULT (datetime('now'))
+                "createdDate" datetime NOT NULL DEFAULT (datetime('now'))
             );`
         )
 

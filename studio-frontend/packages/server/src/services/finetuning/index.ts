@@ -108,6 +108,21 @@ const persistJobToDb = async (jobData: any) => {
         if (!id) return
 
         // Build entity object mapping common fields; fall back to stringifying objects
+        // Extract task robustly: prefer explicit jobData.task, then jobData.General.task (object or JSON string)
+        let taskVal: any = jobData.task || undefined
+        try {
+            if (!taskVal && jobData.General) {
+                if (typeof jobData.General === 'string') {
+                    const parsed = JSON.parse(jobData.General)
+                    taskVal = parsed?.task || taskVal
+                } else if (typeof jobData.General === 'object') {
+                    taskVal = jobData.General?.task || taskVal
+                }
+            }
+        } catch (e) {
+            // ignore parse errors
+        }
+
         const entity: any = {
             id: String(id),
             name: jobData.name || jobData.id || undefined,
@@ -115,20 +130,11 @@ const persistJobToDb = async (jobData: any) => {
             status: jobData.status || jobData.state || undefined,
             training_file: jobData.training_file || jobData.trainingFile || undefined,
             training_file_id: jobData.training_file_id || undefined,
-            task: jobData.General?.task || jobData.task || undefined,
+            task: taskVal || undefined,
             progress: typeof jobData.progress === 'number' ? jobData.progress : undefined,
             trained_tokens: typeof jobData.trained_tokens === 'number' ? jobData.trained_tokens : undefined
         }
 
-        if (jobData.General) {
-            try {
-                entity.lora_config = typeof jobData.General.lora_config === 'object'
-                    ? JSON.stringify(jobData.General.lora_config)
-                    : jobData.General.lora_config ? String(jobData.General.lora_config) : undefined
-            } catch (e) {
-                // ignore
-            }
-        }
 
         if (jobData.hyperparameters) {
             try {
@@ -364,6 +370,17 @@ const createFineTuningJob = async (jobConfig: {
         // Send the sanitized payload
         const resp = await attemptPost(sanitizedPayload, 'final')
         const respData = resp.data
+        // If the external service didn't echo back the task, preserve task from our sanitized payload
+        try {
+            const payloadTask = sanitizedPayload?.General?.task || sanitizedPayload?.task
+            if (payloadTask && !respData.task) {
+                // attach task so persistJobToDb stores it
+                try { respData.task = payloadTask } catch (e) { /* ignore */ }
+            }
+        } catch (e) {
+            // ignore
+        }
+
         // Persist to local DB (best-effort)
         try {
             await persistJobToDb(respData)

@@ -294,9 +294,9 @@ const FinetuningJobModal = ({ open, onClose, onJobCreated }) => {
             // Create job object from response
             const newJob = {
                 id: response.data?.id || response.data?.fine_tuning_job_id || Date.now().toString(),
-                name: response.data?.id || response.data?.fine_tuning_job_id || `ft-${formData.baseModel}`,
                 status: response.data?.status || 'pending',
                 model: formData.baseModel,
+                task: formData.general?.task || formData.lora?.task_type || null,
                 dataset: formData.trainingDataset?.suffixedName || formData.trainingDataset?.name || 'Unknown',
                 progress: '0%',
                 createdDate: response.data?.created_at || new Date().toISOString(),
