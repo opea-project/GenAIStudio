@@ -8,9 +8,9 @@ import { getRunningExpressApp } from '../../utils/getRunningExpressApp'
 import { FineTuningJob } from '../../database/entities/FineTuningJob'
 import { FineTuningCheckpoint } from '../../database/entities/FineTuningCheckpoint'
 
-// Get finetuning service URL from environment variable or use default
-// Note: use host network IP instead of localhost so containerized server can reach the finetuning service
-const FINETUNING_SERVICE_URL = process.env.FINETUNING_SERVICE_URL || 'undefined'
+// Derive finetuning service base URL from HOST_IP (default port 815) if not explicitly provided.
+const FINETUNING_SERVICE_URL = process.env.HOST_IP ? `http://${process.env.HOST_IP}:8015` : 'undefined'
+console.debug('finetuningService - FINETUNING_SERVICE_URL', FINETUNING_SERVICE_URL)
 
 // Create an axios client with keep-alive to reduce connection churn
 const agentOptions = { keepAlive: true, maxSockets: 20 }
@@ -624,6 +624,87 @@ const proxyJobDebug = async (payload: any) => {
     }
 }
 
+/**
+ * Get logs for a fine-tuning job by querying the Ray head node HTTP API.
+ * It will call: http://<RAY_HEAD_NODE>/api/jobs/<job_id>/logs
+ * Environment: set RAY_HEAD_NODE to the host:port of the Ray head (e.g. "ray-head.example.com:8265").
+ */
+const getFineTuningJobLogs = async (
+    fineTuningJobId: string,
+    options: { ray_job_id?: string } = {}
+) => {
+    try {
+        // Determine Ray dashboard host (host:port). We only use HOST_IP to derive the Ray dashboard address.
+        const rayHost = process.env.HOST_IP ? `${process.env.HOST_IP}:8265` : 'undefined'
+
+        // If caller provided an explicit ray_job_id, use it. Otherwise attempt to discover the Ray submission id
+        let submissionId: string | undefined = options.ray_job_id
+
+        // Query Ray /api/jobs/ and select entries where entrypoint contains the FT id (jq-like)
+        const listUrl = `http://${rayHost}/api/jobs/`
+        console.debug('finetuningService.getFineTuningJobLogs - listUrl:', listUrl)
+        try {
+            const listResp = await axios.get(listUrl, { timeout: 20000 })
+            // Debug: log status and length of Ray /api/jobs/ output; full dump only when explicitly enabled
+            try {
+                const raw = listResp.data
+                const len = typeof raw === 'string' ? raw.length : JSON.stringify(raw).length
+                console.debug('finetuningService.getFineTuningJobLogs - Ray /api/jobs/ status=', listResp.status, 'len=', len)
+                if (String(process.env.RAY_DUMP_JOBS).toLowerCase() === 'true') {
+                    try {
+                        const pretty = typeof raw === 'string' ? raw : JSON.stringify(raw, null, 2)
+                        console.debug('finetuningService.getFineTuningJobLogs - Ray /api/jobs/ FULL DUMP:\n' + pretty)
+                    } catch (e) {
+                        try { console.debug('finetuningService.getFineTuningJobLogs - failed to stringify full Ray jobs list', String(e)) } catch (ignore) {}
+                    }
+                }
+            } catch (logErr) {
+                try { console.debug('finetuningService.getFineTuningJobLogs - failed to inspect Ray jobs list', String(logErr)) } catch (ignore) {}
+            }
+            const jobsList = Array.isArray(listResp.data) ? listResp.data : []
+            // Apply strict filter: entrypoint contains the exact FT id
+            const match = jobsList.find((j: any) => {
+                try {
+                    const entrypoint = j?.entrypoint || ''
+                    return String(entrypoint).includes(String(fineTuningJobId))
+                } catch (e) {
+                    return false
+                }
+            })
+            if (match) {
+                submissionId = match.submission_id || match.job_id
+            }
+        } catch (e) {
+            try { console.error('finetuningService.getFineTuningJobLogs - failed to list Ray jobs', String(e)) } catch (err) {}
+        }
+
+        // Construct logs URL with optional tail and fetch logs
+        const url = `http://${rayHost}/api/jobs/${encodeURIComponent(String(submissionId))}/logs`
+        const resp = await axios.get(url, { timeout: 30000 })
+        // Normalize logs response so newlines are preserved and objects/arrays are readable
+        try {
+            const rawLogs = resp.data
+            if (typeof rawLogs === 'string') {
+                // string likely contains proper newlines
+                return { logs: rawLogs }
+            }
+            if (Array.isArray(rawLogs)) {
+                return { logs: rawLogs.join('\n') }
+            }
+            // object -> pretty-print with indentation to preserve newlines
+            return { logs: JSON.stringify(rawLogs, null, 2) }
+        } catch (e) {
+            // fallback to safe stringify
+            return { logs: JSON.stringify(resp.data, null, 2) }
+        }
+    } catch (error: any) {
+        // Provide helpful error details and return a structured error instead of throwing
+        const msg = `Error fetching logs: ${getErrorMessage(error)}`
+        try { (globalThis as any).console?.error && (globalThis as any).console.error('finetuningService.getFineTuningJobLogs -', String(error)) } catch (e) {}
+        return { logs: '', error: msg }
+    }
+}
+
 export default {
     uploadTrainingFile,
     createFineTuningJob,
@@ -632,5 +713,6 @@ export default {
     cancelFineTuningJob,
     listFineTuningCheckpoints,
     deleteFineTuningJob,
+    getFineTuningJobLogs,
     proxyJobDebug
 }

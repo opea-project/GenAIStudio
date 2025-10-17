@@ -22,6 +22,9 @@ router.get('/jobs', finetuningController.listFineTuningJobs)
 // Retrieve a specific fine-tuning job
 router.post('/jobs/retrieve', finetuningController.retrieveFineTuningJob)
 
+// Fetch logs for a fine-tuning job
+router.post('/jobs/logs', finetuningController.getFineTuningJobLogs)
+
 // Cancel a fine-tuning job
 router.post('/jobs/cancel', finetuningController.cancelFineTuningJob)
 router.post('/jobs/delete', finetuningController.deleteFineTuningJob)

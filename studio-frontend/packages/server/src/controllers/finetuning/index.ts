@@ -138,6 +138,37 @@ const listFineTuningCheckpoints = async (req: Request, res: Response, next: Next
 }
 
 /**
+ * Fetch Ray/job logs for a fine-tuning job
+ * POST /api/v1/finetuning/jobs/logs
+ * body: { fine_tuning_job_id: string, ray_job_id?: string, tail?: number }
+ */
+const getFineTuningJobLogs = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        if (typeof req.body === 'undefined' || !req.body.fine_tuning_job_id) {
+            throw new InternalFlowiseError(
+                StatusCodes.BAD_REQUEST,
+                'Error: finetuningController.getFineTuningJobLogs - fine_tuning_job_id not provided!'
+            )
+        }
+
+        const fine_tuning_job_id = req.body.fine_tuning_job_id
+        const ray_job_id = req.body.ray_job_id
+
+        try {
+            const apiResponse = await finetuningService.getFineTuningJobLogs(fine_tuning_job_id, { ray_job_id })
+            // Service returns either { logs: string } or { logs: '', error: string }
+            return res.json(apiResponse)
+        } catch (err: any) {
+            // If the service throws, return a structured error payload instead of propagating a 500
+            const message = err?.message || String(err) || 'Unknown error fetching logs'
+            return res.json({ logs: '', error: `Error: ${message}` })
+        }
+    } catch (error) {
+        next(error)
+    }
+}
+
+/**
  * Debug: proxy an arbitrary job payload to the finetuning service and return raw response
  * POST /api/v1/finetuning/debug/proxy-job
  */
@@ -163,5 +194,6 @@ export default {
     cancelFineTuningJob,
     deleteFineTuningJob,
     listFineTuningCheckpoints,
+    getFineTuningJobLogs,
     proxyJobDebug
 }

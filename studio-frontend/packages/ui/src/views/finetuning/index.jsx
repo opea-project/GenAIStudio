@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 // material-ui
-import { Box, Skeleton, Stack, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material'
+import { Box, Skeleton, Stack, ToggleButton, ToggleButtonGroup, Typography, Input } from '@mui/material'
 import { useTheme } from '@mui/material/styles'
 
 // project imports
@@ -25,7 +25,7 @@ import finetuningApi from '@/api/finetuning'
 import useApi from '@/hooks/useApi'
 
 // icons
-import { IconPlus, IconLayoutGrid, IconList } from '@tabler/icons-react'
+import { IconPlus, IconLayoutGrid, IconList, IconSearch } from '@tabler/icons-react'
 
 //keycloak
 import { useKeycloak } from '../../KeycloakContext'
@@ -215,13 +215,21 @@ const Finetuning = () => {
         setJobModalOpen(false)
     }
 
-    const filterJobs = (jobs) => {
-        if (!search || search.trim() === '') return jobs
+    const onSearchChange = (event) => {
+        setSearch(event.target.value)
+    }
+
+    // Predicate function used by FinetuningJobsTable to show/hide rows
+    const filterJobs = (job) => {
+        if (!search || search.trim() === '') return true
         const q = search.toLowerCase()
-        return jobs.filter((job) => {
-            const name = (job?.name || job?.id || '').toString().toLowerCase()
-            return name.includes(q)
-        })
+        const id = (job?.id || '').toString().toLowerCase()
+        const name = (job?.name || '').toString().toLowerCase()
+        const model = (job?.model || '').toString().toLowerCase()
+        const dataset = (job?.dataset || job?.training_file || '').toString().toLowerCase()
+        const task = (job?.task || job?.task_type || job?.taskType || '').toString().toLowerCase()
+        const status = (job?.status || '').toString().toLowerCase()
+        return id.includes(q) || name.includes(q) || model.includes(q) || dataset.includes(q) || task.includes(q) || status.includes(q)
     }
 
     return (
@@ -241,16 +249,47 @@ const Finetuning = () => {
                         >
                             Fine-tuning Jobs
                         </Typography>
-                        <Stack flexDirection='row' sx={{ mb: 1, gap: 1, flexWrap: 'wrap' }}>
-                            <StyledButton
-                                variant='contained'
-                                onClick={handleCreateJob}
-                                startIcon={<IconPlus />}
-                                sx={{ borderRadius: 2, height: 40 }}
-                            >
-                                Create New Job
-                            </StyledButton>
-                        </Stack>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 2 }}>
+                            <Box sx={{ display: 'flex', gap: 2 }}>
+                                <StyledButton
+                                    variant='contained'
+                                    onClick={handleCreateJob}
+                                    startIcon={<IconPlus />}
+                                    sx={{ borderRadius: 2, height: 40 }}
+                                >
+                                    Create New Job
+                                </StyledButton>
+                            </Box>
+
+                            <Input
+                                size='small'
+                                sx={{
+                                    width: '320px',
+                                    height: '40px',
+                                    borderRadius: 2,
+                                    '& .MuiOutlinedInput-notchedOutline': {
+                                        borderRadius: 2
+                                    }
+                                }}
+                                placeholder='Search by ID, name, model, dataset, task, status'
+                                onChange={onSearchChange}
+                                value={search}
+                                endAdornment={
+                                    <Box
+                                        sx={{
+                                            color: theme.palette.grey[400],
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            mr: 1
+                                        }}
+                                    >
+                                        <IconSearch style={{ color: 'inherit', width: 16, height: 16 }} />
+                                    </Box>
+                                }
+                                type='search'
+                            />
+                        </Box>
                     </Box>
 
                     {isLoading ? (
@@ -285,7 +324,8 @@ const Finetuning = () => {
                                 </Stack>
                             ) : (
                                 <FinetuningJobsTable 
-                                    data={filterJobs(jobs)} 
+                                    data={jobs} 
+                                    filterFunction={filterJobs}
                                     isLoading={isLoading}
                                     onRefresh={loadJobs}
                                 />

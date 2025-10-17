@@ -64,6 +64,14 @@ const finetuningApi = {
         })
     },
 
+    // Get logs for a fine-tuning job
+    getJobLogs: (fineTuningJobId, opts = {}) => {
+        return client.post('/finetuning/jobs/logs', {
+            fine_tuning_job_id: fineTuningJobId,
+            ray_job_id: opts.ray_job_id
+        })
+    },
+
     // Legacy compatibility methods
     deleteJob: (jobId) => {
         // Call the backend delete endpoint which will cancel remote job (best-effort) and remove local DB records

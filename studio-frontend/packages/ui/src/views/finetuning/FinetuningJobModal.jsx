@@ -92,6 +92,9 @@ const FinetuningJobModal = ({ open, onClose, onJobCreated }) => {
     const [isSubmitting, setIsSubmitting] = useState(false)
 
     const [loraEnabled, setLoraEnabled] = useState(false)
+    const [datasetEnabled, setDatasetEnabled] = useState(true)
+    const [generalEnabled, setGeneralEnabled] = useState(true)
+    const [trainingEnabled, setTrainingEnabled] = useState(true)
 
 
     const baseModels = [
@@ -191,30 +194,52 @@ const FinetuningJobModal = ({ open, onClose, onJobCreated }) => {
             newErrors.trainingDataset = 'Training dataset is required'
         }
 
-        // OpenAI parameters validation
-        if (formData.openai_params.learning_rate_multiplier <= 0) {
-            newErrors.learning_rate_multiplier = 'Learning rate multiplier must be greater than 0'
+        // OpenAI parameters validation (only when training enabled)
+        if (trainingEnabled) {
+            if (formData.openai_params.learning_rate_multiplier <= 0) {
+                newErrors.learning_rate_multiplier = 'Learning rate multiplier must be greater than 0'
+            }
+
+            if (formData.openai_params.batch_size <= 0) {
+                newErrors.batch_size = 'Batch size must be greater than 0'
+            }
+
+            if (formData.openai_params.n_epochs <= 0) {
+                newErrors.n_epochs = 'Number of epochs must be greater than 0'
+            }
         }
 
-        if (formData.openai_params.batch_size <= 0) {
-            newErrors.batch_size = 'Batch size must be greater than 0'
+        // Training parameters validation (only when enabled)
+        if (trainingEnabled) {
+            if (formData.training.learning_rate <= 0) {
+                newErrors.learning_rate = 'Learning rate must be greater than 0'
+            }
+
+            if (formData.training.epochs <= 0) {
+                newErrors.epochs = 'Epochs must be greater than 0'
+            }
+
+            if (formData.training.logging_steps <= 0) {
+                newErrors.logging_steps = 'Logging steps must be greater than 0'
+            }
         }
 
-        if (formData.openai_params.n_epochs <= 0) {
-            newErrors.n_epochs = 'Number of epochs must be greater than 0'
+        // General validation (only when enabled)
+        if (generalEnabled) {
+            if (!formData.general.output_dir) {
+                newErrors.output_dir = 'Output directory is required'
+            }
         }
 
-        // Training parameters validation
-        if (formData.training.learning_rate <= 0) {
-            newErrors.learning_rate = 'Learning rate must be greater than 0'
-        }
-
-        if (formData.training.epochs <= 0) {
-            newErrors.epochs = 'Epochs must be greater than 0'
-        }
-
-        if (formData.training.logging_steps <= 0) {
-            newErrors.logging_steps = 'Logging steps must be greater than 0'
+        // Dataset validation (only when enabled)
+        if (datasetEnabled) {
+            if (!formData.dataset) {
+                newErrors.dataset = 'Dataset configuration is required'
+            } else {
+                if (formData.dataset.max_length <= 0) {
+                    newErrors.dataset_max_length = 'Max length must be greater than 0'
+                }
+            }
         }
 
         // LoRA parameters validation (only when enabled)
@@ -269,19 +294,38 @@ const FinetuningJobModal = ({ open, onClose, onJobCreated }) => {
                 }
             }
 
+            // Build payload and only include sections that are enabled
             const jobPayload = {
                 model: formData.baseModel,
                 // Use uploaded filename/id (if available)
                 training_file: trainingFileName,
-                training_file_id: trainingFileId,
-                General: generalPayload,
-                Dataset: {
+                training_file_id: trainingFileId
+            }
+
+            if (generalEnabled) {
+                // If user enabled LoRA, include the object; otherwise send explicit null inside General
+                const gen = { ...formData.general }
+                gen.lora_config = loraEnabled ? formData.lora : null
+                jobPayload.General = gen
+                // set top-level task for DB compatibility
+                jobPayload.task = gen.task || 'instruction_tuning'
+            } else {
+                // General disabled: ensure DB task column is set to default
+                jobPayload.task = 'instruction_tuning'
+            }
+
+            if (datasetEnabled) {
+                jobPayload.Dataset = {
                     max_length: formData.dataset.max_length,
+                    // fallback keys if some are undefined
                     query_max_len: formData.dataset.query_max_len,
                     passage_max_len: formData.dataset.passage_max_len,
                     padding: formData.dataset.padding_side
-                },
-                Training: {
+                }
+            }
+
+            if (trainingEnabled) {
+                jobPayload.Training = {
                     epochs: formData.training.epochs,
                     batch_size: formData.openai_params.batch_size,
                     gradient_accumulation_steps: formData.training.gradient_accumulation_steps
@@ -296,16 +340,25 @@ const FinetuningJobModal = ({ open, onClose, onJobCreated }) => {
                 id: response.data?.id || response.data?.fine_tuning_job_id || Date.now().toString(),
                 status: response.data?.status || 'pending',
                 model: formData.baseModel,
-                task: formData.general?.task || formData.lora?.task_type || null,
+                task: jobPayload.task || (loraEnabled ? formData.lora?.task_type : 'instruction_tuning'),
                 dataset: formData.trainingDataset?.suffixedName || formData.trainingDataset?.name || 'Unknown',
                 progress: '0%',
                 createdDate: response.data?.created_at || new Date().toISOString(),
-                // Include all configuration sections
-                openai_params: formData.openai_params,
-                general: formData.general,
-                dataset_config: formData.dataset,
-                training: formData.training,
                 training_file: jobPayload.training_file
+            }
+
+            // Mirror payload sections in the newJob object for UI
+            if (trainingEnabled) {
+                newJob.openai_params = formData.openai_params
+                newJob.training = formData.training
+            }
+
+            if (generalEnabled) {
+                newJob.general = formData.general
+            }
+
+            if (datasetEnabled) {
+                newJob.dataset_config = formData.dataset
             }
 
             onJobCreated(newJob)
@@ -396,7 +449,7 @@ const FinetuningJobModal = ({ open, onClose, onJobCreated }) => {
                 </Stack>
             </DialogTitle>
 
-            <DialogContent dividers sx={{ p: 3, overflow: 'auto', minHeight: 600 }}>
+            <DialogContent dividers sx={{ p: 3, overflow: 'auto', minHeight: 0 }}>
                 <Grid container spacing={3} sx={{ height: '100%', alignItems: 'stretch' }}>
                     {/* Top Left Quadrant: Model Configuration and Dataset Configuration */}
                     <Grid item xs={12} md={6}>
@@ -404,7 +457,7 @@ const FinetuningJobModal = ({ open, onClose, onJobCreated }) => {
                             {/* Model Configuration */}
                             <Box sx={{ p: 2, border: 1, borderColor: 'divider', borderRadius: 1, backgroundColor: 'background.paper' }}>
                                 <Typography variant="h6" sx={{ mb: 2, fontWeight: 600, color: 'primary.main' }}>
-                                    Model Configuration
+                                    Model Configuration*
                                 </Typography>
                                 <FormControl fullWidth required error={!!errors.baseModel} size="medium" sx={{ '& .MuiInputBase-root': { minHeight: 48 } }}>
                                     <InputLabel>Base Model</InputLabel>
@@ -429,9 +482,12 @@ const FinetuningJobModal = ({ open, onClose, onJobCreated }) => {
 
                             {/* Dataset Configuration */}
                             <Box sx={{ p: 2, border: 1, borderColor: 'divider', borderRadius: 1, backgroundColor: 'background.paper' }}>
-                                <Typography variant="h6" sx={{ mb: 2, fontWeight: 600, color: 'primary.main' }}>
-                                    Dataset Configuration
-                                </Typography>
+                                <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
+                                    <Typography variant="h6" sx={{ fontWeight: 600, color: 'primary.main' }}>
+                                        Dataset Configuration
+                                    </Typography>
+                                    <FormControlLabel control={<Checkbox checked={datasetEnabled} onChange={(e) => setDatasetEnabled(e.target.checked)} />} label="Enable" />
+                                </Stack>
                                 <Stack alignItems="center">
                                     <Grid container spacing={2} justifyContent="center">
                                         <Grid item xs={6}>
@@ -444,6 +500,7 @@ const FinetuningJobModal = ({ open, onClose, onJobCreated }) => {
                                                 size="medium"
                                                 fullWidth
                                                 sx={{ '& .MuiInputBase-root': { minHeight: 48 } }}
+                                                disabled={!datasetEnabled}
                                             />
                                         </Grid>
                                         <Grid item xs={6}>
@@ -456,6 +513,7 @@ const FinetuningJobModal = ({ open, onClose, onJobCreated }) => {
                                                 size="medium"
                                                 fullWidth
                                                 sx={{ '& .MuiInputBase-root': { minHeight: 48 } }}
+                                                disabled={!datasetEnabled}
                                             />
                                         </Grid>
                                         <Grid item xs={6}>
@@ -465,6 +523,7 @@ const FinetuningJobModal = ({ open, onClose, onJobCreated }) => {
                                                     value={formData.dataset.data_preprocess_type}
                                                     onChange={(e) => handleConfigChange('dataset', 'data_preprocess_type', e.target.value)}
                                                     label="Preprocess Type"
+                                                    disabled={!datasetEnabled}
                                                 >
                                                     <MenuItem value="neural_chat">Neural Chat</MenuItem>
                                                     <MenuItem value="general">General</MenuItem>
@@ -481,6 +540,7 @@ const FinetuningJobModal = ({ open, onClose, onJobCreated }) => {
                                                 size="medium"
                                                 fullWidth
                                                 sx={{ '& .MuiInputBase-root': { minHeight: 48 } }}
+                                                disabled={!datasetEnabled}
                                             />
                                         </Grid>
                                     </Grid>
@@ -509,9 +569,12 @@ const FinetuningJobModal = ({ open, onClose, onJobCreated }) => {
                     {/* Bottom Left Quadrant: General Configuration + LoRA */}
                     <Grid item xs={12} md={6}>
                         <Box sx={{ height: '100%', p: 3, border: 1, borderColor: 'divider', borderRadius: 1, backgroundColor: 'background.paper' }}>
-                            <Typography variant="h6" sx={{ mb: 2, fontWeight: 600, color: 'primary.main' }}>
-                                General Configuration
-                            </Typography>
+                            <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
+                                <Typography variant="h6" sx={{ fontWeight: 600, color: 'primary.main' }}>
+                                    General Configuration
+                                </Typography>
+                                <FormControlLabel control={<Checkbox checked={generalEnabled} onChange={(e) => setGeneralEnabled(e.target.checked)} />} label="Enable" />
+                            </Stack>
                             <Stack spacing={2.5}>
                                     <FormControl fullWidth size="medium" sx={{ '& .MuiInputBase-root': { minHeight: 48 } }}>
                                         <InputLabel>Task Type</InputLabel>
@@ -519,6 +582,7 @@ const FinetuningJobModal = ({ open, onClose, onJobCreated }) => {
                                             value={formData.general.task}
                                             onChange={(e) => handleConfigChange('general', 'task', e.target.value)}
                                             label="Task Type"
+                                            disabled={!generalEnabled}
                                         >
                                             <MenuItem value="instruction_tuning">Instruction Tuning</MenuItem>
                                             <MenuItem value="pretraining">Pretraining</MenuItem>
@@ -534,6 +598,7 @@ const FinetuningJobModal = ({ open, onClose, onJobCreated }) => {
                                             value={formData.general.report_to}
                                             onChange={(e) => handleConfigChange('general', 'report_to', e.target.value)}
                                             label="Report To"
+                                            disabled={!generalEnabled}
                                         >
                                             <MenuItem value="none">None</MenuItem>
                                             <MenuItem value="tensorboard">TensorBoard</MenuItem>
@@ -545,6 +610,7 @@ const FinetuningJobModal = ({ open, onClose, onJobCreated }) => {
                                         onChange={(e) => handleConfigChange('general', 'output_dir', e.target.value)}
                                         fullWidth
                                         size="medium"
+                                        disabled={!generalEnabled}
                                     />
                                 <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
                                     <Typography variant="subtitle1">LoRA Configuration</Typography>
@@ -607,10 +673,13 @@ const FinetuningJobModal = ({ open, onClose, onJobCreated }) => {
 
                     {/* Bottom Right Quadrant: Training Configuration + OpenAI */}
                     <Grid item xs={12} md={6}>
-                        <Box sx={{ height: '100%', p: 3, border: 1, borderColor: 'divider', borderRadius: 1, backgroundColor: 'background.paper' }}>
-                            <Typography variant="h6" sx={{ mb: 2, fontWeight: 600, color: 'primary.main' }}>
-                                Training Configuration
-                            </Typography>
+                            <Box sx={{ height: '100%', p: 3, border: 1, borderColor: 'divider', borderRadius: 1, backgroundColor: 'background.paper' }}>
+                                <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
+                                    <Typography variant="h6" sx={{ fontWeight: 600, color: 'primary.main' }}>
+                                        Training Configuration
+                                    </Typography>
+                                    <FormControlLabel control={<Checkbox checked={trainingEnabled} onChange={(e) => setTrainingEnabled(e.target.checked)} />} label="Enable" />
+                                </Stack>
                             <Stack spacing={2.5}>
                                 <Stack alignItems="center">
                                     <Grid container spacing={2} justifyContent="center">
@@ -625,6 +694,7 @@ const FinetuningJobModal = ({ open, onClose, onJobCreated }) => {
                                                     size="medium"
                                                 fullWidth
                                                 sx={{ '& .MuiInputBase-root': { minHeight: 48 } }}
+                                                    disabled={!trainingEnabled}
                                             />
                                         </Grid>
                                         <Grid item xs={6}>
@@ -638,6 +708,7 @@ const FinetuningJobModal = ({ open, onClose, onJobCreated }) => {
                                                     size="medium"
                                                 fullWidth
                                                 sx={{ '& .MuiInputBase-root': { minHeight: 48 } }}
+                                                disabled={!trainingEnabled}
                                             />
                                         </Grid>
                                     </Grid>
@@ -652,13 +723,15 @@ const FinetuningJobModal = ({ open, onClose, onJobCreated }) => {
                                     size="medium"
                                     fullWidth
                                     sx={{ '& .MuiInputBase-root': { minHeight: 48 } }}
+                                    disabled={!trainingEnabled}
                                 />
                                 <FormControl fullWidth size="medium" sx={{ '& .MuiInputBase-root': { minHeight: 48 } }}>
                                         <InputLabel>Optimizer</InputLabel>
                                         <Select
-                                            value={formData.training.optimizer}
-                                            onChange={(e) => handleConfigChange('training', 'optimizer', e.target.value)}
+                                                value={formData.training.optimizer}
+                                                onChange={(e) => handleConfigChange('training', 'optimizer', e.target.value)}
                                             label="Optimizer"
+                                                disabled={!trainingEnabled}
                                         >
                                             <MenuItem value="adamw_torch">AdamW Torch</MenuItem>
                                             <MenuItem value="adam">Adam</MenuItem>
@@ -674,6 +747,7 @@ const FinetuningJobModal = ({ open, onClose, onJobCreated }) => {
                                                         value={formData.training.device}
                                                         onChange={(e) => handleConfigChange('training', 'device', e.target.value)}
                                                         label="Device"
+                                                        disabled={!trainingEnabled}
                                                     >
                                                         <MenuItem value="cpu">CPU</MenuItem>
                                                         <MenuItem value="gpu">GPU</MenuItem>
@@ -689,6 +763,7 @@ const FinetuningJobModal = ({ open, onClose, onJobCreated }) => {
                                                         value={formData.training.mixed_precision}
                                                         onChange={(e) => handleConfigChange('training', 'mixed_precision', e.target.value)}
                                                         label="Mixed Precision"
+                                                        disabled={!trainingEnabled}
                                                     >
                                                         <MenuItem value="no">No</MenuItem>
                                                         <MenuItem value="fp16">FP16</MenuItem>
@@ -706,6 +781,7 @@ const FinetuningJobModal = ({ open, onClose, onJobCreated }) => {
                                         inputProps={{ min: 1, step: 1 }}
                                         size="medium"
                                         fullWidth
+                                        disabled={!trainingEnabled}
                                     />
                                     <Stack alignItems="center">
                                         <Grid container spacing={2} justifyContent="center">
@@ -719,6 +795,7 @@ const FinetuningJobModal = ({ open, onClose, onJobCreated }) => {
                                                     inputProps={{ min: 0.02, max: 2, step: 0.01 }}
                                                     size="medium"
                                                     fullWidth
+                                                    disabled={!trainingEnabled}
                                                 />
                                             </Grid>
                                             <Grid item xs={6}>
@@ -730,6 +807,7 @@ const FinetuningJobModal = ({ open, onClose, onJobCreated }) => {
                                                     inputProps={{ min: 0, max: 1, step: 0.01 }}
                                                     size="medium"
                                                     fullWidth
+                                                    disabled={!trainingEnabled}
                                                 />
                                             </Grid>
                                         </Grid>
