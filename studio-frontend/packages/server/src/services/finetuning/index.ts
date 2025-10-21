@@ -8,8 +8,7 @@ import { getRunningExpressApp } from '../../utils/getRunningExpressApp'
 import { FineTuningJob } from '../../database/entities/FineTuningJob'
 import { FineTuningCheckpoint } from '../../database/entities/FineTuningCheckpoint'
 
-// Derive finetuning service base URL from HOST_IP (default port 815) if not explicitly provided.
-const FINETUNING_SERVICE_URL = process.env.HOST_IP ? `http://${process.env.HOST_IP}:8015` : 'undefined'
+const FINETUNING_SERVICE_URL = process.env.FINETUNING_HOST ? `http://${process.env.FINETUNING_HOST}:8015` : 'undefined'
 console.debug('finetuningService - FINETUNING_SERVICE_URL', FINETUNING_SERVICE_URL)
 
 // Create an axios client with keep-alive to reduce connection churn
@@ -634,8 +633,7 @@ const getFineTuningJobLogs = async (
     options: { ray_job_id?: string } = {}
 ) => {
     try {
-        // Determine Ray dashboard host (host:port). We only use HOST_IP to derive the Ray dashboard address.
-        const rayHost = process.env.HOST_IP ? `${process.env.HOST_IP}:8265` : 'undefined'
+        const rayHost = process.env.FINETUNING_HOST ? `${process.env.FINETUNING_HOST}:8265` : 'undefined'
 
         // If caller provided an explicit ray_job_id, use it. Otherwise attempt to discover the Ray submission id
         let submissionId: string | undefined = options.ray_job_id

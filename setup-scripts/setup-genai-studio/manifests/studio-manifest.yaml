@@ -434,6 +434,9 @@ spec:
         securityContext: {}
         image: ${REGISTRY}/studio-frontend:${TAG}
         imagePullPolicy: Always
+        envFrom:
+        - configMapRef:
+            name: studio-config
         env:
         - name: DATABASE_TYPE
           value: mysql
@@ -612,3 +615,59 @@ spec:
     targetPort: 8443
   selector:
     app: keycloak
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: finetuning-server
+  namespace: studio
+spec:
+  type: ClusterIP
+  ports:
+    - name: api
+      protocol: TCP
+      port: 8015
+      targetPort: 8015
+    - name: dashboard
+      protocol: TCP
+      port: 8265
+      targetPort: 8265
+  selector:
+    app: finetuning-server
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: finetuning-server
+  namespace: studio
+  labels:
+    app: finetuning-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: finetuning-server
+  template:
+    metadata:
+      labels:
+        app: finetuning-server
+    spec:
+      # Mirror --ipc=host from docker run
+      # hostIPC: true
+      containers:
+      - name: finetuning-server
+        image: opea/finetuning:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8015
+        - containerPort: 8265
+        env:
+        - name: http_proxy
+          value: ${HTTP_PROXY}
+        - name: https_proxy
+          value: ${HTTP_PROXY}
+        - name: NO_PROXY
+          value: ${NO_PROXY}
+        resources: {}
