@@ -29,13 +29,13 @@ const uploadTrainingFile = async (req: Request, res: Response, next: NextFunctio
  */
 const createFineTuningJob = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const hasFile = !!req.body?.training_file || !!(req.body as any).training_file_id
-        if (!req.body || !hasFile || !req.body.model) {
-            throw new InternalFlowiseError(
-                StatusCodes.BAD_REQUEST,
-                'Error: finetuningController.createFineTuningJob - model and training_file (or training_file_id) are required!'
-            )
-        }
+        const hasFile = !!req.body?.training_file
+            if (!req.body || !hasFile || !req.body.model) {
+                throw new InternalFlowiseError(
+                    StatusCodes.BAD_REQUEST,
+                    'Error: finetuningController.createFineTuningJob - model and training_file are required!'
+                )
+            }
 
         const apiResponse = await finetuningService.createFineTuningJob(req.body)
         return res.json(apiResponse)

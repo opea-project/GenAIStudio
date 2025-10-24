@@ -17,8 +17,6 @@ const finetuningApi = {
     createJob: (jobData) => {
         const payload = {
             training_file: jobData.training_file,
-            // forward training_file_id when available (server will prefer id)
-            ...(jobData.training_file_id ? { training_file_id: jobData.training_file_id } : {}),
             model: jobData.model
         }
 

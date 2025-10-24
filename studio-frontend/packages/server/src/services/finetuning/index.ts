@@ -58,32 +58,6 @@ const uploadTrainingFile = async (file: Express.Multer.File, purpose: string = '
             // ignore logging errors
         }
 
-        // If the finetuning service returned an id and a filename, store mappings for both
-        try {
-            const returnedId = response?.data?.id || response?.data?.file_id || response?.data?.name || undefined
-            const returnedFilenameRaw = response?.data?.filename || response?.data?.name || undefined
-            if (returnedId && returnedFilenameRaw) {
-                // store both raw and decoded filename keys
-                let decodedFilename = returnedFilenameRaw
-                try {
-                    decodedFilename = decodeURIComponent(returnedFilenameRaw)
-                } catch (e) {
-                    // ignore decode errors
-                }
-
-                const entry = { id: returnedId, rawFilename: returnedFilenameRaw }
-                uploadedFileIdMap.set(returnedFilenameRaw, entry)
-                if (decodedFilename !== returnedFilenameRaw) {
-                    uploadedFileIdMap.set(decodedFilename, entry)
-                }
-
-                // eslint-disable-next-line no-console
-                console.debug('finetuningService.uploadTrainingFile - stored mapping', decodedFilename, '<->', returnedFilenameRaw, '->', returnedId)
-            }
-        } catch (e) {
-            // ignore mapping errors
-        }
-
         return response.data
     } catch (error: any) {
         throw new InternalFlowiseError(
@@ -128,7 +102,6 @@ const persistJobToDb = async (jobData: any) => {
             model: jobData.model || undefined,
             status: jobData.status || jobData.state || undefined,
             training_file: jobData.training_file || jobData.trainingFile || undefined,
-            training_file_id: jobData.training_file_id || undefined,
             task: taskVal || undefined,
             progress: typeof jobData.progress === 'number' ? jobData.progress : undefined,
             trained_tokens: typeof jobData.trained_tokens === 'number' ? jobData.trained_tokens : undefined
@@ -228,39 +201,9 @@ const createFineTuningJob = async (jobConfig: {
         // the external service may expect the raw (possibly URL-encoded) filename.
         const forwardedJobConfig = { ...jobConfig }
 
-        // Debug: log the jobConfig being forwarded to the external finetuning service
-        try {
-            // eslint-disable-next-line no-console
-            console.debug('finetuningService.createFineTuningJob - initial jobConfig:', forwardedJobConfig)
-        } catch (logErr) {
-            // ignore
-        }
-        // Sanitize the payload: remove undefined values and empty nested objects
+        // (Removed verbose initial jobConfig logging to reduce noise)
         const sanitizedPayload = JSON.parse(JSON.stringify(forwardedJobConfig))
-        
-        // // Fix lora_config: must be explicitly null for rerank/embedding tasks, or omitted for instruction tuning
-        // if (sanitizedPayload?.General) {
-        //     if (Object.prototype.hasOwnProperty.call(sanitizedPayload.General, 'lora_config')) {
-        //         const task = sanitizedPayload.General.task
-        //         if (task === 'rerank' || task === 'embedding') {
-        //             // For rerank/embedding tasks, lora_config must be explicitly null
-        //             sanitizedPayload.General.lora_config = null
-        //             // eslint-disable-next-line no-console
-        //             console.debug('finetuningService.createFineTuningJob - setting General.lora_config to null for task:', task)
-        //         } else {
-        //             // For instruction tuning or other tasks, remove lora_config
-        //             // eslint-disable-next-line no-console
-        //             console.debug('finetuningService.createFineTuningJob - removing General.lora_config for instruction tuning')
-        //             delete sanitizedPayload.General.lora_config
-        //         }
-        //     } else if (sanitizedPayload.General.task === 'rerank' || sanitizedPayload.General.task === 'embedding') {
-        //         // If lora_config is missing for rerank/embedding, add it as null
-        //         sanitizedPayload.General.lora_config = null
-        //         // eslint-disable-next-line no-console
-        //         console.debug('finetuningService.createFineTuningJob - adding lora_config=null for task:', sanitizedPayload.General.task)
-        //     }
-        // }
-        
+
         // Remove empty nested objects that may confuse the server
         if (sanitizedPayload.General && Object.keys(sanitizedPayload.General).length === 0) {
             delete sanitizedPayload.General
@@ -272,27 +215,6 @@ const createFineTuningJob = async (jobConfig: {
             delete sanitizedPayload.Training
         }
         
-        // // For embedding/rerank tasks, only send training_file, model, and General (as per documentation examples)
-        // // Additional Dataset/Training params may cause 500 errors
-        // const task = sanitizedPayload.General?.task
-        // if (task === 'embedding' || task === 'rerank') {
-        //     // Create minimal payload for embedding/rerank
-        //     const minimalPayload: any = {
-        //         training_file: sanitizedPayload.training_file,
-        //         model: sanitizedPayload.model,
-        //         General: sanitizedPayload.General
-        //     }
-        //     // Only include Dataset/Training if they have non-default values
-        //     // eslint-disable-next-line no-console
-        //     console.debug('finetuningService.createFineTuningJob - using minimal payload for', task, 'task')
-        //     Object.assign(sanitizedPayload, minimalPayload)
-        //     // Remove Dataset and Training for embedding/rerank to match documentation
-        //     delete (sanitizedPayload as any).Dataset
-        //     delete (sanitizedPayload as any).Training
-        // }
-
-        // Use the stored raw filename from upload if available
-        // The upload response returns the exact filename as stored on the finetuning service
         if (sanitizedPayload.training_file && typeof sanitizedPayload.training_file === 'string') {
             const originalFilename = sanitizedPayload.training_file
             
@@ -314,22 +236,7 @@ const createFineTuningJob = async (jobConfig: {
             
             if (stored && stored.rawFilename) {
                 sanitizedPayload.training_file = stored.rawFilename
-                // eslint-disable-next-line no-console
-                console.debug('finetuningService.createFineTuningJob - using stored raw filename from upload:', stored.rawFilename)
-            } else {
-                // No stored mapping, try to use the original filename as-is
-                // The upload service may have stored it with the encoded name
-                sanitizedPayload.training_file = originalFilename
-                // eslint-disable-next-line no-console
-                console.debug('finetuningService.createFineTuningJob - no stored mapping found, using filename as-is:', originalFilename)
             }
-        }
-        
-        // Remove training_file_id - the API doesn't accept it, only training_file is required
-        if ((sanitizedPayload as any).training_file_id) {
-            // eslint-disable-next-line no-console
-            console.debug('finetuningService.createFineTuningJob - removing training_file_id from payload')
-            delete (sanitizedPayload as any).training_file_id
         }
 
         // Try a sequence of attempts to accommodate naming/encoding/id differences.
@@ -356,14 +263,6 @@ const createFineTuningJob = async (jobConfig: {
                 }
                 throw err
             }
-        }
-
-        // Log the final sanitized payload
-        try {
-            // eslint-disable-next-line no-console
-            console.debug('finetuningService.createFineTuningJob - final sanitized payload:', JSON.stringify(sanitizedPayload, null, 2))
-        } catch (e) {
-            // ignore
         }
 
         // Send the sanitized payload

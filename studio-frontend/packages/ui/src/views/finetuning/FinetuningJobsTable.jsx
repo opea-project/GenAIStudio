@@ -125,6 +125,42 @@ const FinetuningJobsTable = ({ data, isLoading = false, onRefresh = null, filter
     const [logsLoading, setLogsLoading] = useState(false)
     const logsContainerRef = useRef(null)
 
+    // Auto-refresh logs every 3 seconds when logs dialog is open
+    useEffect(() => {
+        if (!logsOpen || !selectedJob) return
+
+        const fetchLogs = async () => {
+            try {
+                const response = await finetuningApi.getJobLogs(selectedJob.id)
+                const body = response.data
+                // Support two shapes: { logs: string } or raw string
+                if (body && typeof body === 'object' && 'logs' in body) {
+                    // If the service provided an error message, prefer showing that when logs are empty
+                    const logsStr = body.logs || ''
+                    if (!logsStr && body.error) {
+                        setLogsData(`Error: ${body.error}`)
+                    } else {
+                        setLogsData(normalizeLogs(logsStr))
+                    }
+                } else if (typeof body === 'string') {
+                    setLogsData(normalizeLogs(body))
+                } else {
+                    setLogsData(JSON.stringify(body, null, 2))
+                }
+            } catch (error) {
+                console.error('Error auto-refreshing logs:', error)
+            }
+        }
+
+        // Initial fetch when dialog opens
+        fetchLogs()
+
+        // Set up interval for auto-refresh every 5 seconds
+        const intervalId = setInterval(fetchLogs, 5000)
+
+        return () => clearInterval(intervalId)
+    }, [logsOpen, selectedJob])
+
     // When logs dialog opens or logsData changes, scroll to bottom
     useEffect(() => {
         if (!logsOpen) return
@@ -195,34 +231,17 @@ const FinetuningJobsTable = ({ data, isLoading = false, onRefresh = null, filter
 
         // ensure selectedJob is set for downstream operations
         setSelectedJob(jobToUse)
-
+        
+        // Clear any existing logs data and show loading
         setLogsLoading(true)
-        try {
-            // call backend API to fetch logs (may return { logs: string })
-            const response = await finetuningApi.getJobLogs(jobToUse.id)
-            const body = response.data
-            // Support two shapes: { logs: string } or raw string
-            if (body && typeof body === 'object' && 'logs' in body) {
-                // If the service provided an error message, prefer showing that when logs are empty
-                const logsStr = body.logs || ''
-                if (!logsStr && body.error) {
-                    setLogsData(`Error: ${body.error}`)
-                } else {
-                    setLogsData(normalizeLogs(logsStr))
-                }
-            } else if (typeof body === 'string') {
-                setLogsData(normalizeLogs(body))
-            } else {
-                setLogsData(JSON.stringify(body, null, 2))
-            }
-            setLogsOpen(true)
-            handleMenuClose()
-        } catch (error) {
-            console.error('Error fetching logs:', error)
-            alert('Failed to fetch logs: ' + (error?.message || 'Unknown error'))
-        } finally {
-            setLogsLoading(false)
-        }
+        
+        // Open the dialog - the auto-refresh effect will handle fetching logs
+        setLogsOpen(true)
+        // Close the menu but keep selectedJob set so auto-refresh can use it
+        setAnchorEl(null)
+        
+        // Stop loading indicator after a brief moment as auto-refresh takes over
+        setTimeout(() => setLogsLoading(false), 500)
     }
 
     // Normalize logs string:
@@ -571,7 +590,16 @@ const FinetuningJobsTable = ({ data, isLoading = false, onRefresh = null, filter
             </Dialog>
 
             {/* Logs Dialog */}
-            <Dialog open={logsOpen} onClose={() => setLogsOpen(false)} maxWidth="lg" fullWidth>
+            <Dialog
+                open={logsOpen}
+                onClose={() => {
+                    setLogsOpen(false)
+                    // clear selected job when dialog closes to avoid stale selection
+                    setSelectedJob(null)
+                }}
+                maxWidth="lg"
+                fullWidth
+            >
                 <DialogTitle>Job Logs</DialogTitle>
                 <DialogContent>
                     {logsLoading ? (
@@ -583,7 +611,14 @@ const FinetuningJobsTable = ({ data, isLoading = false, onRefresh = null, filter
                     )}
                 </DialogContent>
                 <DialogActions>
-                    <Button onClick={() => setLogsOpen(false)}>Close</Button>
+                    <Button
+                        onClick={() => {
+                            setLogsOpen(false)
+                            setSelectedJob(null)
+                        }}
+                    >
+                        Close
+                    </Button>
                 </DialogActions>
             </Dialog>
         </>

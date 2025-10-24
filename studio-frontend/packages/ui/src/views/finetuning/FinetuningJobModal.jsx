@@ -22,6 +22,7 @@ import {
     CircularProgress,
     Grid
 } from '@mui/material'
+import Autocomplete from '@mui/material/Autocomplete'
 import { useTheme } from '@mui/material/styles'
 
 // icons
@@ -39,6 +40,7 @@ const FinetuningJobModal = ({ open, onClose, onJobCreated }) => {
     const [formData, setFormData] = useState({
         baseModel: '',
         trainingDataset: null,
+        hf_token: '',
         // OpenAI standard parameters
         openai_params: {
             n_epochs: 3,
@@ -276,16 +278,12 @@ const FinetuningJobModal = ({ open, onClose, onJobCreated }) => {
             generalPayload.lora_config = loraEnabled ? formData.lora : null
 
             // If the user selected a file but hasn't uploaded it yet, upload it now
-            let trainingFileName = formData.trainingDataset?.uploadedName || formData.trainingDataset?.name
-            let trainingFileId = formData.trainingDataset?.id
+            let trainingFileName = formData.trainingDataset?.uploadedName || null
             if (formData.trainingDataset && formData.trainingDataset.file) {
                 try {
                     setIsSubmitting(true)
-                    const uploadResp = await finetuningApi.uploadFile(formData.trainingDataset.file, 'fine-tune', (progressEvent) => {
-                        // we could wire progress to UI if desired
-                    })
-                    trainingFileName = uploadResp.data?.filename || trainingFileName || formData.trainingDataset.file.name
-                    trainingFileId = uploadResp.data?.id || trainingFileId
+                    const uploadResp = await finetuningApi.uploadFile(formData.trainingDataset.file, 'fine-tune', () => {})
+                    trainingFileName = uploadResp.data?.filename || null
                 } catch (err) {
                     console.error('Error uploading training file before job creation:', err)
                     setErrors(prev => ({ ...prev, trainingDataset: 'Failed to upload training file: ' + (err.message || 'Unknown') }))
@@ -297,21 +295,26 @@ const FinetuningJobModal = ({ open, onClose, onJobCreated }) => {
             // Build payload and only include sections that are enabled
             const jobPayload = {
                 model: formData.baseModel,
-                // Use uploaded filename/id (if available)
-                training_file: trainingFileName,
-                training_file_id: trainingFileId
+                training_file: trainingFileName
             }
 
             if (generalEnabled) {
                 // If user enabled LoRA, include the object; otherwise send explicit null inside General
                 const gen = { ...formData.general }
                 gen.lora_config = loraEnabled ? formData.lora : null
+                // Ensure config exists and place hf_token if provided
+                gen.config = gen.config || {}
+                if (formData.hf_token) {
+                    gen.config.token = formData.hf_token
+                }
                 jobPayload.General = gen
-                // set top-level task for DB compatibility
                 jobPayload.task = gen.task || 'instruction_tuning'
             } else {
-                // General disabled: ensure DB task column is set to default
                 jobPayload.task = 'instruction_tuning'
+                // If HF token was provided while General is disabled, create minimal General with config.token
+                if (formData.hf_token) {
+                    jobPayload.General = { config: { token: formData.hf_token } }
+                }
             }
 
             if (datasetEnabled) {
@@ -355,6 +358,9 @@ const FinetuningJobModal = ({ open, onClose, onJobCreated }) => {
 
             if (generalEnabled) {
                 newJob.general = formData.general
+                if (formData.hf_token) {
+                    newJob.general = { ...newJob.general, config: { ...(newJob.general.config || {}), token: formData.hf_token } }
+                }
             }
 
             if (datasetEnabled) {
@@ -417,6 +423,8 @@ const FinetuningJobModal = ({ open, onClose, onJobCreated }) => {
                 num_training_workers: 1
             }
         })
+    // reset token as well
+    setFormData(prev => ({ ...prev, hf_token: '' }))
         setLoraEnabled(false)
         setFormData(prev => ({ ...prev, lora: { r: 8, lora_alpha: 32, lora_dropout: 0.1, task_type: 'CAUSAL_LM' } }))
         setErrors({})
@@ -459,25 +467,38 @@ const FinetuningJobModal = ({ open, onClose, onJobCreated }) => {
                                 <Typography variant="h6" sx={{ mb: 2, fontWeight: 600, color: 'primary.main' }}>
                                     Model Configuration*
                                 </Typography>
-                                <FormControl fullWidth required error={!!errors.baseModel} size="medium" sx={{ '& .MuiInputBase-root': { minHeight: 48 } }}>
-                                    <InputLabel>Base Model</InputLabel>
-                                    <Select
-                                        value={formData.baseModel}
-                                        onChange={(e) => handleInputChange('baseModel', e.target.value)}
-                                        label="Base Model"
-                                    >
-                                        {baseModels.map((model) => (
-                                            <MenuItem key={model} value={model}>
-                                                {model}
-                                            </MenuItem>
-                                        ))}
-                                    </Select>
-                                    {errors.baseModel && (
-                                        <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1 }}>
-                                            {errors.baseModel}
-                                        </Typography>
+                                <Autocomplete
+                                    freeSolo
+                                    fullWidth
+                                    options={baseModels}
+                                    value={formData.baseModel}
+                                    onChange={(event, newValue) => handleInputChange('baseModel', newValue || '')}
+                                    onInputChange={(event, newInputValue) => handleInputChange('baseModel', newInputValue)}
+                                    renderInput={(params) => (
+                                        <TextField
+                                            {...params}
+                                            label="Base Model"
+                                            required
+                                            error={!!errors.baseModel}
+                                            size="medium"
+                                            sx={{ '& .MuiInputBase-root': { minHeight: 48 } }}
+                                        />
                                     )}
-                                </FormControl>
+                                />
+                                {errors.baseModel && (
+                                    <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1 }}>
+                                        {errors.baseModel}
+                                    </Typography>
+                                )}
+                                <TextField
+                                    label="HF Token (optional)"
+                                    type="password"
+                                    value={formData.hf_token}
+                                    onChange={(e) => handleInputChange('hf_token', e.target.value)}
+                                    fullWidth
+                                    size="medium"
+                                    sx={{ mt: 2 }}
+                                />
                             </Box>
 
                             {/* Dataset Configuration */}
@@ -612,6 +633,7 @@ const FinetuningJobModal = ({ open, onClose, onJobCreated }) => {
                                         size="medium"
                                         disabled={!generalEnabled}
                                     />
+                                    
                                 <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
                                     <Typography variant="subtitle1">LoRA Configuration</Typography>
                                     <FormControlLabel
