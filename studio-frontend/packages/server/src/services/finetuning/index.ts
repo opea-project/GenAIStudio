@@ -1,12 +1,14 @@
 import axios, { AxiosInstance } from 'axios'
 import http from 'http'
 import https from 'https'
+import * as fs from 'fs'
+import * as path from 'path'
+import { execSync } from 'child_process'
 import { StatusCodes } from 'http-status-codes'
 import { InternalFlowiseError } from '../../errors/internalFlowiseError'
 import { getErrorMessage } from '../../errors/utils'
 import { getRunningExpressApp } from '../../utils/getRunningExpressApp'
 import { FineTuningJob } from '../../database/entities/FineTuningJob'
-import { FineTuningCheckpoint } from '../../database/entities/FineTuningCheckpoint'
 
 const FINETUNING_SERVICE_URL = process.env.FINETUNING_HOST ? `http://${process.env.FINETUNING_HOST}:8015` : 'undefined'
 console.debug('finetuningService - FINETUNING_SERVICE_URL', FINETUNING_SERVICE_URL)
@@ -28,6 +30,73 @@ const axiosClient: AxiosInstance = axios.create({
 
 // In-memory mapping: filename (raw and decoded) -> { id, rawFilename }
 const uploadedFileIdMap: Map<string, { id: string; rawFilename: string }> = new Map()
+
+/**
+ * Helper function to zip a fine-tuning job output directory
+ * Checks if zip already exists and is up-to-date before creating a new one
+ * @param outputDir - Full path to the output directory for the job
+ * @param jobId - ID of the fine-tuning job
+ * @returns Path to the zipped file or null if failed
+ */
+const ensureFineTuningOutputZip = async (outputDir: string, jobId: string): Promise<string | null> => {
+    try {
+        // eslint-disable-next-line no-console
+        console.debug(`finetuningService.ensureFineTuningOutputZip - processing output for job: ${jobId}`)
+        
+        // Validate output directory exists
+        if (!fs.existsSync(outputDir)) {
+            // eslint-disable-next-line no-console
+            console.warn(`finetuningService.ensureFineTuningOutputZip - output directory not found: ${outputDir}`)
+            return null
+        }
+
+        const zipFilePath = `${outputDir}.zip`
+        const outputStats = fs.statSync(outputDir)
+        
+        // Check if zip exists and is up-to-date
+        if (fs.existsSync(zipFilePath)) {
+            const zipStats = fs.statSync(zipFilePath)
+            // If zip is newer than the output directory, skip re-zipping
+            if (zipStats.mtimeMs > outputStats.mtimeMs) {
+                // eslint-disable-next-line no-console
+                console.debug(`finetuningService.ensureFineTuningOutputZip - zip already up-to-date: ${zipFilePath}`)
+                return zipFilePath
+            }
+            // Remove outdated zip
+            try {
+                fs.unlinkSync(zipFilePath)
+                // eslint-disable-next-line no-console
+                console.debug(`finetuningService.ensureFineTuningOutputZip - removed outdated zip: ${zipFilePath}`)
+            } catch (e) {
+                // eslint-disable-next-line no-console
+                console.warn(`finetuningService.ensureFineTuningOutputZip - failed to remove outdated zip: ${e}`)
+            }
+        }
+
+        // Create zip file using tar (more efficient than node zip libraries)
+        // eslint-disable-next-line no-console
+        console.debug(`finetuningService.ensureFineTuningOutputZip - starting to zip output for job ${jobId}`)
+        try {
+            // Use tar to create a compressed archive
+            const parentDir = path.dirname(outputDir)
+            const dirName = path.basename(outputDir)
+            const cmd = `cd "${parentDir}" && tar -czf "${path.basename(zipFilePath)}" "${dirName}"`
+            execSync(cmd, { stdio: 'pipe', timeout: 300000 }) // 5 minute timeout
+            
+            // eslint-disable-next-line no-console
+            console.debug(`finetuningService.ensureFineTuningOutputZip - zip created successfully for job ${jobId}: ${zipFilePath}`)
+            return zipFilePath
+        } catch (execErr: any) {
+            // eslint-disable-next-line no-console
+            console.error(`finetuningService.ensureFineTuningOutputZip - tar failed for job ${jobId}: ${execErr?.message || execErr}`)
+            return null
+        }
+    } catch (error: any) {
+        // eslint-disable-next-line no-console
+        console.error(`finetuningService.ensureFineTuningOutputZip - error: ${error?.message || error}`)
+        return null
+    }
+}
 
 /**
  * Upload a training file to the finetuning service
@@ -468,10 +537,7 @@ const deleteFineTuningJob = async (fineTuningJobId: string) => {
         try {
             const appServer = getRunningExpressApp()
             const repo = appServer.AppDataSource.getRepository(FineTuningJob)
-            const checkpointRepo = appServer.AppDataSource.getRepository(FineTuningCheckpoint)
 
-            // delete checkpoints first
-            await checkpointRepo.delete({ fine_tuning_job_id: String(fineTuningJobId) })
             // delete job
             await repo.delete({ id: String(fineTuningJobId) })
         } catch (e) {
@@ -491,34 +557,61 @@ const deleteFineTuningJob = async (fineTuningJobId: string) => {
 }
 
 /**
- * List checkpoints of a fine-tuning job
+ * Download fine-tuning job output as a zip file
+ * Creates zip if needed, or returns existing zip immediately
+ * @param jobId - ID of the fine-tuning job
+ * @returns Path to the zipped file or null if not found
  */
-const listFineTuningCheckpoints = async (fineTuningJobId: string) => {
+const downloadFineTuningOutput = async (jobId: string): Promise<string | null> => {
     try {
-        const response = await axiosClient.post('/v1/finetune/list_checkpoints', {
-            fine_tuning_job_id: fineTuningJobId
-        })
-        return response.data
+        if (!jobId) {
+            throw new InternalFlowiseError(StatusCodes.BAD_REQUEST, 'Job ID is required')
+        }
+
+        const OUTPUT_BASE_DIR = '/tmp/finetuning/output'
+        const jobOutputDir = path.join(OUTPUT_BASE_DIR, jobId)
+
+        // eslint-disable-next-line no-console
+        console.debug(`finetuningService.downloadFineTuningOutput - checking for output: ${jobOutputDir}`)
+
+        // Verify job output directory exists
+        if (!fs.existsSync(jobOutputDir)) {
+            // eslint-disable-next-line no-console
+            console.warn(`finetuningService.downloadFineTuningOutput - output directory not found: ${jobOutputDir}`)
+            throw new InternalFlowiseError(StatusCodes.NOT_FOUND, `Fine-tuning job output not found for job: ${jobId}`)
+        }
+
+        // Security check: ensure path is within the expected directory
+        const resolvedJobDir = path.resolve(jobOutputDir)
+        const resolvedBaseDir = path.resolve(OUTPUT_BASE_DIR)
+        if (!resolvedJobDir.startsWith(resolvedBaseDir)) {
+            // eslint-disable-next-line no-console
+            console.error(`finetuningService.downloadFineTuningOutput - path traversal attempt: ${jobOutputDir}`)
+            throw new InternalFlowiseError(StatusCodes.FORBIDDEN, 'Invalid job output path')
+        }
+
+        // Ensure the output is zipped (returns immediately if zip is up-to-date)
+        const finalZipPath = await ensureFineTuningOutputZip(jobOutputDir, jobId)
+        if (!finalZipPath) {
+            throw new InternalFlowiseError(
+                StatusCodes.INTERNAL_SERVER_ERROR,
+                `Failed to create zip for job ${jobId}`
+            )
+        }
+
+        // eslint-disable-next-line no-console
+        console.debug(`finetuningService.downloadFineTuningOutput - file ready for download: ${finalZipPath}`)
+        return finalZipPath
     } catch (error: any) {
+        if (error instanceof InternalFlowiseError) {
+            throw error
+        }
+        // eslint-disable-next-line no-console
+        console.error(`finetuningService.downloadFineTuningOutput - error: ${error?.message || error}`)
         throw new InternalFlowiseError(
             StatusCodes.INTERNAL_SERVER_ERROR,
-            `Error: finetuningService.listFineTuningCheckpoints - ${getErrorMessage(error)}`
+            `Error: finetuningService.downloadFineTuningOutput - ${getErrorMessage(error)}`
         )
-    }
-}
-
-/**
- * Debug helper: forward any payload to the external finetuning job endpoint and return raw status/body
- */
-const proxyJobDebug = async (payload: any) => {
-    try {
-        const resp = await axiosClient.post('/v1/fine_tuning/jobs', payload)
-        return { status: resp.status, body: resp.data }
-    } catch (error: any) {
-        // Return the status and response data (stringify if needed)
-        const status = error?.response?.status || 500
-        const body = error?.response?.data || (error?.message || 'Unknown error')
-        return { status, body }
     }
 }
 
@@ -608,8 +701,7 @@ export default {
     listFineTuningJobs,
     retrieveFineTuningJob,
     cancelFineTuningJob,
-    listFineTuningCheckpoints,
     deleteFineTuningJob,
     getFineTuningJobLogs,
-    proxyJobDebug
+    downloadFineTuningOutput
 }

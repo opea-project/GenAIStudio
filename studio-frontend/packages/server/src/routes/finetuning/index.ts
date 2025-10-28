@@ -13,9 +13,6 @@ router.post('/files', upload.single('file'), finetuningController.uploadTraining
 // Create fine-tuning job
 router.post('/jobs', finetuningController.createFineTuningJob)
 
-// Debug: proxy an arbitrary job payload to the external finetuning service
-router.post('/debug/proxy-job', finetuningController.proxyJobDebug)
-
 // List all fine-tuning jobs
 router.get('/jobs', finetuningController.listFineTuningJobs)
 
@@ -29,7 +26,7 @@ router.post('/jobs/logs', finetuningController.getFineTuningJobLogs)
 router.post('/jobs/cancel', finetuningController.cancelFineTuningJob)
 router.post('/jobs/delete', finetuningController.deleteFineTuningJob)
 
-// List checkpoints of a fine-tuning job
-router.post('/jobs/checkpoints', finetuningController.listFineTuningCheckpoints)
+// Download fine-tuning job output
+router.get('/download-ft/:jobId', finetuningController.downloadFineTuningOutput)
 
 export default router

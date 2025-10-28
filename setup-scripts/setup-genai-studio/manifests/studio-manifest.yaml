@@ -397,6 +397,18 @@ spec:
       serviceAccountName: studio-backend-sa
 ---
 apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: shared-finetuning-output
+  namespace: studio
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
 kind: Service
 metadata:
   name: studio-frontend
@@ -469,6 +481,8 @@ spec:
         - name: ssh-key-volume
           mountPath: /root/.ssh
           readOnly: true
+        - name: shared-output-volume
+          mountPath: /tmp/finetuning/output
       volumes:
       - name: tmp
         emptyDir: {}
@@ -479,6 +493,9 @@ spec:
           - key: studio-id_rsa.pub
             path: id_rsa.pub
             mode: 0644
+      - name: shared-output-volume
+        persistentVolumeClaim:
+          claimName: shared-finetuning-output
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -654,11 +671,10 @@ spec:
       labels:
         app: finetuning-server
     spec:
-      # Mirror --ipc=host from docker run
-      # hostIPC: true
       containers:
       - name: finetuning-server
-        image: opea/finetuning:latest
+        # image: opea/finetuning:latest
+        image: ${REGISTRY}/finetuning:${TAG}
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8015
@@ -671,3 +687,10 @@ spec:
         - name: NO_PROXY
           value: ${NO_PROXY}
         resources: {}
+        volumeMounts:
+        - name: shared-output-volume
+          mountPath: /home/user/comps/finetuning/src/output
+      volumes:
+      - name: shared-output-volume
+        persistentVolumeClaim:
+          claimName: shared-finetuning-output

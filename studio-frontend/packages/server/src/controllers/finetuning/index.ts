@@ -117,25 +117,7 @@ const deleteFineTuningJob = async (req: Request, res: Response, next: NextFuncti
     }
 }
 
-/**
- * List checkpoints of a fine-tuning job
- * POST /api/v1/finetuning/jobs/checkpoints
- */
-const listFineTuningCheckpoints = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-        if (typeof req.body === 'undefined' || !req.body.fine_tuning_job_id) {
-            throw new InternalFlowiseError(
-                StatusCodes.BAD_REQUEST,
-                'Error: finetuningController.listFineTuningCheckpoints - fine_tuning_job_id not provided!'
-            )
-        }
 
-        const apiResponse = await finetuningService.listFineTuningCheckpoints(req.body.fine_tuning_job_id)
-        return res.json(apiResponse)
-    } catch (error) {
-        next(error)
-    }
-}
 
 /**
  * Fetch Ray/job logs for a fine-tuning job
@@ -168,23 +150,54 @@ const getFineTuningJobLogs = async (req: Request, res: Response, next: NextFunct
     }
 }
 
+
 /**
- * Debug: proxy an arbitrary job payload to the finetuning service and return raw response
- * POST /api/v1/finetuning/debug/proxy-job
+ * Download fine-tuning job output as a zip file
+ * GET /api/v1/finetuning/download-ft/:jobId
  */
-const proxyJobDebug = async (req: Request, res: Response, next: NextFunction) => {
+const downloadFineTuningOutput = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        if (typeof req.body === 'undefined') {
-            throw new InternalFlowiseError(StatusCodes.BAD_REQUEST, 'Error: finetuningController.proxyJobDebug - body is required')
+        const { jobId } = req.params
+
+        if (!jobId) {
+            throw new InternalFlowiseError(
+                StatusCodes.BAD_REQUEST,
+                'Error: finetuningController.downloadFineTuningOutput - jobId is required!'
+            )
         }
 
-        const apiResponse = await finetuningService.proxyJobDebug(req.body)
-        // Return the raw response object from the finetuning service
-        return res.status(apiResponse.status).send(apiResponse.body)
+        // Get the zip file path (creates if needed, but returns immediately if already exists)
+        const filePath = await finetuningService.downloadFineTuningOutput(jobId)
+        if (!filePath) {
+            throw new InternalFlowiseError(
+                StatusCodes.NOT_FOUND,
+                `Error: finetuningController.downloadFineTuningOutput - output not found for job: ${jobId}`
+            )
+        }
+
+        // Set response headers for file download
+        const fileName = `${jobId}-output.zip`
+        res.setHeader('Content-Type', 'application/zip')
+        res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`)
+        
+        // Stream the file
+        const fs = require('fs')
+        const fileStream = fs.createReadStream(filePath)
+        fileStream.on('error', (err: any) => {
+            console.error('Error streaming fine-tuning output file:', err)
+            if (!res.headersSent) {
+                res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+                    error: 'Error streaming fine-tuning output file'
+                })
+            }
+        })
+        fileStream.pipe(res)
     } catch (error) {
         next(error)
     }
 }
+
+
 
 export default {
     uploadTrainingFile,
@@ -193,7 +206,6 @@ export default {
     retrieveFineTuningJob,
     cancelFineTuningJob,
     deleteFineTuningJob,
-    listFineTuningCheckpoints,
     getFineTuningJobLogs,
-    proxyJobDebug
+    downloadFineTuningOutput
 }

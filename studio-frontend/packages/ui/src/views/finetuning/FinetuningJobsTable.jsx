@@ -19,21 +19,20 @@ import {
     TableSortLabel,
     Typography,
     IconButton,
+    Tooltip,
     Menu,
     MenuItem,
     Dialog,
     DialogTitle,
     DialogContent,
-    DialogActions,
-    List,
-    ListItem,
-    ListItemText
+    DialogActions
 } from '@mui/material'
 import { useTheme, styled } from '@mui/material/styles'
 import { tableCellClasses } from '@mui/material/TableCell'
+import { CircularProgress } from '@mui/material'
 
 // icons
-import { IconDots, IconEye, IconTrash, IconDownload, IconPlayerStop, IconCheckbox } from '@tabler/icons-react'
+import { IconDots, IconEye, IconTrash, IconDownload, IconPlayerStop } from '@tabler/icons-react'
 
 // API
 import finetuningApi from '@/api/finetuning'
@@ -116,10 +115,12 @@ const FinetuningJobsTable = ({ data, isLoading = false, onRefresh = null, filter
     const [anchorEl, setAnchorEl] = useState(null)
     const [selectedJob, setSelectedJob] = useState(null)
     const [actionLoading, setActionLoading] = useState(false)
+    // Track multiple concurrent downloads: { [jobId]: { progress: number } }
+    const [downloadingJobs, setDownloadingJobs] = useState({})
+    const [downloadDialogOpen, setDownloadDialogOpen] = useState(false)
+    const [downloadProgress, setDownloadProgress] = useState(0)
     const [detailsOpen, setDetailsOpen] = useState(false)
     const [detailsData, setDetailsData] = useState(null)
-    const [checkpointsOpen, setCheckpointsOpen] = useState(false)
-    const [checkpointsData, setCheckpointsData] = useState(null)
     const [logsOpen, setLogsOpen] = useState(false)
     const [logsData, setLogsData] = useState('')
     const [logsLoading, setLogsLoading] = useState(false)
@@ -204,25 +205,72 @@ const FinetuningJobsTable = ({ data, isLoading = false, onRefresh = null, filter
         }
     }
 
-    const handleViewCheckpoints = async (jobArg = null) => {
-        const jobToUse = jobArg || selectedJob
-        if (!jobToUse) return
-
-        // ensure selectedJob is set for downstream operations
-        setSelectedJob(jobToUse)
-
-        setActionLoading(true)
-        try {
-            const response = await finetuningApi.listCheckpoints(jobToUse.id)
-            setCheckpointsData(response.data)
-            setCheckpointsOpen(true)
-            handleMenuClose()
-        } catch (error) {
-            console.error('Error fetching checkpoints:', error)
-            alert('Failed to fetch checkpoints: ' + (error.message || 'Unknown error'))
-        } finally {
-            setActionLoading(false)
+    const handleDownloadFinetuningOutput = async (job) => {
+        if (!job) {
+            alert('Job is required')
+            return
         }
+
+        const id = String(job.id)
+        setDownloadProgress(0)
+        // mark this job as preparing; show dialog (user can close dialog without cancelling)
+        setDownloadingJobs((prev) => ({ ...(prev || {}), [id]: { progress: 0 } }))
+        setDownloadDialogOpen(true)
+
+        // Use WebSocket-based download for non-blocking zip creation
+        const cleanup = finetuningApi.downloadFinetuningOutputWS(job.id, {
+            onProgress: (data) => {
+                console.log('Download progress:', data)
+                // Update UI to show preparation is in progress
+                setDownloadingJobs((prev) => ({ 
+                    ...(prev || {}), 
+                    [id]: { progress: 0, status: data.status, message: data.message } 
+                }))
+            },
+            onComplete: async (data) => {
+                console.log('Download complete:', data)
+                
+                // File is ready - trigger native browser download
+                // No authentication needed (endpoint is whitelisted)
+                const downloadUrl = data.downloadUrl || `/api/v1/finetuning/download-ft/${job.id}`
+                const fileName = data.fileName || `${job.id}-output.zip`
+                
+                console.log('Starting native browser download:', downloadUrl)
+                
+                // Use window.location.href to trigger native browser download
+                // Browser will show download in download manager with progress bar
+                window.location.href = downloadUrl
+
+                // Mark this job finished and close dialog
+                setDownloadingJobs((prev) => ({ ...(prev || {}), [id]: { progress: 100 } }))
+                setDownloadProgress(100)
+                setTimeout(() => {
+                    setDownloadingJobs((prev) => {
+                        const copy = { ...(prev || {}) }
+                        delete copy[id]
+                        return copy
+                    })
+                    setDownloadDialogOpen(false)
+                }, 800)
+            },
+            onError: (data) => {
+                console.error('Download preparation error:', data)
+                alert('Failed to prepare download: ' + (data.error || 'Unknown error'))
+                // Clear downloading state
+                setDownloadingJobs((prev) => {
+                    const copy = { ...(prev || {}) }
+                    delete copy[id]
+                    return copy
+                })
+                setDownloadProgress(0)
+                setActionLoading(false)
+                setDownloadDialogOpen(false)
+            }
+        })
+
+        // Store cleanup function to allow cancellation if needed
+        // (optional enhancement: you could add a cancel button to call this)
+        window._ftDownloadCleanup = cleanup
     }
 
     const handleViewLogs = async (jobArg = null) => {
@@ -350,6 +398,13 @@ const FinetuningJobsTable = ({ data, isLoading = false, onRefresh = null, filter
         return progress || 0
     }
 
+    // Only allow downloads when job status indicates completion/success
+    const isDownloadableStatus = (status) => {
+        if (!status) return false
+        const s = String(status).toLowerCase()
+        return s === 'succeeded'
+    }
+
     if (isLoading) {
         return (
             <Box>
@@ -410,7 +465,7 @@ const FinetuningJobsTable = ({ data, isLoading = false, onRefresh = null, filter
                             <StyledTableCell><strong>Model</strong></StyledTableCell>
                             <StyledTableCell><strong>Task</strong></StyledTableCell>
                             <StyledTableCell><strong>Dataset</strong></StyledTableCell>
-                            <StyledTableCell><strong>Checkpoints</strong></StyledTableCell>
+                            <StyledTableCell align="center"><strong>Output</strong></StyledTableCell>
                             <StyledTableCell align="center"><strong>Logs</strong></StyledTableCell>
                             <StyledTableCell><strong>Actions</strong></StyledTableCell>
                             <StyledTableCell>
@@ -427,7 +482,7 @@ const FinetuningJobsTable = ({ data, isLoading = false, onRefresh = null, filter
                     <TableBody>
                         {visibleData.length === 0 ? (
                             <StyledTableRow>
-                                <StyledTableCell colSpan={9} align="center">
+                                <StyledTableCell colSpan={8} align="center">
                                     <Typography variant="body2">No fine-tuning jobs match the current filter</Typography>
                                 </StyledTableCell>
                             </StyledTableRow>
@@ -478,17 +533,38 @@ const FinetuningJobsTable = ({ data, isLoading = false, onRefresh = null, filter
                                             {job.dataset || 'N/A'}
                                         </Typography>
                                     </StyledTableCell>
-                                    <StyledTableCell>
-                                        <Button
-                                            size="small"
-                                            startIcon={<IconCheckbox />}
-                                            onClick={() => handleViewCheckpoints(job)}
-                                        >
-                                        </Button>
+                                    <StyledTableCell align="center">
+                                        {(() => {
+                                            const jid = String(job.id)
+                                            const isPreparing = Boolean(downloadingJobs && downloadingJobs[jid])
+                                            return (
+                                                <Tooltip title={isPreparing ? 'Preparing zip file' : (!isDownloadableStatus(job.status) ? 'Download not available' : 'Download output')}>
+                                                    <span>
+                                                        <IconButton
+                                                            size="small"
+                                                            color="primary"
+                                                            onClick={() => handleDownloadFinetuningOutput(job)}
+                                                            disabled={
+                                                                actionLoading ||
+                                                                isPreparing ||
+                                                                !isDownloadableStatus(job.status)
+                                                            }
+                                                            title={isPreparing ? 'Preparing download' : 'Download fine-tuning output'}
+                                                        >
+                                                            {isPreparing ? (
+                                                                <CircularProgress size={18} sx={{ color: theme.palette.primary.main }} />
+                                                            ) : (
+                                                                <IconDownload style={{ color: !isDownloadableStatus(job.status) ? theme.palette.grey[500] : theme.palette.primary.main }} />
+                                                            )}
+                                                        </IconButton>
+                                                    </span>
+                                                </Tooltip>
+                                            )
+                                        })()}
                                     </StyledTableCell>
                                     <StyledTableCell align="center">
                                         <Stack direction="row" spacing={1} justifyContent="center">
-                                            <IconButton size="small" color="primary" onClick={() => handleViewLogs(job)} title="Logs">
+                                            <IconButton size="small" color="primary" onClick={() => handleViewLogs(job)} title="View Logs">
                                                 <IconEye style={{ color: theme.palette.primary.main }} />
                                             </IconButton>
                                         </Stack>
@@ -522,7 +598,6 @@ const FinetuningJobsTable = ({ data, isLoading = false, onRefresh = null, filter
                     <IconEye style={{ marginRight: 8, color: theme.palette.primary.main }} size={16} />
                     View Details
                 </MenuItem>
-                {/* View Checkpoints removed from Actions menu: use the Checkpoints column button to open the modal */}
                 <MenuItem 
                     onClick={handleCancelJob}
                     disabled={actionLoading || selectedJob?.status === 'completed' || selectedJob?.status === 'cancelled' || selectedJob?.status === 'failed'}
@@ -553,6 +628,21 @@ const FinetuningJobsTable = ({ data, isLoading = false, onRefresh = null, filter
                 </MenuItem>
             </Menu>
 
+            {/* Preparing Download Dialog */}
+            <Dialog open={downloadDialogOpen} onClose={() => setDownloadDialogOpen(false)} maxWidth="xs" fullWidth>
+                <DialogTitle>Preparing download</DialogTitle>
+                <DialogContent>
+                    <Typography variant="body2" sx={{ mb: 2 }}>
+                        The server is preparing the job output for download. This may take a few moments for large outputs.
+                        {downloadProgress > 0 ? ` (${downloadProgress}%)` : ''}
+                    </Typography>
+                    <LinearProgress variant={downloadProgress > 0 ? 'determinate' : 'indeterminate'} value={downloadProgress} />
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setDownloadDialogOpen(false)}>Close</Button>
+                </DialogActions>
+            </Dialog>
+
             {/* Details Dialog */}
             <Dialog open={detailsOpen} onClose={() => setDetailsOpen(false)} maxWidth="md" fullWidth>
                 <DialogTitle>Job Details</DialogTitle>
@@ -565,27 +655,6 @@ const FinetuningJobsTable = ({ data, isLoading = false, onRefresh = null, filter
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={() => setDetailsOpen(false)}>Close</Button>
-                </DialogActions>
-            </Dialog>
-
-            {/* Checkpoints Dialog */}
-            <Dialog open={checkpointsOpen} onClose={() => setCheckpointsOpen(false)} maxWidth="md" fullWidth>
-                <DialogTitle>Checkpoints</DialogTitle>
-                <DialogContent>
-                    {checkpointsData && Array.isArray(checkpointsData) && checkpointsData.length > 0 ? (
-                        <List>
-                            {checkpointsData.map((cp) => (
-                                <ListItem key={cp.id || cp.filename}>
-                                    <ListItemText primary={cp.filename || cp.id} secondary={cp.metadata ? JSON.stringify(cp.metadata) : null} />
-                                </ListItem>
-                            ))}
-                        </List>
-                    ) : (
-                        <Typography variant="body2">No checkpoints available</Typography>
-                    )}
-                </DialogContent>
-                <DialogActions>
-                    <Button onClick={() => setCheckpointsOpen(false)}>Close</Button>
                 </DialogActions>
             </Dialog>
 

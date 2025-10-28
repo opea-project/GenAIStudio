@@ -22,6 +22,7 @@ import flowiseApiV1Router from './routes'
 import errorHandlerMiddleware from './middlewares/errors'
 import { SSEStreamer } from './utils/SSEStreamer'
 import { validateAPIKey } from './utils/validateKey'
+import { setupFineTuningDownloadHandlers } from './ws/finetuningDownload'
 
 declare global {
     namespace Express {
@@ -141,7 +142,8 @@ export class App {
             '/api/v1/leads',
             '/api/v1/get-upload-file',
             '/api/v1/ip',
-            '/api/v1/ping'
+            '/api/v1/ping',
+            '/api/v1/finetuning/download-ft/'
         ]
         const URL_CASE_INSENSITIVE_REGEX: RegExp = /\/api\/v1\//i
         const URL_CASE_SENSITIVE_REGEX: RegExp = /\/api\/v1\//
@@ -289,6 +291,9 @@ export async function start(): Promise<void> {
     const io = new Server(server, {
         cors: getCorsOptions()
     })
+
+    // Setup WebSocket handlers
+    setupFineTuningDownloadHandlers(io)
 
     await serverApp.initDatabase()
     await serverApp.config(io)

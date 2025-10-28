@@ -1,15 +1,27 @@
 version: '3.8'
 
 services:
+  finetuning-server:
+    image: opea/finetuning:latest
+    container_name: finetuning-server
+    user: "0:0"
+    ipc: host
+    ports:
+      - "8015:8015"
+      - "8265:8265"
+    environment:
+      - http_proxy=${http_proxy}
+      - https_proxy=${https_proxy}
+      - no_proxy=${no_proxy}
+    volumes:
+      - finetune-output:/home/user/comps/finetuning/src/output
+    restart: unless-stopped
+
   studio-frontend:
     image: studio-frontend:latest
     build:
       context: .
       dockerfile: Dockerfile
-      args:
-        - http_proxy=${http_proxy}
-        - https_proxy=${https_proxy}
-        - no_proxy=${no_proxy}
     container_name: studio-frontend-dev
     ports:
       - "3000:3000"
@@ -19,7 +31,8 @@ services:
       - node_modules:/usr/src/node_modules
       - pnpm_store:/usr/src/.pnpm-store
       - /usr/src/packages/ui/build
-    command: ["sh", "-c", "cp /usr/src/.env.development /usr/src/packages/ui/.env; cp /usr/src/.env.development /usr/src/packages/server/.env; pnpm install; pnpm dev"]
+      - finetune-output:/tmp/finetuning/output
+    command: ["sh", "-c", "pnpm install && pnpm dev"]
     environment:
       - http_proxy=${http_proxy}
       - https_proxy=${https_proxy}
@@ -31,3 +44,4 @@ services:
 volumes:
   node_modules:
   pnpm_store:
+  finetune-output:

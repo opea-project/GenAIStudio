@@ -17,7 +17,8 @@ export default defineConfig(async ({ mode }) => {
                 },
                 '/socket.io': {
                     target: `http://${serverHost}:${serverPort}`,
-                    changeOrigin: true
+                    changeOrigin: true,
+                    ws: true
                 }
             }
         }
