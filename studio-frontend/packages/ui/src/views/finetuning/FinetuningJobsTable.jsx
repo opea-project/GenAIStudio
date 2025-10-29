@@ -217,10 +217,20 @@ const FinetuningJobsTable = ({ data, isLoading = false, onRefresh = null, filter
         setDownloadingJobs((prev) => ({ ...(prev || {}), [id]: { progress: 0 } }))
         setDownloadDialogOpen(true)
 
+        // Persist pending download so we can recover on page refresh
+        try {
+            const pending = JSON.parse(sessionStorage.getItem('ft_pending_downloads') || '[]')
+            if (!pending.includes(id)) {
+                pending.push(id)
+                sessionStorage.setItem('ft_pending_downloads', JSON.stringify(pending))
+            }
+        } catch (e) {
+            // ignore sessionStorage errors
+        }
+
         // Use WebSocket-based download for non-blocking zip creation
         const cleanup = finetuningApi.downloadFinetuningOutputWS(job.id, {
             onProgress: (data) => {
-                console.log('Download progress:', data)
                 // Update UI to show preparation is in progress
                 setDownloadingJobs((prev) => ({ 
                     ...(prev || {}), 
@@ -228,18 +238,21 @@ const FinetuningJobsTable = ({ data, isLoading = false, onRefresh = null, filter
                 }))
             },
             onComplete: async (data) => {
-                console.log('Download complete:', data)
-                
                 // File is ready - trigger native browser download
                 // No authentication needed (endpoint is whitelisted)
                 const downloadUrl = data.downloadUrl || `/api/v1/finetuning/download-ft/${job.id}`
-                const fileName = data.fileName || `${job.id}-output.zip`
-                
                 console.log('Starting native browser download:', downloadUrl)
                 
                 // Use window.location.href to trigger native browser download
                 // Browser will show download in download manager with progress bar
                 window.location.href = downloadUrl
+
+                // Remove from pending list
+                try {
+                    const pending = JSON.parse(sessionStorage.getItem('ft_pending_downloads') || '[]')
+                    const filtered = (pending || []).filter((x) => x !== id)
+                    sessionStorage.setItem('ft_pending_downloads', JSON.stringify(filtered))
+                } catch (e) {}
 
                 // Mark this job finished and close dialog
                 setDownloadingJobs((prev) => ({ ...(prev || {}), [id]: { progress: 100 } }))
@@ -256,6 +269,13 @@ const FinetuningJobsTable = ({ data, isLoading = false, onRefresh = null, filter
             onError: (data) => {
                 console.error('Download preparation error:', data)
                 alert('Failed to prepare download: ' + (data.error || 'Unknown error'))
+                // Remove from pending list
+                try {
+                    const pending = JSON.parse(sessionStorage.getItem('ft_pending_downloads') || '[]')
+                    const filtered = (pending || []).filter((x) => x !== id)
+                    sessionStorage.setItem('ft_pending_downloads', JSON.stringify(filtered))
+                } catch (e) {}
+
                 // Clear downloading state
                 setDownloadingJobs((prev) => {
                     const copy = { ...(prev || {}) }
@@ -374,6 +394,61 @@ const FinetuningJobsTable = ({ data, isLoading = false, onRefresh = null, filter
             setActionLoading(false)
         }
     }
+
+    // On mount: re-establish any pending download WS connections saved in sessionStorage
+    useEffect(() => {
+        try {
+            const pending = JSON.parse(sessionStorage.getItem('ft_pending_downloads') || '[]')
+            if (Array.isArray(pending) && pending.length > 0) {
+                // For each pending job id, re-attach a download WS to get status
+                pending.forEach((jobId) => {
+                    // avoid duplicate entries in state
+                    if (!downloadingJobs || !downloadingJobs[jobId]) {
+                        setDownloadingJobs((prev) => ({ ...(prev || {}), [jobId]: { progress: 0 } }))
+                    }
+                    finetuningApi.downloadFinetuningOutputWS(jobId, {
+                        onProgress: (data) => {
+                            setDownloadingJobs((prev) => ({ ...(prev || {}), [jobId]: { progress: 0, status: data.status, message: data.message } }))
+                            setDownloadDialogOpen(true)
+                        },
+                        onComplete: (data) => {
+                            // Trigger native download
+                            const downloadUrl = data.downloadUrl || `/api/v1/finetuning/download-ft/${jobId}`
+                            window.location.href = downloadUrl
+                            // cleanup pending
+                            try {
+                                const pending2 = JSON.parse(sessionStorage.getItem('ft_pending_downloads') || '[]')
+                                const filtered = (pending2 || []).filter((x) => x !== jobId)
+                                sessionStorage.setItem('ft_pending_downloads', JSON.stringify(filtered))
+                            } catch (e) {}
+                            setDownloadingJobs((prev) => {
+                                const copy = { ...(prev || {}) }
+                                delete copy[jobId]
+                                return copy
+                            })
+                            setDownloadDialogOpen(false)
+                        },
+                        onError: (data) => {
+                            console.error('Recovered download preparation error:', data)
+                            try {
+                                const pending2 = JSON.parse(sessionStorage.getItem('ft_pending_downloads') || '[]')
+                                const filtered = (pending2 || []).filter((x) => x !== jobId)
+                                sessionStorage.setItem('ft_pending_downloads', JSON.stringify(filtered))
+                            } catch (e) {}
+                            setDownloadingJobs((prev) => {
+                                const copy = { ...(prev || {}) }
+                                delete copy[jobId]
+                                return copy
+                            })
+                            setDownloadDialogOpen(false)
+                        }
+                    })
+                })
+            }
+        } catch (e) {
+            // ignore sessionStorage parse errors
+        }
+    }, [])
 
     const getStatusColor = (status) => {
         switch (status?.toLowerCase()) {
@@ -634,7 +709,6 @@ const FinetuningJobsTable = ({ data, isLoading = false, onRefresh = null, filter
                 <DialogContent>
                     <Typography variant="body2" sx={{ mb: 2 }}>
                         The server is preparing the job output for download. This may take a few moments for large outputs.
-                        {downloadProgress > 0 ? ` (${downloadProgress}%)` : ''}
                     </Typography>
                     <LinearProgress variant={downloadProgress > 0 ? 'determinate' : 'indeterminate'} value={downloadProgress} />
                 </DialogContent>
@@ -700,11 +774,5 @@ FinetuningJobsTable.propTypes = {
     onRefresh: PropTypes.func,
     filterFunction: PropTypes.func
 }
-
-FinetuningJobsTable.defaultProps = {
-    filterFunction: null
-}
-
-// default props handled via function default parameters
 
 export default FinetuningJobsTable

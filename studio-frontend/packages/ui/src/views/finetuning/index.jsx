@@ -52,113 +52,54 @@ const Finetuning = () => {
         getAllJobsApi = useApi(finetuningApi.getAllJobs)
     }
 
-    const pollingRef = useRef(null)
-
     useEffect(() => {
-        // Load fine-tuning jobs
         loadJobs()
+        
+        // Cleanup all WebSocket connections on unmount
+        return () => {
+            Object.keys(jobSocketsRef.current).forEach(jobId => {
+                if (jobSocketsRef.current[jobId]) {
+                    jobSocketsRef.current[jobId]()
+                }
+            })
+            jobSocketsRef.current = {}
+        }
     }, [])
 
-    // Polling: when there are running jobs, poll backend until all jobs are completed/failed
-    useEffect(() => {
-        // helper to clear existing interval
-        const stopPolling = () => {
-            if (pollingRef.current) {
-                clearInterval(pollingRef.current)
-                pollingRef.current = null
-            }
-        }
+    // Store cleanup functions for each job's WebSocket connection
+    const jobSocketsRef = useRef({})
 
-        // Only start polling if user is authenticated
-        if (!keycloak?.authenticated) {
-            stopPolling()
+    // Function to start monitoring a specific job
+    const startJobMonitoring = (jobId) => {
+        // Don't create duplicate connections
+        if (jobSocketsRef.current[jobId]) {
             return
         }
 
-        const hasRunning = (jobs || []).some(j => (j?.status || '').toString().toLowerCase() === 'running')
-        if (!hasRunning) {
-            stopPolling()
-            return
-        }
-
-        // If already polling, keep it
-        if (pollingRef.current) return
-
-        // Start polling every 5 seconds — for each running job call the retrieve endpoint
-        console.debug('[finetuning] starting polling for running jobs')
-        pollingRef.current = setInterval(async () => {
-            console.debug('[finetuning] poll tick - checking running jobs')
-            try {
-                // find running jobs from current state
-                const runningJobs = (jobs || []).filter(j => (j?.status || '').toString().toLowerCase() === 'running')
-                if (runningJobs.length === 0) {
-                    console.debug('[finetuning] no running jobs found, stopping polling')
-                    stopPolling()
-                    return
-                }
-
-                // Retrieve updated details for each running job in parallel
-                const promises = runningJobs.map(j => {
-                    // finetuningApi.getJob returns an axios promise; we want the response.data
-                    console.debug('[finetuning] retrieving job:', j.id)
-                    return finetuningApi.getJob(j.id).then(res => res.data).catch(err => {
-                        console.error('Error retrieving job', j.id, err)
-                        return null
-                    })
-                })
-
-                const updated = await Promise.all(promises)
-
-                // normalize updated jobs and merge into current jobs list
-                const normalizeJob = (j) => {
-                    if (!j) return null
-                    const id = j.id || j.job_id || j.fine_tuning_job_id || String(Date.now())
-                    const name = j.name || id
-                    const status = j.status || j.state || 'pending'
-                    const model = j.model || 'N/A'
-                    const dataset = j.dataset || j.training_file || j.trainingFile || 'N/A'
-                    const progress = typeof j.progress === 'number' ? `${j.progress}%` : (j.progress || '0%')
-                    const createdDate = j.createdDate || j.created_at || j.createdAt || new Date().toISOString()
-                    return {
-                        ...j,
-                        id,
-                        name,
-                        status,
-                        model,
-                        dataset,
-                        progress,
-                        createdDate
-                    }
-                }
-
-                setJobs(prev => {
-                    const updatedMap = {}
-                    updated.forEach(u => {
-                        if (!u) return
-                        const n = normalizeJob(u)
-                        if (n) updatedMap[n.id] = n
-                    })
-
-                    const newList = (prev || []).map(p => updatedMap[p.id] ? { ...p, ...updatedMap[p.id] } : p)
-
-                    // determine whether to stop polling based on the merged list
-                    const stillRunningLocal = newList.some(j => (j?.status || '').toString().toLowerCase() === 'running')
-                    if (!stillRunningLocal) {
-                        console.debug('[finetuning] no running jobs remain after merge, stopping polling')
-                        // stopPolling will clear the interval; call asynchronously to avoid interfering with state update
-                        setTimeout(() => stopPolling(), 0)
-                    }
-
-                    return newList
-                })
-            } catch (err) {
-                console.error('Error while polling fine-tuning jobs (retrieve):', err)
+        // Subscribe to this job's status updates
+        const cleanup = finetuningApi.subscribeToJobStatus(jobId, {
+            onUpdate: (jobData) => {
+                // Update the job in state
+                setJobs(prev => prev.map(j => 
+                    j.id === jobData.id ? { ...j, ...jobData } : j
+                ))
+            },
+            onError: (error) => {
+                console.error(`[Job ${jobId}] WebSocket error:`, error)
             }
-        }, 5000)
+        })
+        
+        // Store cleanup function
+        jobSocketsRef.current[jobId] = cleanup
+    }
 
-        // cleanup on unmount or dependency change
-        return () => stopPolling()
-    }, [jobs, keycloak?.authenticated])
+    // Function to stop monitoring a specific job
+    const stopJobMonitoring = (jobId) => {
+        if (jobSocketsRef.current[jobId]) {
+            jobSocketsRef.current[jobId]()
+            delete jobSocketsRef.current[jobId]
+        }
+    }
 
     const loadJobs = async () => {
         if (!getAllJobsApi) return
@@ -191,6 +132,15 @@ const Finetuning = () => {
             const jobsData = Array.isArray(response) ? response.map(normalizeJob).filter(Boolean) : []
             setJobs(jobsData)
             setLoading(false)
+            
+            // Start monitoring any active jobs
+            const activeStatuses = ['pending', 'validating_files', 'running']
+            jobsData.forEach(job => {
+                const status = (job?.status || '').toString().toLowerCase()
+                if (activeStatuses.includes(status)) {
+                    startJobMonitoring(job.id)
+                }
+            })
         } catch (error) {
             console.error('Error loading fine-tuning jobs:', error)
             setJobs([])
@@ -213,6 +163,13 @@ const Finetuning = () => {
     const handleJobCreated = (newJob) => {
         setJobs(prev => [...prev, newJob])
         setJobModalOpen(false)
+        
+        // Start monitoring the new job if it's in an active state
+        const activeStatuses = ['pending', 'validating_files', 'running']
+        const status = (newJob?.status || '').toString().toLowerCase()
+        if (activeStatuses.includes(status)) {
+            startJobMonitoring(newJob.id)
+        }
     }
 
     const onSearchChange = (event) => {

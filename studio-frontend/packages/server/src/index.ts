@@ -23,6 +23,7 @@ import errorHandlerMiddleware from './middlewares/errors'
 import { SSEStreamer } from './utils/SSEStreamer'
 import { validateAPIKey } from './utils/validateKey'
 import { setupFineTuningDownloadHandlers } from './ws/finetuningDownload'
+import { setupFineTuningStatusHandlers } from './ws/finetuningStatus'
 
 declare global {
     namespace Express {
@@ -294,6 +295,7 @@ export async function start(): Promise<void> {
 
     // Setup WebSocket handlers
     setupFineTuningDownloadHandlers(io)
+    setupFineTuningStatusHandlers(io)
 
     await serverApp.initDatabase()
     await serverApp.config(io)

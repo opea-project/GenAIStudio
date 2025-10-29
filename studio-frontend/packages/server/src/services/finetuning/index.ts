@@ -3,12 +3,16 @@ import http from 'http'
 import https from 'https'
 import * as fs from 'fs'
 import * as path from 'path'
-import { execSync } from 'child_process'
+import { exec } from 'child_process'
+import { promisify } from 'util'
 import { StatusCodes } from 'http-status-codes'
 import { InternalFlowiseError } from '../../errors/internalFlowiseError'
 import { getErrorMessage } from '../../errors/utils'
 import { getRunningExpressApp } from '../../utils/getRunningExpressApp'
 import { FineTuningJob } from '../../database/entities/FineTuningJob'
+import logger from '../../utils/logger'
+
+const execAsync = promisify(exec)
 
 const FINETUNING_SERVICE_URL = process.env.FINETUNING_HOST ? `http://${process.env.FINETUNING_HOST}:8015` : 'undefined'
 console.debug('finetuningService - FINETUNING_SERVICE_URL', FINETUNING_SERVICE_URL)
@@ -77,11 +81,13 @@ const ensureFineTuningOutputZip = async (outputDir: string, jobId: string): Prom
         // eslint-disable-next-line no-console
         console.debug(`finetuningService.ensureFineTuningOutputZip - starting to zip output for job ${jobId}`)
         try {
-            // Use tar to create a compressed archive
             const parentDir = path.dirname(outputDir)
             const dirName = path.basename(outputDir)
             const cmd = `cd "${parentDir}" && tar -czf "${path.basename(zipFilePath)}" "${dirName}"`
-            execSync(cmd, { stdio: 'pipe', timeout: 300000 }) // 5 minute timeout
+            await execAsync(cmd, { 
+                maxBuffer: 1024 * 1024 * 100, // 100MB buffer for large outputs
+                timeout: 600000 // 10 minute timeout
+            })
             
             // eslint-disable-next-line no-console
             console.debug(`finetuningService.ensureFineTuningOutputZip - zip created successfully for job ${jobId}: ${zipFilePath}`)
@@ -150,7 +156,6 @@ const persistJobToDb = async (jobData: any) => {
         if (!id) return
 
         // Build entity object mapping common fields; fall back to stringifying objects
-        // Extract task robustly: prefer explicit jobData.task, then jobData.General.task (object or JSON string)
         let taskVal: any = jobData.task || undefined
         try {
             if (!taskVal && jobData.General) {
@@ -222,7 +227,7 @@ const persistJobToDb = async (jobData: any) => {
     }
 }
 
-// Helper: update specific fields for a job in the DB (best-effort)
+// Helper: update specific fields for a job in the DB
 const updateJobInDb = async (jobId: string, updates: Partial<any>) => {
     try {
         if (!jobId) return
@@ -266,8 +271,7 @@ const createFineTuningJob = async (jobConfig: {
     }
 }) => {
     try {
-        // Work with the jobConfig as-provided by the UI. Do not decode training_file automatically;
-        // the external service may expect the raw (possibly URL-encoded) filename.
+        // Work with the jobConfig as-provided by the UI.
         const forwardedJobConfig = { ...jobConfig }
 
         // (Removed verbose initial jobConfig logging to reduce noise)
@@ -348,7 +352,7 @@ const createFineTuningJob = async (jobConfig: {
             // ignore
         }
 
-        // Persist to local DB (best-effort)
+        // Persist to local DB
         try {
             await persistJobToDb(respData)
         } catch (e) {
@@ -429,15 +433,11 @@ const retrieveFineTuningJob = async (fineTuningJobId: string) => {
 
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
         try {
-            // Log attempt for easier correlation in logs
-            // eslint-disable-next-line no-console
-            console.debug(`finetuningService.retrieveFineTuningJob - attempt ${attempt} for job ${fineTuningJobId}`)
-
             const response = await axiosClient.post('/v1/fine_tuning/jobs/retrieve', {
                 fine_tuning_job_id: fineTuningJobId
             })
             const respData = response.data
-            // Persist/update DB with latest status (best-effort)
+            // Persist/update DB with latest status
             try {
                 await persistJobToDb(respData)
             } catch (e) {
@@ -446,9 +446,6 @@ const retrieveFineTuningJob = async (fineTuningJobId: string) => {
             return respData
         } catch (error: any) {
             const msg = getErrorMessage(error)
-            // eslint-disable-next-line no-console
-            console.warn(`finetuningService.retrieveFineTuningJob - attempt ${attempt} failed: ${msg}`)
-
             const isTransient = msg && (
                 msg.toLowerCase().includes('socket hang up') ||
                 msg.toLowerCase().includes('econnreset') ||
@@ -459,17 +456,20 @@ const retrieveFineTuningJob = async (fineTuningJobId: string) => {
 
             if (attempt < maxAttempts && isTransient) {
                 const delay = baseDelayMs * Math.pow(2, attempt - 1)
-                // eslint-disable-next-line no-console
-                console.debug(`finetuningService.retrieveFineTuningJob - retrying in ${delay}ms`)
+                // back off and retry silently
                 // eslint-disable-next-line no-await-in-loop
                 await sleep(delay)
                 continue
             }
 
+            // Only log a concise warning when this is the final attempt
+            if (attempt === maxAttempts) {
+                logger.warn(`finetuningService.retrieveFineTuningJob - final attempt ${attempt} failed for job ${fineTuningJobId}: ${msg}`)
+            }
+
             // Final failure: log details and throw
             try {
-                // eslint-disable-next-line no-console
-                console.error('finetuningService.retrieveFineTuningJob - error details:', {
+                logger.error('finetuningService.retrieveFineTuningJob - error details:', {
                     message: error?.message,
                     status: error?.response?.status,
                     responseData: error?.response?.data
@@ -499,7 +499,7 @@ const cancelFineTuningJob = async (fineTuningJobId: string) => {
         const response = await axiosClient.post('/v1/fine_tuning/jobs/cancel', {
             fine_tuning_job_id: fineTuningJobId
         })
-        // Best-effort: update local DB to reflect cancelled status
+        // Update local DB to reflect cancelled status
         try {
             await updateJobInDb(fineTuningJobId, { status: 'cancelled', finishedDate: new Date() })
         } catch (e) {
@@ -516,11 +516,11 @@ const cancelFineTuningJob = async (fineTuningJobId: string) => {
 
 /**
  * Delete a fine-tuning job locally and attempt to cancel it remotely.
- * This will cancel the external job (best-effort) and remove DB records for the job and checkpoints.
+ * This will cancel the external job and remove DB records for the job and checkpoints.
  */
 const deleteFineTuningJob = async (fineTuningJobId: string) => {
     try {
-        // Attempt to cancel external job (best-effort)
+        // Attempt to cancel external job
         try {
             await axiosClient.post('/v1/fine_tuning/jobs/cancel', {
                 fine_tuning_job_id: fineTuningJobId
@@ -533,7 +533,7 @@ const deleteFineTuningJob = async (fineTuningJobId: string) => {
             } catch (logErr) {}
         }
 
-        // Remove local DB records (best-effort)
+        // Remove local DB records
         try {
             const appServer = getRunningExpressApp()
             const repo = appServer.AppDataSource.getRepository(FineTuningJob)
@@ -545,6 +545,51 @@ const deleteFineTuningJob = async (fineTuningJobId: string) => {
                 // eslint-disable-next-line no-console
                 console.error('finetuningService.deleteFineTuningJob - failed to delete local DB records', e)
             } catch (logErr) {}
+        }
+
+        // Attempt to remove any output files/directories for this job under /tmp/finetuning/output
+        try {
+            const OUTPUT_BASE_DIR = '/tmp/finetuning/output'
+            const jobOutputDir = path.join(OUTPUT_BASE_DIR, String(fineTuningJobId))
+            const resolvedJobDir = path.resolve(jobOutputDir)
+            const resolvedBaseDir = path.resolve(OUTPUT_BASE_DIR)
+
+            // Safety: ensure the resolved path is within the expected base directory
+            if (resolvedJobDir.startsWith(resolvedBaseDir)) {
+                // Remove directory recursively if it exists
+                if (fs.existsSync(resolvedJobDir)) {
+                    try {
+                        // Use fs.rmSync when available; fallback to recursive unlink if necessary
+                        if (typeof fs.rmSync === 'function') {
+                            fs.rmSync(resolvedJobDir, { recursive: true, force: true })
+                        } else {
+                            // older Node versions: remove files inside then rmdir
+                            const rimraf = require('rimraf')
+                            rimraf.sync(resolvedJobDir)
+                        }
+                        // eslint-disable-next-line no-console
+                        console.debug(`finetuningService.deleteFineTuningJob - removed output dir: ${resolvedJobDir}`)
+                    } catch (rmErr) {
+                        try { console.warn('finetuningService.deleteFineTuningJob - failed to remove output dir', rmErr) } catch (ignore) {}
+                    }
+                }
+
+                // Also remove zip file if present
+                const zipPath = `${resolvedJobDir}.zip`
+                if (fs.existsSync(zipPath)) {
+                    try {
+                        fs.unlinkSync(zipPath)
+                        // eslint-disable-next-line no-console
+                        console.debug(`finetuningService.deleteFineTuningJob - removed zip: ${zipPath}`)
+                    } catch (zipErr) {
+                        try { console.warn('finetuningService.deleteFineTuningJob - failed to remove zip file', zipErr) } catch (ignore) {}
+                    }
+                }
+            } else {
+                try { console.warn('finetuningService.deleteFineTuningJob - output path outside base dir, skipping removal:', resolvedJobDir) } catch (ignore) {}
+            }
+        } catch (e) {
+            try { console.warn('finetuningService.deleteFineTuningJob - error while removing output files', e) } catch (ignore) {}
         }
 
         return { success: true }
