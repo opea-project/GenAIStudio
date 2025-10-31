@@ -571,27 +571,31 @@ const FinetuningJobsTable = ({ data, isLoading = false, onRefresh = null, filter
                                     </StyledTableCell>
                                     <StyledTableCell>
                                         {/* Status with blinking indicator when running; show Chip only for other statuses */}
-                                        {String(job.status).toLowerCase() === 'running' ? (
-                                            <Stack direction="row" alignItems="center" spacing={1}>
-                                                <Box
-                                                    sx={{
-                                                        width: 10,
-                                                        height: 10,
-                                                        borderRadius: '50%',
-                                                        backgroundColor: theme.palette.primary.main,
-                                                        animation: 'blink 1s infinite'
-                                                    }}
+                                        {(() => {
+                                            const s = String(job.status || '').toLowerCase()
+                                            return (s === 'running' || s === 'pending') ? (
+                                                <Stack direction="row" alignItems="center" spacing={1}>
+                                                    <Box
+                                                        sx={{
+                                                            width: 10,
+                                                            height: 10,
+                                                            borderRadius: '50%',
+                                                            backgroundColor: theme.palette.primary.main,
+                                                            animation: 'blink 1s infinite'
+                                                        }}
+                                                    />
+                                                    <Typography variant="body2">{job.status}</Typography>
+                                                </Stack>
+                                            ) : (
+                                                <Chip
+                                                    label={job.status}
+                                                    color={getStatusColor(job.status)}
+                                                    size="small"
+                                                    variant="outlined"
                                                 />
-                                                <Typography variant="body2">{job.status}</Typography>
-                                            </Stack>
-                                        ) : (
-                                            <Chip
-                                                label={job.status}
-                                                color={getStatusColor(job.status)}
-                                                size="small"
-                                                variant="outlined"
-                                            />
-                                        )}
+                                            )
+                                        })()}
+                                        
                                     </StyledTableCell>
                                     <StyledTableCell>
                                         <Typography variant="body2">

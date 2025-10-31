@@ -14,13 +14,12 @@ import {
     InputLabel,
     Select,
     MenuItem,
-    Typography,
-    Stack,
     Checkbox,
     FormControlLabel,
+    Typography,
+    Stack,
     IconButton,
     CircularProgress,
-    Grid
 } from '@mui/material'
 import Autocomplete from '@mui/material/Autocomplete'
 import { useTheme } from '@mui/material/styles'
@@ -59,12 +58,25 @@ const FinetuningJobModal = ({ open, onClose, onJobCreated }) => {
         },
         dataset: {
             max_length: 512,
+            block_size: 512,
             validation_split_percentage: 5,
             padding_side: 'right',
             truncation_side: 'right',
             max_source_length: 384,
+            pad_to_max: false,
+            query_max_len: 128,
+            passage_max_len: 128,
+            train_group_size: 8,
+            query_instruction_for_retrieval: '',
+            passage_instruction_for_retrieval: '',
+            reasoning_dataset_keys: ['Question', 'Complex_CoT', 'Response'],
+            // raw input string to preserve trailing commas/spaces while editing
+            reasoning_dataset_keys_input: 'Question, Complex_CoT, Response',
             max_prompt_length: 512,
             data_preprocess_type: 'neural_chat',
+            data_preprocess_neural_chat: true,
+            padding: 'true',
+            truncation: true,
             mask_input: true,
             mask_response: true
         },
@@ -94,9 +106,6 @@ const FinetuningJobModal = ({ open, onClose, onJobCreated }) => {
     const [isSubmitting, setIsSubmitting] = useState(false)
 
     const [loraEnabled, setLoraEnabled] = useState(false)
-    const [datasetEnabled, setDatasetEnabled] = useState(true)
-    const [generalEnabled, setGeneralEnabled] = useState(true)
-    const [trainingEnabled, setTrainingEnabled] = useState(true)
 
 
     const baseModels = [
@@ -196,52 +205,40 @@ const FinetuningJobModal = ({ open, onClose, onJobCreated }) => {
             newErrors.trainingDataset = 'Training dataset is required'
         }
 
-        // OpenAI parameters validation (only when training enabled)
-        if (trainingEnabled) {
-            if (formData.openai_params.learning_rate_multiplier <= 0) {
-                newErrors.learning_rate_multiplier = 'Learning rate multiplier must be greater than 0'
-            }
-
-            if (formData.openai_params.batch_size <= 0) {
-                newErrors.batch_size = 'Batch size must be greater than 0'
-            }
-
-            if (formData.openai_params.n_epochs <= 0) {
-                newErrors.n_epochs = 'Number of epochs must be greater than 0'
-            }
+        // OpenAI parameters validation
+        if (formData.openai_params.learning_rate_multiplier <= 0) {
+            newErrors.learning_rate_multiplier = 'Learning rate multiplier must be greater than 0'
         }
 
-        // Training parameters validation (only when enabled)
-        if (trainingEnabled) {
-            if (formData.training.learning_rate <= 0) {
-                newErrors.learning_rate = 'Learning rate must be greater than 0'
-            }
-
-            if (formData.training.epochs <= 0) {
-                newErrors.epochs = 'Epochs must be greater than 0'
-            }
-
-            if (formData.training.logging_steps <= 0) {
-                newErrors.logging_steps = 'Logging steps must be greater than 0'
-            }
+        if (formData.openai_params.batch_size <= 0) {
+            newErrors.batch_size = 'Batch size must be greater than 0'
         }
 
-        // General validation (only when enabled)
-        if (generalEnabled) {
-            if (!formData.general.output_dir) {
-                newErrors.output_dir = 'Output directory is required'
-            }
+        if (formData.openai_params.n_epochs <= 0) {
+            newErrors.n_epochs = 'Number of epochs must be greater than 0'
         }
 
-        // Dataset validation (only when enabled)
-        if (datasetEnabled) {
-            if (!formData.dataset) {
-                newErrors.dataset = 'Dataset configuration is required'
-            } else {
-                if (formData.dataset.max_length <= 0) {
-                    newErrors.dataset_max_length = 'Max length must be greater than 0'
-                }
-            }
+        // Training parameters validation
+        if (formData.training.learning_rate <= 0) {
+            newErrors.learning_rate = 'Learning rate must be greater than 0'
+        }
+
+        if (formData.training.epochs <= 0) {
+            newErrors.epochs = 'Epochs must be greater than 0'
+        }
+
+        if (formData.training.logging_steps <= 0) {
+            newErrors.logging_steps = 'Logging steps must be greater than 0'
+        }
+
+        // General validation
+        if (!formData.general.output_dir) {
+            newErrors.output_dir = 'Output directory is required'
+        }
+
+        // Dataset validation
+        if (formData.dataset.max_length <= 0) {
+            newErrors.dataset_max_length = 'Max length must be greater than 0'
         }
 
         // LoRA parameters validation (only when enabled)
@@ -292,47 +289,51 @@ const FinetuningJobModal = ({ open, onClose, onJobCreated }) => {
                 }
             }
 
-            // Build payload and only include sections that are enabled
+            // Build payload
             const jobPayload = {
                 model: formData.baseModel,
                 training_file: trainingFileName
             }
 
-            if (generalEnabled) {
-                // If user enabled LoRA, include the object; otherwise send explicit null inside General
-                const gen = { ...formData.general }
-                gen.lora_config = loraEnabled ? formData.lora : null
-                // Ensure config exists and place hf_token if provided
-                gen.config = gen.config || {}
-                if (formData.hf_token) {
-                    gen.config.token = formData.hf_token
-                }
-                jobPayload.General = gen
-                jobPayload.task = gen.task || 'instruction_tuning'
-            } else {
-                jobPayload.task = 'instruction_tuning'
-                // If HF token was provided while General is disabled, create minimal General with config.token
-                if (formData.hf_token) {
-                    jobPayload.General = { config: { token: formData.hf_token } }
-                }
+            // General configuration with LoRA config
+            const gen = { ...formData.general }
+            gen.lora_config = loraEnabled ? formData.lora : null
+            gen.config = gen.config || {}
+            if (formData.hf_token) {
+                gen.config.token = formData.hf_token
+            }
+            jobPayload.General = gen
+            jobPayload.task = gen.task || 'instruction_tuning'
+
+            // Dataset configuration
+            jobPayload.Dataset = {
+                max_length: formData.dataset.max_length,
+                block_size: formData.dataset.block_size,
+                max_source_length: formData.dataset.max_source_length,
+                padding_side: formData.dataset.padding_side,
+                truncation_side: formData.dataset.truncation_side,
+                padding: formData.dataset.padding,
+                truncation: formData.dataset.truncation,
+                mask_input: formData.dataset.mask_input,
+                mask_response: formData.dataset.mask_response,
+                query_max_len: formData.dataset.query_max_len,
+                passage_max_len: formData.dataset.passage_max_len,
+                train_group_size: formData.dataset.train_group_size,
+                query_instruction_for_retrieval: formData.dataset.query_instruction_for_retrieval,
+                passage_instruction_for_retrieval: formData.dataset.passage_instruction_for_retrieval,
+                pad_to_max: formData.dataset.pad_to_max,
+                data_preprocess_type: formData.dataset.data_preprocess_neural_chat ? 'neural_chat' : null
             }
 
-            if (datasetEnabled) {
-                jobPayload.Dataset = {
-                    max_length: formData.dataset.max_length,
-                    // fallback keys if some are undefined
-                    query_max_len: formData.dataset.query_max_len,
-                    passage_max_len: formData.dataset.passage_max_len,
-                    padding: formData.dataset.padding_side
-                }
-            }
-
-            if (trainingEnabled) {
-                jobPayload.Training = {
-                    epochs: formData.training.epochs,
-                    batch_size: formData.openai_params.batch_size,
-                    gradient_accumulation_steps: formData.training.gradient_accumulation_steps
-                }
+            // Training configuration
+            jobPayload.Training = {
+                epochs: formData.training.epochs,
+                batch_size: formData.openai_params.batch_size,
+                gradient_accumulation_steps: formData.training.gradient_accumulation_steps,
+                learning_rate: formData.training.learning_rate,
+                optimizer: formData.training.optimizer,
+                device: formData.training.device,
+                mixed_precision: formData.training.mixed_precision
             }
 
             // Call the actual API
@@ -343,28 +344,19 @@ const FinetuningJobModal = ({ open, onClose, onJobCreated }) => {
                 id: response.data?.id || response.data?.fine_tuning_job_id || Date.now().toString(),
                 status: response.data?.status || 'pending',
                 model: formData.baseModel,
-                task: jobPayload.task || (loraEnabled ? formData.lora?.task_type : 'instruction_tuning'),
+                task: jobPayload.task || 'instruction_tuning',
                 dataset: formData.trainingDataset?.suffixedName || formData.trainingDataset?.name || 'Unknown',
                 progress: '0%',
                 createdDate: response.data?.created_at || new Date().toISOString(),
-                training_file: jobPayload.training_file
+                training_file: jobPayload.training_file,
+                openai_params: formData.openai_params,
+                training: formData.training,
+                general: formData.general,
+                dataset_config: formData.dataset
             }
 
-            // Mirror payload sections in the newJob object for UI
-            if (trainingEnabled) {
-                newJob.openai_params = formData.openai_params
-                newJob.training = formData.training
-            }
-
-            if (generalEnabled) {
-                newJob.general = formData.general
-                if (formData.hf_token) {
-                    newJob.general = { ...newJob.general, config: { ...(newJob.general.config || {}), token: formData.hf_token } }
-                }
-            }
-
-            if (datasetEnabled) {
-                newJob.dataset_config = formData.dataset
+            if (formData.hf_token) {
+                newJob.general = { ...newJob.general, config: { ...(newJob.general.config || {}), token: formData.hf_token } }
             }
 
             onJobCreated(newJob)
@@ -381,6 +373,7 @@ const FinetuningJobModal = ({ open, onClose, onJobCreated }) => {
         setFormData({
             baseModel: '',
             trainingDataset: null,
+            hf_token: '',
             // OpenAI standard parameters
             openai_params: {
                 n_epochs: 3,
@@ -399,12 +392,24 @@ const FinetuningJobModal = ({ open, onClose, onJobCreated }) => {
             },
             dataset: {
                 max_length: 512,
+                block_size: 512,
                 validation_split_percentage: 5,
                 padding_side: 'right',
                 truncation_side: 'right',
                 max_source_length: 384,
+                pad_to_max: false,
+                query_max_len: 128,
+                passage_max_len: 128,
+                train_group_size: 8,
+                query_instruction_for_retrieval: '',
+                passage_instruction_for_retrieval: '',
+                reasoning_dataset_keys: ['Question', 'Complex_CoT', 'Response'],
+                reasoning_dataset_keys_input: 'Question, Complex_CoT, Response',
                 max_prompt_length: 512,
                 data_preprocess_type: 'neural_chat',
+                data_preprocess_neural_chat: true,
+                padding: 'true',
+                truncation: true,
                 mask_input: true,
                 mask_response: true
             },
@@ -421,12 +426,15 @@ const FinetuningJobModal = ({ open, onClose, onJobCreated }) => {
                 accelerate_mode: 'DDP',
                 hpu_execution_mode: 'lazy',
                 num_training_workers: 1
+            },
+            lora: {
+                r: 8,
+                lora_alpha: 32,
+                lora_dropout: 0.1,
+                task_type: 'CAUSAL_LM'
             }
         })
-    // reset token as well
-    setFormData(prev => ({ ...prev, hf_token: '' }))
         setLoraEnabled(false)
-        setFormData(prev => ({ ...prev, lora: { r: 8, lora_alpha: 32, lora_dropout: 0.1, task_type: 'CAUSAL_LM' } }))
         setErrors({})
         setIsSubmitting(false)
         onClose()
@@ -440,33 +448,36 @@ const FinetuningJobModal = ({ open, onClose, onJobCreated }) => {
             fullWidth
             PaperProps={{
                 sx: {
+                    position: 'relative',
                     borderRadius: 2,
-                    maxHeight: '90vh',
-                    height: '90vh'
+                    maxHeight: '95vh',
+                    height: '95vh'
                 }
             }}
         >
-            <DialogTitle sx={{ pb: 1 }}>
-                <Stack direction="row" alignItems="center" justifyContent="space-between">
-                    <Typography variant="h5" fontWeight={600}>
-                        Create New Fine-tuning Job
-                    </Typography>
-                    <IconButton onClick={handleClose} size="medium">
-                        <IconX />
-                    </IconButton>
-                </Stack>
+            <DialogTitle sx={{ pb: 2, overflow: 'visible', textOverflow: 'unset' }}>
+                <Typography variant="h5" fontWeight={600} sx={{ whiteSpace: 'normal', wordBreak: 'break-word' }}>
+                    Create New Fine-tuning Job
+                </Typography>
             </DialogTitle>
 
+            {/* Close button moved out of title: absolutely positioned within the dialog Paper */}
+            <IconButton
+                onClick={handleClose}
+                size="medium"
+                aria-label="Close dialog"
+                sx={{ position: 'absolute', right: 12, top: 12, zIndex: 10 }}
+            >
+                <IconX />
+            </IconButton>
+
             <DialogContent dividers sx={{ p: 3, overflow: 'auto', minHeight: 0 }}>
-                <Grid container spacing={3} sx={{ height: '100%', alignItems: 'stretch' }}>
-                    {/* Top Left Quadrant: Model Configuration and Dataset Configuration */}
-                    <Grid item xs={12} md={6}>
-                        <Stack spacing={3} sx={{ height: '100%' }}>
-                            {/* Model Configuration */}
-                            <Box sx={{ p: 2, border: 1, borderColor: 'divider', borderRadius: 1, backgroundColor: 'background.paper' }}>
-                                <Typography variant="h6" sx={{ mb: 2, fontWeight: 600, color: 'primary.main' }}>
-                                    Model Configuration*
-                                </Typography>
+                <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 3, height: '100%' }}>
+                    {/* Left Column: Model & Task Setup */}
+                    <Box sx={{ width: { xs: '100%', md: '41.666%' } }}>
+                        <Stack spacing={2.5} sx={{ height: '100%' }}>
+                            {/* Base Model */}
+                            <Box>
                                 <Autocomplete
                                     freeSolo
                                     fullWidth
@@ -486,97 +497,515 @@ const FinetuningJobModal = ({ open, onClose, onJobCreated }) => {
                                     )}
                                 />
                                 {errors.baseModel && (
-                                    <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1 }}>
+                                    <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1, display: 'block' }}>
                                         {errors.baseModel}
                                     </Typography>
                                 )}
-                                <TextField
-                                    label="HF Token (optional)"
-                                    type="password"
-                                    value={formData.hf_token}
-                                    onChange={(e) => handleInputChange('hf_token', e.target.value)}
-                                    fullWidth
-                                    size="medium"
-                                    sx={{ mt: 2 }}
-                                />
                             </Box>
+                            
+                            {/* HF Token */}
+                            <TextField
+                                label="HF Token (optional)"
+                                type="password"
+                                value={formData.hf_token}
+                                onChange={(e) => handleInputChange('hf_token', e.target.value)}
+                                fullWidth
+                                size="medium"
+                                sx={{ '& .MuiInputBase-root': { minHeight: 48 } }}
+                            />
 
-                            {/* Dataset Configuration */}
-                            <Box sx={{ p: 2, border: 1, borderColor: 'divider', borderRadius: 1, backgroundColor: 'background.paper' }}>
-                                <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
-                                    <Typography variant="h6" sx={{ fontWeight: 600, color: 'primary.main' }}>
-                                        Dataset Configuration
-                                    </Typography>
-                                    <FormControlLabel control={<Checkbox checked={datasetEnabled} onChange={(e) => setDatasetEnabled(e.target.checked)} />} label="Enable" />
-                                </Stack>
-                                <Stack alignItems="center">
-                                    <Grid container spacing={2} justifyContent="center">
-                                        <Grid item xs={6}>
-                                            <TextField
-                                                label="Max Length"
-                                                type="number"
-                                                value={formData.dataset.max_length}
-                                                onChange={(e) => handleConfigChange('dataset', 'max_length', parseInt(e.target.value))}
-                                                inputProps={{ min: 128, max: 4096, step: 1 }}
-                                                size="medium"
-                                                fullWidth
-                                                sx={{ '& .MuiInputBase-root': { minHeight: 48 } }}
-                                                disabled={!datasetEnabled}
-                                            />
-                                        </Grid>
-                                        <Grid item xs={6}>
-                                            <TextField
-                                                label="Max Source Length"
-                                                type="number"
-                                                value={formData.dataset.max_source_length}
-                                                onChange={(e) => handleConfigChange('dataset', 'max_source_length', parseInt(e.target.value))}
-                                                inputProps={{ min: 128, max: 2048, step: 1 }}
-                                                size="medium"
-                                                fullWidth
-                                                sx={{ '& .MuiInputBase-root': { minHeight: 48 } }}
-                                                disabled={!datasetEnabled}
-                                            />
-                                        </Grid>
-                                        <Grid item xs={6}>
-                                            <FormControl fullWidth size="medium" sx={{ '& .MuiInputBase-root': { minHeight: 48 } }}>
-                                                <InputLabel>Preprocess Type</InputLabel>
-                                                <Select
-                                                    value={formData.dataset.data_preprocess_type}
-                                                    onChange={(e) => handleConfigChange('dataset', 'data_preprocess_type', e.target.value)}
-                                                    label="Preprocess Type"
-                                                    disabled={!datasetEnabled}
-                                                >
-                                                    <MenuItem value="neural_chat">Neural Chat</MenuItem>
-                                                    <MenuItem value="general">General</MenuItem>
-                                                </Select>
-                                            </FormControl>
-                                        </Grid>
-                                        <Grid item xs={6}>
-                                            <TextField
-                                                label="Validation Split %"
-                                                type="number"
-                                                value={formData.dataset.validation_split_percentage}
-                                                onChange={(e) => handleConfigChange('dataset', 'validation_split_percentage', parseInt(e.target.value))}
-                                                inputProps={{ min: 1, max: 50, step: 1 }}
-                                                size="medium"
-                                                fullWidth
-                                                sx={{ '& .MuiInputBase-root': { minHeight: 48 } }}
-                                                disabled={!datasetEnabled}
-                                            />
-                                        </Grid>
-                                    </Grid>
-                                </Stack>
-                            </Box>
+                            {/* Task Type */}
+                            <FormControl fullWidth size="medium" sx={{ '& .MuiInputBase-root': { minHeight: 48 } }}>
+                                <InputLabel>Task Type</InputLabel>
+                                <Select
+                                    value={formData.general.task}
+                                    onChange={(e) => {
+                                        const newTask = e.target.value
+                                        handleConfigChange('general', 'task', newTask)
+                                        if (newTask === 'reasoning') {
+                                            // Prefill reasoning keys if not already set
+                                            const existing = formData.dataset.reasoning_dataset_keys
+                                            if (!existing || existing.length === 0) {
+                                                handleConfigChange('dataset', 'reasoning_dataset_keys', ['Question', 'Complex_CoT', 'Response'])
+                                                handleConfigChange('dataset', 'reasoning_dataset_keys_input', 'Question, Complex_CoT, Response')
+                                            }
+                                        }
+                                    }}
+                                    label="Task Type"
+                                >
+                                    <MenuItem value="instruction_tuning">Instruction Tuning</MenuItem>
+                                    <MenuItem value="pretraining">Pretraining</MenuItem>
+                                    <MenuItem value="dpo">DPO</MenuItem>
+                                    <MenuItem value="rerank">Rerank</MenuItem>
+                                    <MenuItem value="embedding">Embedding</MenuItem>
+                                    <MenuItem value="reasoning">Reasoning</MenuItem>
+                                </Select>
+                            </FormControl>
+
+                            {/* Inline Instruction Tuning config shown right under Task Type */}
+                            {formData.general.task === 'instruction_tuning' && (
+                                <Box sx={{ mt: 1 }}>
+                                    <Stack spacing={2}>
+                                        {/* 2-column responsive CSS grid for short-value fields */}
+                                        <Box sx={{ mt: 0, display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(160px, 1fr))' }, gap: 2 }}>
+                                            <Box>
+                                                <TextField
+                                                    label="Max Length"
+                                                    type="number"
+                                                    value={formData.dataset.max_length}
+                                                    onChange={(e) => handleConfigChange('dataset', 'max_length', e.target.value)}
+                                                    size="small"
+                                                    sx={{ width: '100%' }}
+                                                    fullWidth
+                                                />
+                                            </Box>
+
+                                            <Box>
+                                                <TextField
+                                                    label="Block Size"
+                                                    type="number"
+                                                    value={formData.dataset.block_size}
+                                                    onChange={(e) => handleConfigChange('dataset', 'block_size', e.target.value)}
+                                                    size="small"
+                                                    sx={{ width: '100%' }}
+                                                    fullWidth
+                                                />
+                                            </Box>
+
+                                            <Box>
+                                                <TextField
+                                                    label="Max Source Length"
+                                                    type="number"
+                                                    value={formData.dataset.max_source_length}
+                                                    onChange={(e) => handleConfigChange('dataset', 'max_source_length', e.target.value)}
+                                                    size="small"
+                                                    sx={{ width: '100%' }}
+                                                    fullWidth
+                                                />
+                                            </Box>
+
+                                            <Box>
+                                                <TextField
+                                                    label="Max Prompt Length"
+                                                    type="number"
+                                                    value={formData.dataset.max_prompt_length}
+                                                    onChange={(e) => handleConfigChange('dataset', 'max_prompt_length', e.target.value)}
+                                                    size="small"
+                                                    sx={{ width: '100%' }}
+                                                    fullWidth
+                                                />
+                                            </Box>
+
+
+                                            <Box>
+                                                <TextField
+                                                    label="Padding Side"
+                                                    value={formData.dataset.padding_side}
+                                                    onChange={(e) => handleConfigChange('dataset', 'padding_side', e.target.value)}
+                                                    size="small"
+                                                    sx={{ width: '100%' }}
+                                                />
+                                            </Box>
+
+                                            <Box>
+                                                <TextField
+                                                    label="Truncation Side"
+                                                    value={formData.dataset.truncation_side}
+                                                    onChange={(e) => handleConfigChange('dataset', 'truncation_side', e.target.value)}
+                                                    size="small"
+                                                    sx={{ width: '100%' }}
+                                                />
+                                            </Box>
+
+                                            <Box>
+                                                <TextField
+                                                    label="Padding"
+                                                    value={String(formData.dataset.padding)}
+                                                    onChange={(e) => handleConfigChange('dataset', 'padding', e.target.value)}
+                                                    size="small"
+                                                    sx={{ width: '100%' }}
+                                                />
+                                            </Box>
+
+                                            <Box>
+                                                <TextField
+                                                    label="Truncation"
+                                                    value={String(formData.dataset.truncation)}
+                                                    onChange={(e) => handleConfigChange('dataset', 'truncation', e.target.value)}
+                                                    size="small"
+                                                    sx={{ width: '100%' }}
+                                                />
+                                            </Box>
+
+                                            <Box>
+                                                <TextField
+                                                    label="Mask Input"
+                                                    value={String(formData.dataset.mask_input)}
+                                                    onChange={(e) => handleConfigChange('dataset', 'mask_input', e.target.value)}
+                                                    size="small"
+                                                    sx={{ width: '100%' }}
+                                                />
+                                            </Box>
+
+                                            <Box>
+                                                <TextField
+                                                    label="Mask Response"
+                                                    value={String(formData.dataset.mask_response)}
+                                                    onChange={(e) => handleConfigChange('dataset', 'mask_response', e.target.value)}
+                                                    size="small"
+                                                    sx={{ width: '100%' }}
+                                                />
+                                            </Box>
+                                        </Box>
+
+                                        <FormControlLabel
+                                            control={
+                                                <Checkbox
+                                                    checked={!!formData.dataset.data_preprocess_neural_chat}
+                                                    onChange={(e) => handleConfigChange('dataset', 'data_preprocess_neural_chat', e.target.checked)}
+                                                />
+                                            }
+                                            label="Use neural_chat for data preprocess type"
+                                            size="small"
+                                            sx={{ mt: 0 }}
+                                        />
+                                    </Stack>
+                                </Box>
+                            )}
+
+                            {/* Reasoning task dataset config (mirrors instruction tuning controls) */}
+                            {formData.general.task === 'reasoning' && (
+                                <Box sx={{ mt: 1 }}>
+                                    <Stack spacing={2}>
+                                        {/* Comma-separated keys field that maps to array */}
+                                        <TextField
+                                            label="Reasoning Dataset Keys (comma or space-separated)"
+                                            value={formData.dataset.reasoning_dataset_keys_input || ''}
+                                            onChange={(e) => {
+                                                const raw = e.target.value
+                                                // update raw input so trailing separators are preserved while typing
+                                                handleConfigChange('dataset', 'reasoning_dataset_keys_input', raw)
+                                                // allow comma or whitespace as separators to derive the array
+                                                const arr = raw.split(/[,\s]+/).map(s => s.trim()).filter(Boolean)
+                                                handleConfigChange('dataset', 'reasoning_dataset_keys', arr)
+                                            }}
+                                            size="small"
+                                            fullWidth
+                                        />
+
+                                        {/* Numeric fields: inline+scroll on small screens, 3-column fluid layout on md+ (no scrollbar) */}
+                                        <Box sx={{
+                                            display: 'grid',
+                                            gridAutoFlow: { xs: 'column', md: 'row' },
+                                            gridAutoColumns: { xs: 'minmax(100px, 1fr)', sm: 'minmax(120px, 1fr)' },
+                                            gridTemplateColumns: { md: 'repeat(3, minmax(140px, 1fr))' },
+                                            gap: 2,
+                                        }}>
+                                            <Box>
+                                                <TextField
+                                                    label="Max Length"
+                                                    type="number"
+                                                    value={formData.dataset.max_length}
+                                                    onChange={(e) => handleConfigChange('dataset', 'max_length', e.target.value)}
+                                                    size="small"
+                                                    sx={{ width: '100%' }}
+                                                    fullWidth
+                                                />
+                                            </Box>
+
+                                            <Box>
+                                                <TextField
+                                                    label="Max Source Length"
+                                                    type="number"
+                                                    value={formData.dataset.max_source_length}
+                                                    onChange={(e) => handleConfigChange('dataset', 'max_source_length', e.target.value)}
+                                                    size="small"
+                                                    sx={{ width: '100%' }}
+                                                    fullWidth
+                                                />
+                                            </Box>
+
+                                            <Box>
+                                                <TextField
+                                                    label="Max Prompt Length"
+                                                    type="number"
+                                                    value={formData.dataset.max_prompt_length}
+                                                    onChange={(e) => handleConfigChange('dataset', 'max_prompt_length', e.target.value)}
+                                                    size="small"
+                                                    sx={{ width: '100%' }}
+                                                    fullWidth
+                                                />
+                                            </Box>
+                                        </Box>
+
+                                        {/* 2-column responsive CSS grid for short-value fields */}
+                                        <Box sx={{ mt: 0, display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
+                                            <Box>
+                                                <TextField
+                                                    label="Padding Side"
+                                                    value={formData.dataset.padding_side}
+                                                    onChange={(e) => handleConfigChange('dataset', 'padding_side', e.target.value)}
+                                                    size="small"
+                                                    sx={{ width: '100%', maxWidth: 240 }}
+                                                />
+                                            </Box>
+
+                                            <Box>
+                                                <TextField
+                                                    label="Truncation Side"
+                                                    value={formData.dataset.truncation_side}
+                                                    onChange={(e) => handleConfigChange('dataset', 'truncation_side', e.target.value)}
+                                                    size="small"
+                                                    sx={{ width: '100%', maxWidth: 240 }}
+                                                />
+                                            </Box>
+
+                                            <Box>
+                                                <TextField
+                                                    label="Padding"
+                                                    value={String(formData.dataset.padding)}
+                                                    onChange={(e) => handleConfigChange('dataset', 'padding', e.target.value)}
+                                                    size="small"
+                                                    sx={{ width: '100%', maxWidth: 240 }}
+                                                />
+                                            </Box>
+
+                                            <Box>
+                                                <TextField
+                                                    label="Truncation"
+                                                    value={String(formData.dataset.truncation)}
+                                                    onChange={(e) => handleConfigChange('dataset', 'truncation', e.target.value)}
+                                                    size="small"
+                                                    sx={{ width: '100%', maxWidth: 240 }}
+                                                />
+                                            </Box>
+
+                                            <Box>
+                                                <TextField
+                                                    label="Mask Input"
+                                                    value={String(formData.dataset.mask_input)}
+                                                    onChange={(e) => handleConfigChange('dataset', 'mask_input', e.target.value)}
+                                                    size="small"
+                                                    sx={{ width: '100%', maxWidth: 240 }}
+                                                />
+                                            </Box>
+
+                                            <Box>
+                                                <TextField
+                                                    label="Mask Response"
+                                                    value={String(formData.dataset.mask_response)}
+                                                    onChange={(e) => handleConfigChange('dataset', 'mask_response', e.target.value)}
+                                                    size="small"
+                                                    sx={{ width: '100%', maxWidth: 240 }}
+                                                />
+                                            </Box>
+                                        </Box>
+                                    </Stack>
+                                </Box>
+                            )}
+
+                            {/* Pretraining task dataset config: minimal fields (max_length, truncation, padding) */}
+                            {formData.general.task === 'pretraining' && (
+                                <Box sx={{ mt: 1 }}>
+                                    <Stack spacing={2}>
+                                        <Box sx={{ mt: 0, display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(160px, 1fr))' }, gap: 2 }}>
+                                            <Box>
+                                                <TextField
+                                                    label="Max Length"
+                                                    type="number"
+                                                    value={formData.dataset.max_length}
+                                                    onChange={(e) => handleConfigChange('dataset', 'max_length', e.target.value)}
+                                                    size="small"
+                                                    sx={{ width: '100%' }}
+                                                    fullWidth
+                                                />
+                                            </Box>
+
+                                            <Box>
+                                                <TextField
+                                                    label="Block Size"
+                                                    type="number"
+                                                    value={formData.dataset.block_size}
+                                                    onChange={(e) => handleConfigChange('dataset', 'block_size', e.target.value)}
+                                                    size="small"
+                                                    sx={{ width: '100%' }}
+                                                />
+                                            </Box>
+
+                                            <Box>
+                                                <TextField
+                                                    label="Padding"
+                                                    value={String(formData.dataset.padding)}
+                                                    onChange={(e) => handleConfigChange('dataset', 'padding', e.target.value)}
+                                                    size="small"
+                                                    sx={{ width: '100%' }}
+                                                />
+                                            </Box>
+
+                                            <Box>
+                                                <TextField
+                                                    label="Truncation"
+                                                    value={String(formData.dataset.truncation)}
+                                                    onChange={(e) => handleConfigChange('dataset', 'truncation', e.target.value)}
+                                                    size="small"
+                                                    sx={{ width: '100%' }}
+                                                />
+                                            </Box>
+
+                                        </Box>
+                                    </Stack>
+                                </Box>
+                            )}
+
+                            {/* Rerank task dataset config */}
+                            {formData.general.task === 'rerank' && (
+                                <Box sx={{ mt: 1 }}>
+                                    <Stack spacing={2}>
+                                        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
+                                            <Box>
+                                                <TextField
+                                                    label="Max Length"
+                                                    type="number"
+                                                    value={formData.dataset.max_length}
+                                                    onChange={(e) => handleConfigChange('dataset', 'max_length', e.target.value)}
+                                                    size="small"
+                                                    fullWidth
+                                                />
+                                            </Box>
+                                            <Box>
+                                                <TextField
+                                                    label="Train Group Size"
+                                                    type="number"
+                                                    value={formData.dataset.train_group_size}
+                                                    onChange={(e) => handleConfigChange('dataset', 'train_group_size', e.target.value)}
+                                                    size="small"
+                                                    fullWidth
+                                                />
+                                            </Box>
+                                        </Box>
+                                    </Stack>
+                                </Box>
+                            )}
+
+                            {/* Embedding task dataset config */}
+                            {formData.general.task === 'embedding' && (
+                                <Box sx={{ mt: 1 }}>
+                                    <Stack spacing={2}>
+                                        <TextField
+                                            label="Query Instruction For Retrieval"
+                                            value={formData.dataset.query_instruction_for_retrieval || ''}
+                                            onChange={(e) => handleConfigChange('dataset', 'query_instruction_for_retrieval', e.target.value)}
+                                            size="small"
+                                            fullWidth
+                                        />
+
+                                        <TextField
+                                            label="Passage Instruction For Retrieval"
+                                            value={formData.dataset.passage_instruction_for_retrieval || ''}
+                                            onChange={(e) => handleConfigChange('dataset', 'passage_instruction_for_retrieval', e.target.value)}
+                                            size="small"
+                                            fullWidth
+                                        />
+
+                                        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
+                                            <Box>
+                                                <TextField
+                                                    label="Query Max Len"
+                                                    type="number"
+                                                    value={formData.dataset.query_max_len}
+                                                    onChange={(e) => handleConfigChange('dataset', 'query_max_len', e.target.value)}
+                                                    size="small"
+                                                    fullWidth
+                                                />
+                                            </Box>
+                                            <Box>
+                                                <TextField
+                                                    label="Passage Max Len"
+                                                    type="number"
+                                                    value={formData.dataset.passage_max_len}
+                                                    onChange={(e) => handleConfigChange('dataset', 'passage_max_len', e.target.value)}
+                                                    size="small"
+                                                    fullWidth
+                                                />
+                                            </Box>
+                                        </Box>
+
+                                        <TextField
+                                            label="Padding"
+                                            value={String(formData.dataset.padding)}
+                                            onChange={(e) => handleConfigChange('dataset', 'padding', e.target.value)}
+                                            size="small"
+                                            fullWidth
+                                        />
+
+                                        <TextField
+                                            label="Train Group Size"
+                                            type="number"
+                                            value={formData.dataset.train_group_size}
+                                            onChange={(e) => handleConfigChange('dataset', 'train_group_size', e.target.value)}
+                                            size="small"
+                                            fullWidth
+                                        />
+                                    </Stack>
+                                </Box>
+                            )}
+
+                            {/* DPO task dataset config: max_length, max_prompt_length, pad_to_max */}
+                            {formData.general.task === 'dpo' && (
+                                <Box sx={{ mt: 1 }}>
+                                    <Stack spacing={2}>
+                                        <Box sx={{
+                                            display: 'grid',
+                                            gridAutoFlow: { xs: 'column', md: 'row' },
+                                            gridAutoColumns: { xs: 'minmax(100px, 1fr)', sm: 'minmax(120px, 1fr)' },
+                                            gridTemplateColumns: { md: 'repeat(3, minmax(140px, 1fr))' },
+                                            gap: 2,
+                                        }}>
+                                            <Box>
+                                                <TextField
+                                                    label="Max Length"
+                                                    type="number"
+                                                    value={formData.dataset.max_length}
+                                                    onChange={(e) => handleConfigChange('dataset', 'max_length', e.target.value)}
+                                                    size="small"
+                                                    sx={{ width: '100%' }}
+                                                    fullWidth
+                                                />
+                                            </Box>
+
+                                            <Box>
+                                                <TextField
+                                                    label="Max Prompt Length"
+                                                    type="number"
+                                                    value={formData.dataset.max_prompt_length}
+                                                    onChange={(e) => handleConfigChange('dataset', 'max_prompt_length', e.target.value)}
+                                                    size="small"
+                                                    sx={{ width: '100%' }}
+                                                    fullWidth
+                                                />
+                                            </Box>
+
+                                            <Box>
+                                                <TextField
+                                                    label="Pad To Max"
+                                                    value={String(formData.dataset.pad_to_max)}
+                                                    onChange={(e) => handleConfigChange('dataset', 'pad_to_max', e.target.value)}
+                                                    size="small"
+                                                    sx={{ width: '100%' }}
+                                                />
+                                            </Box>
+                                        </Box>
+                                    </Stack>
+                                </Box>
+                            )}
                         </Stack>
-                    </Grid>
+                    </Box>
 
-                    {/* Top Right Quadrant: Training Dataset Upload */}
-                    <Grid item xs={12} md={6}>
-                        <Box sx={{ height: '100%', p: 2, border: 1, borderColor: 'divider', borderRadius: 1, backgroundColor: 'background.paper' }}>
-                            <Typography variant="h6" sx={{ mb: 2, fontWeight: 600, color: 'primary.main' }}>
-                                Training Dataset *
-                            </Typography>
-                            <Box sx={{ height: 'calc(100% - 48px)' }}>
+                    {/* Right Column: Training Dataset & Training Parameters */}
+                    <Box sx={{ width: { xs: '100%', md: '58.333%' } }}>
+                        <Stack spacing={2.5} sx={{ height: '100%' }}>
+                            {/* Training Dataset Upload */}
+                            <Box sx={{ minHeight: '250px' }}>
                                 <FileUploadArea
                                     onFileUpload={(file) => handleFileUpload('trainingDataset', file)}
                                     acceptedTypes={['.json', '.jsonl', '.csv']}
@@ -584,217 +1013,96 @@ const FinetuningJobModal = ({ open, onClose, onJobCreated }) => {
                                     error={errors.trainingDataset}
                                 />
                             </Box>
-                        </Box>
-                    </Grid>
 
-                    {/* Bottom Left Quadrant: General Configuration + LoRA */}
-                    <Grid item xs={12} md={6}>
-                        <Box sx={{ height: '100%', p: 3, border: 1, borderColor: 'divider', borderRadius: 1, backgroundColor: 'background.paper' }}>
-                            <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
-                                <Typography variant="h6" sx={{ fontWeight: 600, color: 'primary.main' }}>
-                                    General Configuration
-                                </Typography>
-                                <FormControlLabel control={<Checkbox checked={generalEnabled} onChange={(e) => setGeneralEnabled(e.target.checked)} />} label="Enable" />
-                            </Stack>
-                            <Stack spacing={2.5}>
-                                    <FormControl fullWidth size="medium" sx={{ '& .MuiInputBase-root': { minHeight: 48 } }}>
-                                        <InputLabel>Task Type</InputLabel>
-                                        <Select
-                                            value={formData.general.task}
-                                            onChange={(e) => handleConfigChange('general', 'task', e.target.value)}
-                                            label="Task Type"
-                                            disabled={!generalEnabled}
-                                        >
-                                            <MenuItem value="instruction_tuning">Instruction Tuning</MenuItem>
-                                            <MenuItem value="pretraining">Pretraining</MenuItem>
-                                            <MenuItem value="dpo">DPO</MenuItem>
-                                            <MenuItem value="rerank">Rerank</MenuItem>
-                                            <MenuItem value="embedding">Embedding</MenuItem>
-                                            <MenuItem value="reasoning">Reasoning</MenuItem>
-                                        </Select>
-                                    </FormControl>
-                                    <FormControl fullWidth size="medium" sx={{ '& .MuiInputBase-root': { minHeight: 48 } }}>
-                                        <InputLabel>Report To</InputLabel>
-                                        <Select
-                                            value={formData.general.report_to}
-                                            onChange={(e) => handleConfigChange('general', 'report_to', e.target.value)}
-                                            label="Report To"
-                                            disabled={!generalEnabled}
-                                        >
-                                            <MenuItem value="none">None</MenuItem>
-                                            <MenuItem value="tensorboard">TensorBoard</MenuItem>
-                                        </Select>
-                                    </FormControl>
-                                    <TextField
-                                        label="Output Directory"
-                                        value={formData.general.output_dir}
-                                        onChange={(e) => handleConfigChange('general', 'output_dir', e.target.value)}
-                                        fullWidth
-                                        size="medium"
-                                        disabled={!generalEnabled}
-                                    />
-                                    
-                                <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
-                                    <Typography variant="subtitle1">LoRA Configuration</Typography>
-                                    <FormControlLabel
-                                        control={
-                                            <Checkbox
-                                                checked={loraEnabled}
-                                                onChange={(e) => setLoraEnabled(e.target.checked)}
-                                            />
-                                        }
-                                        label="Enable LoRA"
-                                    />
-                                </Stack>
-                                <Stack alignItems="center">
-                                    <Grid container spacing={2} justifyContent="center">
-                                        <Grid item xs={4}>
+                            {/* Training Parameters */}
+                            <Box sx={{ p: 2, border: 1, borderColor: 'divider', borderRadius: 1, backgroundColor: 'background.default' }}>
+                                <Stack spacing={2}>
+                                    <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
+                                        <Box>
                                             <TextField
-                                                label="LoRA Rank (r)"
+                                                label="Epochs"
                                                 type="number"
-                                                value={formData.lora.r}
-                                                onChange={(e) => handleConfigChange('lora', 'r', parseInt(e.target.value))}
-                                                error={!!errors.lora_r}
-                                                inputProps={{ min: 1, max: 128, step: 1 }}
+                                                value={formData.training.epochs}
+                                                onChange={(e) => handleConfigChange('training', 'epochs', parseInt(e.target.value))}
+                                                error={!!errors.epochs}
+                                                inputProps={{ min: 1, max: 50, step: 1 }}
                                                 size="medium"
                                                 fullWidth
-                                                disabled={!loraEnabled}
+                                                sx={{ '& .MuiInputBase-root': { minHeight: 48 } }}
                                             />
-                                        </Grid>
-                                        <Grid item xs={4}>
+                                        </Box>
+                                        <Box>
                                             <TextField
-                                                label="LoRA Alpha"
+                                                label="Batch Size"
                                                 type="number"
-                                                value={formData.lora.lora_alpha}
-                                                onChange={(e) => handleConfigChange('lora', 'lora_alpha', parseInt(e.target.value))}
-                                                error={!!errors.lora_alpha}
+                                                value={formData.openai_params.batch_size}
+                                                onChange={(e) => handleOpenAIParamChange('batch_size', parseInt(e.target.value))}
+                                                error={!!errors.batch_size}
                                                 inputProps={{ min: 1, max: 256, step: 1 }}
                                                 size="medium"
                                                 fullWidth
-                                                disabled={!loraEnabled}
-                                            />
-                                        </Grid>
-                                        <Grid item xs={4}>
-                                            <TextField
-                                                label="LoRA Dropout"
-                                                type="number"
-                                                value={formData.lora.lora_dropout}
-                                                onChange={(e) => handleConfigChange('lora', 'lora_dropout', parseFloat(e.target.value))}
-                                                error={!!errors.lora_dropout}
-                                                inputProps={{ min: 0, max: 1, step: 0.01 }}
-                                                size="medium"
-                                                fullWidth
-                                                disabled={!loraEnabled}
-                                            />
-                                        </Grid>
-                                    </Grid>
-                                </Stack>
-                            </Stack>
-                        </Box>
-                    </Grid>
-
-                    {/* Bottom Right Quadrant: Training Configuration + OpenAI */}
-                    <Grid item xs={12} md={6}>
-                            <Box sx={{ height: '100%', p: 3, border: 1, borderColor: 'divider', borderRadius: 1, backgroundColor: 'background.paper' }}>
-                                <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
-                                    <Typography variant="h6" sx={{ fontWeight: 600, color: 'primary.main' }}>
-                                        Training Configuration
-                                    </Typography>
-                                    <FormControlLabel control={<Checkbox checked={trainingEnabled} onChange={(e) => setTrainingEnabled(e.target.checked)} />} label="Enable" />
-                                </Stack>
-                            <Stack spacing={2.5}>
-                                <Stack alignItems="center">
-                                    <Grid container spacing={2} justifyContent="center">
-                                        <Grid item xs={6}>
-                                            <TextField
-                                                label="Epochs"
-                                                    type="number"
-                                                    value={formData.training.epochs}
-                                                    onChange={(e) => handleConfigChange('training', 'epochs', parseInt(e.target.value))}
-                                                    error={!!errors.epochs}
-                                                    inputProps={{ min: 1, max: 50, step: 1 }}
-                                                    size="medium"
-                                                fullWidth
                                                 sx={{ '& .MuiInputBase-root': { minHeight: 48 } }}
-                                                    disabled={!trainingEnabled}
                                             />
-                                        </Grid>
-                                        <Grid item xs={6}>
-                                            <TextField
-                                                label="Batch Size"
-                                                    type="number"
-                                                    value={formData.openai_params.batch_size}
-                                                    onChange={(e) => handleOpenAIParamChange('batch_size', parseInt(e.target.value))}
-                                                    error={!!errors.batch_size}
-                                                    inputProps={{ min: 1, max: 256, step: 1 }}
-                                                    size="medium"
-                                                fullWidth
-                                                sx={{ '& .MuiInputBase-root': { minHeight: 48 } }}
-                                                disabled={!trainingEnabled}
-                                            />
-                                        </Grid>
-                                    </Grid>
-                                </Stack>
-                                <TextField
-                                    label="Learning Rate"
-                                    type="number"
-                                    value={formData.training.learning_rate}
-                                    onChange={(e) => handleConfigChange('training', 'learning_rate', parseFloat(e.target.value))}
-                                    error={!!errors.learning_rate}
-                                    inputProps={{ min: 0.00001, max: 0.01, step: 0.00001 }}
-                                    size="medium"
-                                    fullWidth
-                                    sx={{ '& .MuiInputBase-root': { minHeight: 48 } }}
-                                    disabled={!trainingEnabled}
-                                />
-                                <FormControl fullWidth size="medium" sx={{ '& .MuiInputBase-root': { minHeight: 48 } }}>
+                                        </Box>
+                                    </Box>
+                                    
+                                    <TextField
+                                        label="Learning Rate"
+                                        type="number"
+                                        value={formData.training.learning_rate}
+                                        onChange={(e) => handleConfigChange('training', 'learning_rate', parseFloat(e.target.value))}
+                                        error={!!errors.learning_rate}
+                                        inputProps={{ min: 0.00001, max: 0.01, step: 0.00001 }}
+                                        size="medium"
+                                        fullWidth
+                                        sx={{ '& .MuiInputBase-root': { minHeight: 48 } }}
+                                    />
+                                    
+                                    <FormControl fullWidth size="medium" sx={{ '& .MuiInputBase-root': { minHeight: 48 } }}>
                                         <InputLabel>Optimizer</InputLabel>
                                         <Select
-                                                value={formData.training.optimizer}
-                                                onChange={(e) => handleConfigChange('training', 'optimizer', e.target.value)}
+                                            value={formData.training.optimizer}
+                                            onChange={(e) => handleConfigChange('training', 'optimizer', e.target.value)}
                                             label="Optimizer"
-                                                disabled={!trainingEnabled}
                                         >
                                             <MenuItem value="adamw_torch">AdamW Torch</MenuItem>
                                             <MenuItem value="adam">Adam</MenuItem>
                                             <MenuItem value="sgd">SGD</MenuItem>
                                         </Select>
                                     </FormControl>
-                                    <Stack alignItems="center">
-                                        <Grid container spacing={2} justifyContent="center">
-                                            <Grid item xs={6}>
-                                                <FormControl fullWidth size="medium" sx={{ '& .MuiInputBase-root': { minHeight: 48 } }}>
-                                                    <InputLabel>Device</InputLabel>
-                                                    <Select
-                                                        value={formData.training.device}
-                                                        onChange={(e) => handleConfigChange('training', 'device', e.target.value)}
-                                                        label="Device"
-                                                        disabled={!trainingEnabled}
-                                                    >
-                                                        <MenuItem value="cpu">CPU</MenuItem>
-                                                        <MenuItem value="gpu">GPU</MenuItem>
-                                                        <MenuItem value="hpu">HPU</MenuItem>
-                                                        <MenuItem value="cuda">CUDA</MenuItem>
-                                                    </Select>
-                                                </FormControl>
-                                            </Grid>
-                                            <Grid item xs={6}>
-                                                <FormControl fullWidth size="medium" sx={{ '& .MuiInputBase-root': { minHeight: 48 } }}>
-                                                    <InputLabel>Mixed Precision</InputLabel>
-                                                    <Select
-                                                        value={formData.training.mixed_precision}
-                                                        onChange={(e) => handleConfigChange('training', 'mixed_precision', e.target.value)}
-                                                        label="Mixed Precision"
-                                                        disabled={!trainingEnabled}
-                                                    >
-                                                        <MenuItem value="no">No</MenuItem>
-                                                        <MenuItem value="fp16">FP16</MenuItem>
-                                                        <MenuItem value="bf16">BF16</MenuItem>
-                                                    </Select>
-                                                </FormControl>
-                                            </Grid>
-                                        </Grid>
-                                    </Stack>
+                                    
+                                    <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
+                                        <Box>
+                                            <FormControl fullWidth size="medium" sx={{ '& .MuiInputBase-root': { minHeight: 48 } }}>
+                                                <InputLabel>Device</InputLabel>
+                                                <Select
+                                                    value={formData.training.device}
+                                                    onChange={(e) => handleConfigChange('training', 'device', e.target.value)}
+                                                    label="Device"
+                                                >
+                                                    <MenuItem value="cpu">CPU</MenuItem>
+                                                    <MenuItem value="gpu">GPU</MenuItem>
+                                                    <MenuItem value="hpu">HPU</MenuItem>
+                                                    <MenuItem value="cuda">CUDA</MenuItem>
+                                                </Select>
+                                            </FormControl>
+                                        </Box>
+                                        <Box>
+                                            <FormControl fullWidth size="medium" sx={{ '& .MuiInputBase-root': { minHeight: 48 } }}>
+                                                <InputLabel>Mixed Precision</InputLabel>
+                                                <Select
+                                                    value={formData.training.mixed_precision}
+                                                    onChange={(e) => handleConfigChange('training', 'mixed_precision', e.target.value)}
+                                                    label="Mixed Precision"
+                                                >
+                                                    <MenuItem value="no">No</MenuItem>
+                                                    <MenuItem value="fp16">FP16</MenuItem>
+                                                    <MenuItem value="bf16">BF16</MenuItem>
+                                                </Select>
+                                            </FormControl>
+                                        </Box>
+                                    </Box>
+                                    
                                     <TextField
                                         label="Gradient Accumulation Steps"
                                         type="number"
@@ -803,41 +1111,41 @@ const FinetuningJobModal = ({ open, onClose, onJobCreated }) => {
                                         inputProps={{ min: 1, step: 1 }}
                                         size="medium"
                                         fullWidth
-                                        disabled={!trainingEnabled}
+                                        sx={{ '& .MuiInputBase-root': { minHeight: 48 } }}
                                     />
-                                    <Stack alignItems="center">
-                                        <Grid container spacing={2} justifyContent="center">
-                                            <Grid item xs={6}>
-                                                <TextField
-                                                    label="Learning Rate Multiplier"
-                                                    type="number"
-                                                    value={formData.openai_params.learning_rate_multiplier}
-                                                    onChange={(e) => handleOpenAIParamChange('learning_rate_multiplier', parseFloat(e.target.value))}
-                                                    error={!!errors.learning_rate_multiplier}
-                                                    inputProps={{ min: 0.02, max: 2, step: 0.01 }}
-                                                    size="medium"
-                                                    fullWidth
-                                                    disabled={!trainingEnabled}
-                                                />
-                                            </Grid>
-                                            <Grid item xs={6}>
-                                                <TextField
-                                                    label="Prompt Loss Weight"
-                                                    type="number"
-                                                    value={formData.openai_params.prompt_loss_weight}
-                                                    onChange={(e) => handleOpenAIParamChange('prompt_loss_weight', parseFloat(e.target.value))}
-                                                    inputProps={{ min: 0, max: 1, step: 0.01 }}
-                                                    size="medium"
-                                                    fullWidth
-                                                    disabled={!trainingEnabled}
-                                                />
-                                            </Grid>
-                                        </Grid>
-                                    </Stack>
-                            </Stack>
-                        </Box>
-                    </Grid>
-                </Grid>
+                                    
+                                    <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
+                                        <Box>
+                                            <TextField
+                                                label="Learning Rate Multiplier"
+                                                type="number"
+                                                value={formData.openai_params.learning_rate_multiplier}
+                                                onChange={(e) => handleOpenAIParamChange('learning_rate_multiplier', parseFloat(e.target.value))}
+                                                error={!!errors.learning_rate_multiplier}
+                                                inputProps={{ min: 0.02, max: 2, step: 0.01 }}
+                                                size="medium"
+                                                fullWidth
+                                                sx={{ '& .MuiInputBase-root': { minHeight: 48 } }}
+                                            />
+                                        </Box>
+                                        <Box>
+                                            <TextField
+                                                label="Prompt Loss Weight"
+                                                type="number"
+                                                value={formData.openai_params.prompt_loss_weight}
+                                                onChange={(e) => handleOpenAIParamChange('prompt_loss_weight', parseFloat(e.target.value))}
+                                                inputProps={{ min: 0, max: 1, step: 0.01 }}
+                                                size="medium"
+                                                fullWidth
+                                                sx={{ '& .MuiInputBase-root': { minHeight: 48 } }}
+                                            />
+                                        </Box>
+                                    </Box>
+                                </Stack>
+                            </Box>
+                        </Stack>
+                    </Box>
+                </Box>
             </DialogContent>
 
             <DialogActions sx={{ p: 3, pt: 2, gap: 2, justifyContent: 'flex-end' }}>
