@@ -82,17 +82,28 @@ const FinetuningJobModal = ({ open, onClose, onJobCreated }) => {
         },
         training: {
             optimizer: 'adamw_torch',
-            epochs: 3,
+            device: 'cpu',
+            batch_size: 2,
+            epochs: 1,
+            max_train_steps: null,
             learning_rate: 5.0e-5,
             lr_scheduler: 'linear',
             weight_decay: 0.0,
-            device: 'cpu',
+            num_training_workers: 1,
+            accelerate_mode: 'DDP',
             mixed_precision: 'no',
             gradient_accumulation_steps: 1,
             logging_steps: 10,
-            accelerate_mode: 'DDP',
-            hpu_execution_mode: 'lazy',
-            num_training_workers: 1
+            dpo_beta: 0.1
+            ,
+            // Embedding-specific training config (only used when task === 'embedding')
+            embedding_training_config: {
+                
+                temperature: 0.02,
+                sentence_pooling_method: 'cls',
+                normalized: true,
+                use_inbatch_neg: true
+            }
         },
         lora: {
             r: 8,
@@ -327,13 +338,26 @@ const FinetuningJobModal = ({ open, onClose, onJobCreated }) => {
 
             // Training configuration
             jobPayload.Training = {
-                epochs: formData.training.epochs,
-                batch_size: formData.openai_params.batch_size,
-                gradient_accumulation_steps: formData.training.gradient_accumulation_steps,
-                learning_rate: formData.training.learning_rate,
                 optimizer: formData.training.optimizer,
                 device: formData.training.device,
-                mixed_precision: formData.training.mixed_precision
+                batch_size: formData.training.batch_size,
+                epochs: formData.training.epochs,
+                max_train_steps: formData.training.max_train_steps,
+                learning_rate: formData.training.learning_rate,
+                lr_scheduler: formData.training.lr_scheduler,
+                weight_decay: formData.training.weight_decay,
+                num_training_workers: formData.training.num_training_workers,
+                accelerate_mode: formData.training.accelerate_mode,
+                mixed_precision: formData.training.mixed_precision,
+                gradient_accumulation_steps: formData.training.gradient_accumulation_steps,
+                logging_steps: formData.training.logging_steps,
+                // embedding_training_config will be attached below only for embedding task
+                dpo_beta: formData.training.dpo_beta
+            }
+
+            // If embedding task, attach embedding_training_config
+            if (jobPayload.task === 'embedding') {
+                jobPayload.Training.embedding_training_config = formData.training.embedding_training_config
             }
 
             // Call the actual API
@@ -415,17 +439,26 @@ const FinetuningJobModal = ({ open, onClose, onJobCreated }) => {
             },
             training: {
                 optimizer: 'adamw_torch',
-                epochs: 3,
+                device: 'cpu',
+                batch_size: 2,
+                epochs: 1,
+                max_train_steps: null,
                 learning_rate: 5.0e-5,
                 lr_scheduler: 'linear',
                 weight_decay: 0.0,
-                device: 'cpu',
+                num_training_workers: 1,
+                accelerate_mode: 'DDP',
                 mixed_precision: 'no',
                 gradient_accumulation_steps: 1,
                 logging_steps: 10,
-                accelerate_mode: 'DDP',
-                hpu_execution_mode: 'lazy',
-                num_training_workers: 1
+                dpo_beta: 0.1
+            ,
+            embedding_training_config: {
+                temperature: 0.02,
+                sentence_pooling_method: 'cls',
+                normalized: true,
+                use_inbatch_neg: true
+            }
             },
             lora: {
                 r: 8,
@@ -474,7 +507,7 @@ const FinetuningJobModal = ({ open, onClose, onJobCreated }) => {
             <DialogContent dividers sx={{ p: 3, overflow: 'auto', minHeight: 0 }}>
                 <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 3, height: '100%' }}>
                     {/* Left Column: Model & Task Setup */}
-                    <Box sx={{ width: { xs: '100%', md: '41.666%' } }}>
+                    <Box sx={{ width: { xs: '100%', md: '50%' } }}>
                         <Stack spacing={2.5} sx={{ height: '100%' }}>
                             {/* Base Model */}
                             <Box>
@@ -1002,10 +1035,10 @@ const FinetuningJobModal = ({ open, onClose, onJobCreated }) => {
                     </Box>
 
                     {/* Right Column: Training Dataset & Training Parameters */}
-                    <Box sx={{ width: { xs: '100%', md: '58.333%' } }}>
+                    <Box sx={{ width: { xs: '100%', md: '50%' } }}>
                         <Stack spacing={2.5} sx={{ height: '100%' }}>
                             {/* Training Dataset Upload */}
-                            <Box sx={{ minHeight: '250px' }}>
+                            <Box>
                                 <FileUploadArea
                                     onFileUpload={(file) => handleFileUpload('trainingDataset', file)}
                                     acceptedTypes={['.json', '.jsonl', '.csv']}
@@ -1015,9 +1048,10 @@ const FinetuningJobModal = ({ open, onClose, onJobCreated }) => {
                             </Box>
 
                             {/* Training Parameters */}
-                            <Box sx={{ p: 2, border: 1, borderColor: 'divider', borderRadius: 1, backgroundColor: 'background.default' }}>
+                            <Box sx={{ p: 0, mt: 1 }}>
                                 <Stack spacing={2}>
-                                    <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
+                                    {/* compact grid similar to task-type configs */}
+                                    <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(140px, 1fr))' }, gap: 2 }}>
                                         <Box>
                                             <TextField
                                                 label="Epochs"
@@ -1025,55 +1059,83 @@ const FinetuningJobModal = ({ open, onClose, onJobCreated }) => {
                                                 value={formData.training.epochs}
                                                 onChange={(e) => handleConfigChange('training', 'epochs', parseInt(e.target.value))}
                                                 error={!!errors.epochs}
-                                                inputProps={{ min: 1, max: 50, step: 1 }}
-                                                size="medium"
+                                                inputProps={{ min: 1, step: 1 }}
+                                                size="small"
                                                 fullWidth
-                                                sx={{ '& .MuiInputBase-root': { minHeight: 48 } }}
+                                                sx={{ '& .MuiInputBase-root': { minHeight: 40 } }}
                                             />
                                         </Box>
                                         <Box>
                                             <TextField
                                                 label="Batch Size"
                                                 type="number"
-                                                value={formData.openai_params.batch_size}
-                                                onChange={(e) => handleOpenAIParamChange('batch_size', parseInt(e.target.value))}
+                                                value={formData.training.batch_size}
+                                                onChange={(e) => handleConfigChange('training', 'batch_size', parseInt(e.target.value))}
                                                 error={!!errors.batch_size}
                                                 inputProps={{ min: 1, max: 256, step: 1 }}
-                                                size="medium"
+                                                size="small"
                                                 fullWidth
-                                                sx={{ '& .MuiInputBase-root': { minHeight: 48 } }}
+                                                sx={{ '& .MuiInputBase-root': { minHeight: 40 } }}
                                             />
                                         </Box>
                                     </Box>
-                                    
-                                    <TextField
-                                        label="Learning Rate"
-                                        type="number"
-                                        value={formData.training.learning_rate}
-                                        onChange={(e) => handleConfigChange('training', 'learning_rate', parseFloat(e.target.value))}
-                                        error={!!errors.learning_rate}
-                                        inputProps={{ min: 0.00001, max: 0.01, step: 0.00001 }}
-                                        size="medium"
-                                        fullWidth
-                                        sx={{ '& .MuiInputBase-root': { minHeight: 48 } }}
-                                    />
-                                    
-                                    <FormControl fullWidth size="medium" sx={{ '& .MuiInputBase-root': { minHeight: 48 } }}>
-                                        <InputLabel>Optimizer</InputLabel>
-                                        <Select
-                                            value={formData.training.optimizer}
-                                            onChange={(e) => handleConfigChange('training', 'optimizer', e.target.value)}
-                                            label="Optimizer"
-                                        >
-                                            <MenuItem value="adamw_torch">AdamW Torch</MenuItem>
-                                            <MenuItem value="adam">Adam</MenuItem>
-                                            <MenuItem value="sgd">SGD</MenuItem>
-                                        </Select>
-                                    </FormControl>
-                                    
+
+                                    <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(140px, 1fr))' }, gap: 2 }}>
+                                        <Box>
+                                            <TextField
+                                                label="Learning Rate"
+                                                type="number"
+                                                value={formData.training.learning_rate}
+                                                onChange={(e) => handleConfigChange('training', 'learning_rate', parseFloat(e.target.value))}
+                                                error={!!errors.learning_rate}
+                                                inputProps={{ min: 0.00001, max: 0.01, step: 0.00001 }}
+                                                size="small"
+                                                fullWidth
+                                                sx={{ '& .MuiInputBase-root': { minHeight: 40 } }}
+                                            />
+                                        </Box>
+                                        <Box>
+                                            <TextField
+                                                label="Max Train Steps (optional)"
+                                                type="number"
+                                                value={formData.training.max_train_steps || ''}
+                                                onChange={(e) => handleConfigChange('training', 'max_train_steps', e.target.value ? parseInt(e.target.value) : null)}
+                                                inputProps={{ min: 1, step: 1 }}
+                                                size="small"
+                                                fullWidth
+                                                sx={{ '& .MuiInputBase-root': { minHeight: 40 } }}
+                                            />
+                                        </Box>
+                                    </Box>
+
                                     <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
                                         <Box>
-                                            <FormControl fullWidth size="medium" sx={{ '& .MuiInputBase-root': { minHeight: 48 } }}>
+                                            <TextField
+                                                label="Optimizer"
+                                                value={formData.training.optimizer}
+                                                onChange={(e) => handleConfigChange('training', 'optimizer', e.target.value)}
+                                                size="small"
+                                                fullWidth
+                                                sx={{ '& .MuiInputBase-root': { minHeight: 40 } }}
+                                            />
+                                        </Box>
+                                        <Box>
+                                            <TextField
+                                                label="Gradient Accumulation Steps"
+                                                type="number"
+                                                value={formData.training.gradient_accumulation_steps}
+                                                onChange={(e) => handleConfigChange('training', 'gradient_accumulation_steps', parseInt(e.target.value))}
+                                                inputProps={{ min: 1, step: 1 }}
+                                                size="small"
+                                                fullWidth
+                                                sx={{ '& .MuiInputBase-root': { minHeight: 40 } }}
+                                            />
+                                        </Box>
+                                    </Box>
+
+                                    <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, minmax(120px, 1fr))' }, gap: 2 }}>
+                                        <Box>
+                                            <FormControl fullWidth size="small" sx={{ '& .MuiInputBase-root': { minHeight: 40 } }}>
                                                 <InputLabel>Device</InputLabel>
                                                 <Select
                                                     value={formData.training.device}
@@ -1081,14 +1143,11 @@ const FinetuningJobModal = ({ open, onClose, onJobCreated }) => {
                                                     label="Device"
                                                 >
                                                     <MenuItem value="cpu">CPU</MenuItem>
-                                                    <MenuItem value="gpu">GPU</MenuItem>
-                                                    <MenuItem value="hpu">HPU</MenuItem>
-                                                    <MenuItem value="cuda">CUDA</MenuItem>
                                                 </Select>
                                             </FormControl>
                                         </Box>
                                         <Box>
-                                            <FormControl fullWidth size="medium" sx={{ '& .MuiInputBase-root': { minHeight: 48 } }}>
+                                            <FormControl fullWidth size="small" sx={{ '& .MuiInputBase-root': { minHeight: 40 } }}>
                                                 <InputLabel>Mixed Precision</InputLabel>
                                                 <Select
                                                     value={formData.training.mixed_precision}
@@ -1101,46 +1160,145 @@ const FinetuningJobModal = ({ open, onClose, onJobCreated }) => {
                                                 </Select>
                                             </FormControl>
                                         </Box>
+                                        <Box>
+                                            <FormControl fullWidth size="small" sx={{ '& .MuiInputBase-root': { minHeight: 40 } }}>
+                                                <InputLabel>Accelerate Mode</InputLabel>
+                                                <Select
+                                                    value={formData.training.accelerate_mode}
+                                                    onChange={(e) => handleConfigChange('training', 'accelerate_mode', e.target.value)}
+                                                    label="Accelerate Mode"
+                                                >
+                                                    <MenuItem value="DDP">DDP</MenuItem>
+                                                </Select>
+                                            </FormControl>
+                                        </Box>
                                     </Box>
-                                    
-                                    <TextField
-                                        label="Gradient Accumulation Steps"
-                                        type="number"
-                                        value={formData.training.gradient_accumulation_steps}
-                                        onChange={(e) => handleConfigChange('training', 'gradient_accumulation_steps', parseInt(e.target.value))}
-                                        inputProps={{ min: 1, step: 1 }}
-                                        size="medium"
-                                        fullWidth
-                                        sx={{ '& .MuiInputBase-root': { minHeight: 48 } }}
-                                    />
-                                    
-                                    <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
+
+                                    <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, minmax(120px, 1fr))' }, gap: 2 }}>
                                         <Box>
                                             <TextField
-                                                label="Learning Rate Multiplier"
+                                                label="Weight Decay"
                                                 type="number"
-                                                value={formData.openai_params.learning_rate_multiplier}
-                                                onChange={(e) => handleOpenAIParamChange('learning_rate_multiplier', parseFloat(e.target.value))}
-                                                error={!!errors.learning_rate_multiplier}
-                                                inputProps={{ min: 0.02, max: 2, step: 0.01 }}
-                                                size="medium"
+                                                value={formData.training.weight_decay}
+                                                onChange={(e) => handleConfigChange('training', 'weight_decay', parseFloat(e.target.value))}
+                                                inputProps={{ min: 0, step: 0.01 }}
+                                                size="small"
                                                 fullWidth
-                                                sx={{ '& .MuiInputBase-root': { minHeight: 48 } }}
+                                                sx={{ '& .MuiInputBase-root': { minHeight: 40 } }}
                                             />
                                         </Box>
                                         <Box>
                                             <TextField
-                                                label="Prompt Loss Weight"
+                                                label="Logging Steps"
                                                 type="number"
-                                                value={formData.openai_params.prompt_loss_weight}
-                                                onChange={(e) => handleOpenAIParamChange('prompt_loss_weight', parseFloat(e.target.value))}
-                                                inputProps={{ min: 0, max: 1, step: 0.01 }}
-                                                size="medium"
+                                                value={formData.training.logging_steps}
+                                                onChange={(e) => handleConfigChange('training', 'logging_steps', parseInt(e.target.value))}
+                                                error={!!errors.logging_steps}
+                                                inputProps={{ min: 1, step: 1 }}
+                                                size="small"
                                                 fullWidth
-                                                sx={{ '& .MuiInputBase-root': { minHeight: 48 } }}
+                                                sx={{ '& .MuiInputBase-root': { minHeight: 40 } }}
+                                            />
+                                        </Box>
+                                        <Box>
+                                            <TextField
+                                                label="LR Scheduler"
+                                                value={formData.training.lr_scheduler}
+                                                onChange={(e) => handleConfigChange('training', 'lr_scheduler', e.target.value)}
+                                                size="small"
+                                                fullWidth
+                                                sx={{ '& .MuiInputBase-root': { minHeight: 40 } }}
                                             />
                                         </Box>
                                     </Box>
+
+                                    <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(140px, 1fr))' }, gap: 2 }}>
+                                        <Box>
+                                            <TextField
+                                                label="Number of Training Workers"
+                                                type="number"
+                                                value={formData.training.num_training_workers}
+                                                onChange={() => {}}
+                                                InputProps={{ readOnly: true }}
+                                                inputProps={{ min: 1, step: 1, 'aria-readonly': true }}
+                                                disabled
+                                                size="small"
+                                                fullWidth
+                                                sx={{ '& .MuiInputBase-root': { minHeight: 40 } }}
+                                            />
+                                        </Box>
+                                        <Box>
+                                            <TextField
+                                                label="DPO Beta"
+                                                type="number"
+                                                value={formData.training.dpo_beta}
+                                                onChange={(e) => handleConfigChange('training', 'dpo_beta', parseFloat(e.target.value))}
+                                                inputProps={{ min: 0, step: 0.01 }}
+                                                size="small"
+                                                fullWidth
+                                                sx={{ '& .MuiInputBase-root': { minHeight: 40 } }}
+                                            />
+                                        </Box>
+                                    </Box>
+
+                                    {formData.general.task === 'embedding' ? (
+                                        <Box sx={{ mt: 1, display: 'grid', gap: 2 }}>
+                                            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
+                                                <Box>
+                                                    <TextField
+                                                        label="Temperature"
+                                                        type="number"
+                                                        value={formData.training.embedding_training_config?.temperature}
+                                                        onChange={(e) => handleConfigChange('training', 'embedding_training_config', {
+                                                            ...formData.training.embedding_training_config,
+                                                            temperature: e.target.value === '' ? null : parseFloat(e.target.value)
+                                                        })}
+                                                        inputProps={{ step: 0.01 }}
+                                                        size="small"
+                                                        fullWidth
+                                                    />
+                                                </Box>
+                                                <Box>
+                                                    <TextField
+                                                        label="Sentence Pooling Method"
+                                                        value={formData.training.embedding_training_config?.sentence_pooling_method}
+                                                        onChange={(e) => handleConfigChange('training', 'embedding_training_config', {
+                                                            ...formData.training.embedding_training_config,
+                                                            sentence_pooling_method: e.target.value
+                                                        })}
+                                                        size="small"
+                                                        fullWidth
+                                                    />
+                                                </Box>
+                                            </Box>
+
+                                            <FormControlLabel
+                                                control={
+                                                    <Checkbox
+                                                        checked={!!formData.training.embedding_training_config?.normalized}
+                                                        onChange={(e) => handleConfigChange('training', 'embedding_training_config', {
+                                                            ...formData.training.embedding_training_config,
+                                                            normalized: e.target.checked
+                                                        })}
+                                                    />
+                                                }
+                                                label="Normalized embeddings"
+                                            />
+
+                                            <FormControlLabel
+                                                control={
+                                                    <Checkbox
+                                                        checked={!!formData.training.embedding_training_config?.use_inbatch_neg}
+                                                        onChange={(e) => handleConfigChange('training', 'embedding_training_config', {
+                                                            ...formData.training.embedding_training_config,
+                                                            use_inbatch_neg: e.target.checked
+                                                        })}
+                                                    />
+                                                }
+                                                label="Use in-batch negatives"
+                                            />
+                                        </Box>
+                                    ) : null }
                                 </Stack>
                             </Box>
                         </Stack>

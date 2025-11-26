@@ -189,13 +189,19 @@ const FileUploadArea = ({
                                 ? theme.palette.error.main 
                                 : theme.palette.divider,
                         borderRadius: 2,
-                        p: 4,
+                        p: 3,
                         textAlign: 'center',
                         cursor: 'pointer',
                         transition: 'all 0.2s ease-in-out',
                         backgroundColor: dragActive 
                             ? alpha(theme.palette.primary.main, 0.05) 
                             : 'transparent',
+                        width: '100%',
+                        minHeight: 150,
+                        mx: 'auto',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
                         '&:hover': {
                             borderColor: theme.palette.primary.main,
                             backgroundColor: alpha(theme.palette.primary.main, 0.02)
@@ -207,18 +213,15 @@ const FileUploadArea = ({
                     onDragOver={handleDrag}
                     onDrop={handleDrop}
                 >
-                    <Stack spacing={2} alignItems="center">
+                    <Stack spacing={1} alignItems="center">
                         <IconUpload size={48} color={theme.palette.text.secondary} />
                         
-                        <Stack spacing={1} alignItems="center">
+                        <Stack spacing={0.5} alignItems="center">
                             <Typography variant="h6">
-                                Drop your file here or click to browse
+                                Drop your training dataset file here or click to browse
                             </Typography>
                             <Typography variant="body2" color="textSecondary">
-                                Supported formats: {acceptedTypes.join(', ')}
-                            </Typography>
-                            <Typography variant="caption" color="textSecondary">
-                                Maximum file size: {maxSizeMB}MB
+                                Supported formats: {acceptedTypes.join(', ')} (Max filesize: {maxSizeMB}MB)
                             </Typography>
                         </Stack>
 
