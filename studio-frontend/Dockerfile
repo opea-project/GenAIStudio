@@ -1,4 +1,4 @@
-FROM node:23-alpine
+FROM node:20-alpine
 
 # Accept proxy build arguments
 ARG http_proxy
@@ -17,10 +17,8 @@ RUN apk update && apk upgrade && \
     build-base cairo-dev pango-dev \
     # Install Chromium
     chromium && \
-    # Update npm to the latest version
-    npm install -g npm@latest && \
     # Install PNPM globally
-    npm install -g pnpm@latest 
+    npm install -g pnpm@9
 
 # Debug step to verify git installation
 RUN git --version
