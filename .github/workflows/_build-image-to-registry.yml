@@ -39,5 +39,5 @@ jobs:
       - name: Build Image and Push Image
         run: |
           sudo apt install ansible -y
-          ansible-playbook buildpush-genaistudio-images.yml -e "container_registry=${OPEA_IMAGE_REPO}opea" -e "container_tag=${{ inputs.tag }}"
+          ansible-playbook buildpush-genaistudio-images.yml -e "container_registry=${OPEA_IMAGE_REPO}opea" -e "container_tag=${{ inputs.tag }}" -e "http_proxy=${http_proxy}"
         working-directory: ${{ github.workspace }}/setup-scripts/build-image-to-registry/
