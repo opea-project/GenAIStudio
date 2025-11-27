@@ -225,7 +225,7 @@ spec:
     spec:
       containers:
       - name: chathistory-mongo
-        image: opea/chathistory-mongo:latest
+        image: opea/chathistory-mongo:1.3
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 6012

@@ -347,17 +347,17 @@ spec:
     spec:
       containers:
       - name: studio-backend
-        image: ${REGISTRY}/studio-backend:${TAG}
+        image: "${REGISTRY}/studio-backend:${TAG}"
         imagePullPolicy: Always
         env:
         - name: APP_FRONTEND_IMAGE
-          value: ${REGISTRY}/app-frontend:${TAG}
+          value: "${REGISTRY}/app-frontend:${TAG}"
         - name: APP_BACKEND_IMAGE
-          value: ${REGISTRY}/app-backend:${TAG}
+          value: "${REGISTRY}/app-backend:${TAG}"
         - name: REGISTRY
-          value: ${REGISTRY}
+          value: "opea"
         - name: TAG
-          value: ${TAG}
+          value: "1.4"
         - name: SBX_HTTP_PROXY
           value: ${HTTP_PROXY}
         - name: SBX_NO_PROXY
@@ -403,7 +403,8 @@ metadata:
   namespace: studio
 spec:
   accessModes:
-    - ReadWriteMany
+    - ReadWriteOnce
+  storageClassName: local-path
   resources:
     requests:
       storage: 1Gi
@@ -444,7 +445,7 @@ spec:
       containers:
       - name: studio-frontend
         securityContext: {}
-        image: ${REGISTRY}/studio-frontend:${TAG}
+        image: "${REGISTRY}/studio-frontend:${TAG}"
         imagePullPolicy: Always
         envFrom:
         - configMapRef:
@@ -548,7 +549,7 @@ spec:
           runAsGroup: 0
       containers:
       - name: keycloak
-        image: quay.io/keycloak/keycloak:latest
+        image: quay.io/keycloak/keycloak:26.2.5
         volumeMounts:
         - name: app-tls
           mountPath: /etc/ssl
@@ -673,8 +674,7 @@ spec:
     spec:
       containers:
       - name: finetuning-server
-        # image: opea/finetuning:latest
-        image: ${REGISTRY}/finetuning:${TAG}
+        image: opea/finetuning:latest
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8015

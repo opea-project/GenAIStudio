@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 # Use node 20.11.1 as the base image
-FROM node:20.11.1 as vite-app
+FROM node:20.11.1 AS vite-app
 
 # Accept proxy build arguments
 ARG http_proxy
@@ -18,7 +18,7 @@ COPY ./react /usr/app/react
 WORKDIR /usr/app/react
 
 
-RUN ["npm", "install"]
+RUN ["npm", "install", "--legacy-peer-deps"]
 RUN ["npm", "run", "build"]
 
 

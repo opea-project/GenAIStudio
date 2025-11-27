@@ -11,6 +11,7 @@ import {
     Paper,
     Button,
     Box,
+    Stack,
     Typography,
     Divider,
     TablePagination,
@@ -170,15 +171,27 @@ export default function LLMTraces() {
 
 
     return (
-        // <Box sx={{ display: "flex", height: "100vh", p: 4, gap: 2, position: "relative" }}>
-        <Box sx={{ display: "flex", height: "100vh", gap: 2, position: "relative" }}>
-            <Box sx={{ flex: 1, opacity: selectedTrace ? 0.5 : 1 }}>
-                <ViewHeader title='LLM Call Traces'></ViewHeader>
-                {workflowName && (
-                    <Typography variant="h6" gutterBottom>
-                        Workflow name: {workflowName}
+        <Box sx={{ display: "flex", height: "100vh", gap: 2, position: "relative", p: 3 }}>
+            <Stack flexDirection='column' sx={{ gap: 0, flex: 1, opacity: selectedTrace ? 0.5 : 1 }}>
+                <Box>
+                    <Typography 
+                        sx={{
+                            fontSize: '1.5rem',
+                            color: '#1162cc',
+                            fontWeight: 600,
+                            mb: 2,
+                            mt: 1.5
+                        }}
+                        variant='h1'
+                    >
+                        LLM Call Traces
                     </Typography>
-                )}
+                    {workflowName && (
+                        <Typography variant="h6" gutterBottom>
+                            Workflow name: {workflowName}
+                        </Typography>
+                    )}
+                </Box>
                 {traceList.length > 0 ? (
                     <>
                         <Typography variant="h6" gutterBottom>Traces:</Typography>
@@ -215,7 +228,7 @@ export default function LLMTraces() {
                 ) : (
                     <Typography variant="body1" sx={{ mt: 2 }}>No traces found</Typography>
                 )}
-            </Box>
+            </Stack>
             {selectedTrace && (
                 <Box sx={{ position: "absolute", top: 0, right: 0, width: "75%", height: "100%", bgcolor: "white", boxShadow: 3, p: 4, overflow: "auto", borderLeft: 1, display: "flex", flexDirection: "row" }}>
                     <Button sx={{ position: "absolute", top: 8, right: 8 }} onClick={() => setSelectedTrace(null)}>✕</Button>

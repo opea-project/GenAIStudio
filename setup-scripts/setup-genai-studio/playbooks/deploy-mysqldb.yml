@@ -12,25 +12,8 @@
       meta: end_play
       when: namespace_check.stdout != ""
 
-    - name: Add bitnami Helm repository
-      command: helm repo add bitnami https://charts.bitnami.com/bitnami
-      environment:
-        http_proxy: "{{ http_proxy }}"
-        https_proxy: "{{ http_proxy }}"
-        no_proxy: "{{ no_proxy }}"
-
-    - name: Update Helm repositories
-      command: helm repo update
-      environment:
-        http_proxy: "{{ http_proxy }}"
-        https_proxy: "{{ http_proxy }}"
-        no_proxy: "{{ no_proxy }}"
-
-    - name: Create 'mysql' namespace
-      command: kubectl create ns mysql
-
     - name: Install MySQL using Helm
-      command: helm install mysql bitnami/mysql -n mysql -f ../helm-values/mysqldb.yaml
+      command: helm install mysql oci://registry-1.docker.io/bitnamicharts/mysql -n mysql --create-namespace -f ../helm-values/mysqldb.yaml
       environment:
         http_proxy: "{{ http_proxy }}"
         https_proxy: "{{ http_proxy }}"

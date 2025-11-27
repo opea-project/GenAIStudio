@@ -10,6 +10,7 @@ import {
     Paper,
     Button,
     Box,
+    Stack,
     Typography,
     Divider,
     Fade,
@@ -127,17 +128,30 @@ export default function PodLogsView() {
     const selectedEventPod = podsData.pods.find(p => p.name === selectedPodEvents);
 
     return (
-        // <Box sx={{ p: 4 }}>
-        <Box>
-            <ViewHeader title='Debug Logs'></ViewHeader>
-            {workflowName && (
-                <Typography variant="h6" gutterBottom>
-                    Workflow name: {workflowName}
-                </Typography>
-            )}
-            {/* <Typography variant="body1" component="span">Namespace: {podsData.namespace}</Typography> */}
+        <Box sx={{ p: 3 }}>
+            <Stack flexDirection='column' sx={{ gap: 0 }}>
+                <Box>
+                    <Typography 
+                        sx={{
+                            fontSize: '1.5rem',
+                            color: '#1162cc',
+                            fontWeight: 600,
+                            mb: 2,
+                            mt: 1.5
+                        }}
+                        variant='h1'
+                    >
+                        Debug Logs
+                    </Typography>
+                    {workflowName && (
+                        <Typography variant="h6" gutterBottom>
+                            Workflow name: {workflowName}
+                        </Typography>
+                    )}
+                </Box>
+                {/* <Typography variant="body1" component="span">Namespace: {podsData.namespace}</Typography> */}
 
-            <Box sx={{ my: 2 }}>
+                <Box sx={{ my: 2 }}>
                 <Typography variant="h6" component="span">Auto refresh: </Typography>
                 <Button variant="outlined" size="small" onClick={toggleAutoRefresh}>
                     {autoRefresh ? 'ON' : 'OFF'}
@@ -231,6 +245,7 @@ export default function PodLogsView() {
                     </Box>
                 </Fade>
             </Modal>
+            </Stack>
         </Box>
     );
 }
