@@ -39,10 +39,18 @@ jobs:
       - name: Deploy GenAI Studio
         run: |
           sudo apt install ansible -y
-          ansible-playbook genai-studio.yml -e "container_registry=${OPEA_IMAGE_REPO}opea" -e "container_tag=${{ inputs.tag }}" -e "mysql_host=mysql.mysql.svc.cluster.local" -e "http_proxy=${http_proxy}"
+          ansible-playbook genai-studio.yml -e "container_registry=${OPEA_IMAGE_REPO}opea" -e "container_tag=${{ inputs.tag }}" -e "mysql_host=mysql.mysql.svc.cluster.local" -e "http_proxy=${http_proxy}" || {
+            echo "Ansible playbook failed. Checking pod status..."
+            echo "=== Pods in studio namespace ==="
+            kubectl get pods -n studio
+            echo "=== Logs and events for non-Ready pods in studio namespace ==="
+            for pod in $(kubectl get pods -n studio --field-selector=status.phase!=Running,status.phase!=Succeeded -o jsonpath='{.items[*].metadata.name}'); do
+              echo "--- Pod: $pod ---"
+              kubectl describe pod $pod -n studio
+              kubectl logs $pod -n studio --all-containers=true --tail=100 || echo "Could not fetch logs for $pod"
+            done
+          }
           sleep 5
-          kubectl wait --for=condition=ready pod --all --namespace=studio --timeout=300s --field-selector=status.phase!=Succeeded
-          kubectl wait --for=condition=ready pod --all --namespace=monitoring --timeout=300s --field-selector=status.phase!=Succeeded
         working-directory: ${{ github.workspace }}/setup-scripts/setup-genai-studio/
 
       - name: Set up Node.js
