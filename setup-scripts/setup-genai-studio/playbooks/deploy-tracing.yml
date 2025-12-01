@@ -31,7 +31,7 @@
       command: kubectl create ns tracing
 
     - name: Install Clickhouse Helm chart in 'tracing' namespace
-      command: helm install clickhouse pascaliske/clickhouse -n tracing --set persistentVolumeClaim.storageClassName=local-path
+      command: helm install clickhouse pascaliske/clickhouse --version 0.3.1 -n tracing --set persistentVolumeClaim.storageClassName=local-path
       environment:
         http_proxy: "{{ http_proxy }}"
         https_proxy: "{{ http_proxy }}"
@@ -58,7 +58,7 @@
         no_proxy: "{{ no_proxy }}"
 
     - name: Install OpenTelemetry Collector Helm chart in 'tracing' namespace
-      command: helm install tracing open-telemetry/opentelemetry-collector -n tracing -f ../helm-values/otel-collector.yaml
+      command: helm install tracing open-telemetry/opentelemetry-collector --version 0.139.1 -n tracing -f ../helm-values/otel-collector.yaml
       environment:
         http_proxy: "{{ http_proxy }}"
         https_proxy: "{{ http_proxy }}"
