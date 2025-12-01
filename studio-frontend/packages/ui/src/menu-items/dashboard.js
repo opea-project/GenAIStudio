@@ -14,7 +14,7 @@ import {
 } from '@tabler/icons-react'
 
 // constant
-const icons = { IconUsersGroup, IconHierarchy, IconBuildingStore, IconKey, IconTool, IconLock, IconRobot, IconVariable, IconFiles, IconApps, IconBrain, IconApps }
+const icons = { IconUsersGroup, IconHierarchy, IconBuildingStore, IconKey, IconTool, IconLock, IconRobot, IconVariable, IconFiles, IconApps, IconBrain }
 
 // ==============================|| DASHBOARD MENU ITEMS ||============================== //
 

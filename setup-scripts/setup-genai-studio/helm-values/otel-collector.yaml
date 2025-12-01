@@ -2,7 +2,7 @@ mode: deployment
 
 image:
   repository: "otel/opentelemetry-collector-contrib"
-  tag: "latest"
+  tag: "0.139.0"
 
 config:
   receivers:
