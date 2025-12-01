@@ -49,6 +49,7 @@ jobs:
               kubectl describe pod $pod -n studio
               kubectl logs $pod -n studio --all-containers=true --tail=100 || echo "Could not fetch logs for $pod"
             done
+            exit 1
           }
           sleep 5
         working-directory: ${{ github.workspace }}/setup-scripts/setup-genai-studio/
