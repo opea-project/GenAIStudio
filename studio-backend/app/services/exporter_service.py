@@ -24,7 +24,21 @@ def convert_proj_info_to_manifest(proj_info_json, output_file=None):
         with open(service_file_path, "r") as service_file:
             service_manifest_read = service_file.read()
         service_manifest_raw = list(ordered_load_all(replace_dynamic_manifest_placeholder(service_manifest_read, service_info, proj_info_json), yaml.SafeLoader))
-        service_manifest = [replace_manifest_placeholders(doc, service_info) for doc in service_manifest_raw]
+        # For app-backend, include all service endpoints in variables so it can connect to all services
+        if service_info.get('service_type') == 'app':
+            # Add only OPEA service endpoints to app-backend's variables
+            opea_service_endpoints = {}
+            for svc_name, svc_info in opea_services["services"].items():
+                if 'endpoint' in svc_info and svc_info['endpoint'].startswith('opea-'):
+                    # Clean the service name for use as variable key (remove @ symbols)
+                    clean_svc_name = svc_name.replace('@', '_').replace('opea_service_', '')
+                    opea_service_endpoints[f"{clean_svc_name}_endpoint"] = svc_info['endpoint']
+            
+            # Merge with existing service_info
+            enhanced_service_info = {**service_info, **opea_service_endpoints}
+            service_manifest = [replace_manifest_placeholders(doc, enhanced_service_info) for doc in service_manifest_raw]
+        else:
+            service_manifest = [replace_manifest_placeholders(doc, service_info) for doc in service_manifest_raw]
         output_manifest.extend((doc, service_name) for doc in service_manifest)
     
     # print("Manifest generation completed.")

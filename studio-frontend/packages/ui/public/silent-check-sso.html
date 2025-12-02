@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Silent Check SSO</title>
+  </head>
+  <body>
+    <script>
+      // Check if parent window is available and send message
+      if (window.parent !== window) {
+        // This iframe is being used by Keycloak to check SSO status
+        // Send a message back to the parent to indicate the frame loaded successfully
+        window.parent.postMessage('check-sso-frame', window.location.origin);
+      }
+    </script>
+  </body>
+</html>

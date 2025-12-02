@@ -13,5 +13,6 @@ data:
   APP_FRONTEND_DNS: "app-frontend.$namespace.svc.cluster.local:5275"
   APP_BACKEND_DNS: "app-backend.$namespace.svc.cluster.local:8899"
   APP_CHATHISTORY_DNS: "chathistory-mongo.$namespace.svc.cluster.local:6012"
-  PREPARE_DOC_REDIS_PREP_DNS: "prepare-doc-redis-prep-0.$namespace.svc.cluster.local:6007"
+  PREPARE_DOC_REDIS_PREP_DNS: "opea-prepare-doc-redis-prep-0.$namespace.svc.cluster.local:6007"
   STUDIO_BACKEND_DNS: "studio-backend.studio.svc.cluster.local:5000"
+  FINETUNING_HOST: "finetuning-server.studio.svc.cluster.local"

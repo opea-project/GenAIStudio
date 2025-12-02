@@ -5,7 +5,7 @@ import { motion, useCycle } from 'framer-motion'
 
 // ==============================|| ANIMATION BUTTON ||============================== //
 
-const AnimateButton = forwardRef(function AnimateButton({ children, type, direction, offset, scale }, ref) {
+const AnimateButton = forwardRef(function AnimateButton({ children, type = 'scale', direction = 'right', offset = 10, scale = { hover: 1, tap: 0.9 } }, ref) {
     let offset1
     let offset2
     switch (direction) {
@@ -84,14 +84,6 @@ AnimateButton.propTypes = {
     scale: PropTypes.oneOfType([PropTypes.number, PropTypes.object])
 }
 
-AnimateButton.defaultProps = {
-    type: 'scale',
-    offset: 10,
-    direction: 'right',
-    scale: {
-        hover: 1,
-        tap: 0.9
-    }
-}
+// defaults handled via function parameter defaults
 
 export default AnimateButton

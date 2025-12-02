@@ -30,6 +30,7 @@ import { AddStudioFieldsToChatFlow1733282099772 } from './1733282099772-AddStudi
 import { AddSandboxTracerUrlToChatFlow1743740099772 } from './1743740099772-AddSandboxTracerUrlToChatFlow'
 import { AddSandboxDebugLogsUrlToChatFlow1749612373191 } from './1749612373191-AddSandboxDebugLogsUrlToChatFlow'
 import { AddDeploymentStatusToChatFlow1754700956637 } from './1754700956637-AddDeploymentStatusToChatFlow'
+import { AddFineTuningTables1760424809635 } from './1760424809635-AddFineTuningTables'
 
 
 export const mysqlMigrations = [
@@ -64,5 +65,6 @@ export const mysqlMigrations = [
     AddStudioFieldsToChatFlow1733282099772,
     AddSandboxTracerUrlToChatFlow1743740099772,
     AddSandboxDebugLogsUrlToChatFlow1749612373191,
-    AddDeploymentStatusToChatFlow1754700956637
+    AddDeploymentStatusToChatFlow1754700956637,
+    AddFineTuningTables1760424809635
 ]

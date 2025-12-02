@@ -1,38 +1,39 @@
 - name: Deploy prometheus and grafana with local-path-storage
   hosts: localhost
+  vars_files:
+    - ../vars.yml
   tasks:
-    - name: Check if local-path-storage namespace exists
-      shell: kubectl get namespace local-path-storage --ignore-not-found
-      register: namespace_check
-      ignore_errors: yes
+    - name: Check if monitoring namespace exists
+      shell: kubectl get namespace monitoring --ignore-not-found
+      register: monitoring_namespace_check
       changed_when: false
-    
-    - name: Install local-path-provisioner if namespace does not exist
-      shell: kubectl apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/v0.0.30/deploy/local-path-storage.yaml
-      when: namespace_check.stdout == ""
-      register: apply_output
-    
-    - name: Wait for local-path-provisioner to be ready
-      shell: kubectl wait --for=condition=Ready pod -l app=local-path-provisioner -n local-path-storage --timeout=120s
-      when: namespace_check.stdout == ""
     
     - name: Create monitoring namespace
       command: kubectl create namespace monitoring
-      ignore_errors: yes
-    
-    - name: Install Helm
-      shell: curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+      when: monitoring_namespace_check.stdout == ""
     
     - name: Add Prometheus Helm repository
       command: helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+      environment:
+        http_proxy: "{{ http_proxy }}"
+        https_proxy: "{{ http_proxy }}"
+        no_proxy: "{{ no_proxy }}"
     
     - name: Update Helm repositories
       command: helm repo update
+      environment:
+        http_proxy: "{{ http_proxy }}"
+        https_proxy: "{{ http_proxy }}"
+        no_proxy: "{{ no_proxy }}"
     
     # Installing the CRDs needed
     - name: Helm install kube-prometheus-stack
       command: helm install kube-prometheus-stack prometheus-community/kube-prometheus-stack -n monitoring
       ignore_errors: yes
+      environment:
+        http_proxy: "{{ http_proxy }}"
+        https_proxy: "{{ http_proxy }}"
+        no_proxy: "{{ no_proxy }}"
     
     - name: Delete kube-prometheus-stack
       command: helm delete kube-prometheus-stack -n monitoring

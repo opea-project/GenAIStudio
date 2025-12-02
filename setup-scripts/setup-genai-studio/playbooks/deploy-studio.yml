@@ -3,29 +3,14 @@
   vars_files:
     - ../vars.yml
   tasks:
-    - name: Check if local-path-storage namespace exists
-      shell: kubectl get namespace local-path-storage --ignore-not-found
-      register: namespace_check
-      ignore_errors: yes
-      changed_when: false
-    
-    - name: Install local-path-provisioner if namespace does not exist
-      shell: kubectl apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/v0.0.30/deploy/local-path-storage.yaml
-      when: namespace_check.stdout == ""
-      register: apply_output
-    
-    - name: Wait for local-path-provisioner to be ready
-      shell: kubectl wait --for=condition=Ready pod -l app=local-path-provisioner -n local-path-storage --timeout=120s
-      when: namespace_check.stdout == ""
-
     - name: Check if studio namespace exists
-      command: kubectl get namespace studio
-      register: studio_namespace
-      ignore_errors: yes
+      shell: kubectl get namespace studio --ignore-not-found
+      register: studio_namespace_check
+      changed_when: false
     
     - name: Create studio namespace
       command: kubectl create namespace studio
-      when: studio_namespace.rc != 0
+      when: studio_namespace_check.stdout == ""
 
     - name: Check for coredns service
       shell: kubectl get svc coredns -n kube-system --ignore-not-found
@@ -38,16 +23,16 @@
       when: coredns_check.stdout != ''
 
     - name: Check if app-tls exists in studio namespace
-      command: kubectl get secret app-tls -n studio
+      shell: kubectl get secret app-tls -n studio --ignore-not-found
       register: app_tls_secret_check
-      ignore_errors: yes
+      changed_when: false
 
     - name: Generate TLS certificate and create app-tls
       shell: |
         openssl req -x509 -nodes -days 365 -newkey rsa:4096 -keyout app-tls.key -out app-tls.crt -subj "/CN=studio/O=studio"
         kubectl create secret generic app-tls --from-file=app-tls.crt --from-file=app-tls.key -n studio
         rm app-tls.key app-tls.crt
-      when: app_tls_secret_check.rc != 0
+      when: app_tls_secret_check.stdout == ""
 
     - name: Apply studio configuration
       command: kubectl apply -f ../studio-config.yaml

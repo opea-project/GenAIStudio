@@ -2,6 +2,8 @@ auth:
   rootPassword: root
 
 image:
+  registry: docker.io
+  repository: bitnamilegacy/mysql
   tag: "8.0"
 
 primary:
@@ -13,6 +15,17 @@ primary:
     accessModes:
       - ReadWriteOnce
     size: 8Gi
+
+volumePermissions:
+  enabled: true
+  image:
+    registry: docker.io
+    repository: bitnamilegacy/os-shell
+    tag: "latest"
+
+global:
+  security:
+    allowInsecureImages: true
 
 initdbScripts:
   01-create-users-and-dbs.sql: |

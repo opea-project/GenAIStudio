@@ -22,6 +22,8 @@ import flowiseApiV1Router from './routes'
 import errorHandlerMiddleware from './middlewares/errors'
 import { SSEStreamer } from './utils/SSEStreamer'
 import { validateAPIKey } from './utils/validateKey'
+import { setupFineTuningDownloadHandlers } from './ws/finetuningDownload'
+import { setupFineTuningStatusHandlers } from './ws/finetuningStatus'
 
 declare global {
     namespace Express {
@@ -141,7 +143,8 @@ export class App {
             '/api/v1/leads',
             '/api/v1/get-upload-file',
             '/api/v1/ip',
-            '/api/v1/ping'
+            '/api/v1/ping',
+            '/api/v1/finetuning/download-ft/'
         ]
         const URL_CASE_INSENSITIVE_REGEX: RegExp = /\/api\/v1\//i
         const URL_CASE_SENSITIVE_REGEX: RegExp = /\/api\/v1\//
@@ -227,13 +230,36 @@ export class App {
         const packagePath = getNodeModulesPackagePath('flowise-ui')
         const uiBuildPath = path.join(packagePath, 'build')
         const uiHtmlPath = path.join(packagePath, 'build', 'index.html')
+        const nodeEnv = process.env.NODE_ENV || 'undefined'
 
-        this.app.use('/', express.static(uiBuildPath))
+    // Treat any non-production environment as development for the landing page
+    if (nodeEnv === 'development') {
+            this.app.get('/', (req: Request, res: Response) => {
+                res.send(`<!doctype html>
+                    <html>
+                    <head>
+                        <meta charset="utf-8" />
+                        <meta name="viewport" content="width=device-width, initial-scale=1" />
+                        <title>Flowise Server (development)</title>
+                        <style>body{font-family:system-ui,Arial;margin:2rem;}a{color:#1a73e8}</style>
+                    </head>
+                    <body>
+                        <h1>Flowise Server</h1>
+                        <p><strong>Mode:</strong> development</p>
+                        <p>Server is listening on port 3000.</p>
+                        <p>UI is listening on port 8088.</p>
+                        <p><a href="/api/v1/ping" target="_blank" rel="noopener">Ping API</a></p>
+                    </body>
+                    </html>`)
+            })
+        } else {
+            this.app.use('/', express.static(uiBuildPath))
 
-        // All other requests not handled will return React app
-        this.app.use((req: Request, res: Response) => {
-            res.sendFile(uiHtmlPath)
-        })
+            // All other requests not handled will return React app
+            this.app.use((req: Request, res: Response) => {
+                res.sendFile(uiHtmlPath)
+            })
+        }
 
         // Error handling
         this.app.use(errorHandlerMiddleware)
@@ -266,6 +292,10 @@ export async function start(): Promise<void> {
     const io = new Server(server, {
         cors: getCorsOptions()
     })
+
+    // Setup WebSocket handlers
+    setupFineTuningDownloadHandlers(io)
+    setupFineTuningStatusHandlers(io)
 
     await serverApp.initDatabase()
     await serverApp.config(io)

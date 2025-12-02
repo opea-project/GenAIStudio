@@ -1,26 +1,12 @@
 ---
 - name: Deploy clickhouse and otel collector for tracing
   hosts: localhost
+  vars_files:
+    - ../vars.yml
   tasks:
-    - name: Check if local-path-storage namespace exists
-      shell: kubectl get namespace local-path-storage --ignore-not-found
-      register: namespace_check
-      ignore_errors: yes
-      changed_when: false
-    
-    - name: Install local-path-provisioner if namespace does not exist
-      shell: kubectl apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/v0.0.30/deploy/local-path-storage.yaml
-      when: namespace_check.stdout == ""
-      register: apply_output
-    
-    - name: Wait for local-path-provisioner to be ready
-      shell: kubectl wait --for=condition=Ready pod -l app=local-path-provisioner -n local-path-storage --timeout=120s
-      when: namespace_check.stdout == ""
-
     - name: Check if tracing namespace exists
       shell: kubectl get namespace tracing --ignore-not-found
       register: namespace_check
-      ignore_errors: yes
       changed_when: false
 
     - name: End playbook if tracing namespace exists
@@ -29,15 +15,27 @@
 
     - name: Add Pascaliske Helm repository
       command: helm repo add pascaliske https://charts.pascaliske.dev
+      environment:
+        http_proxy: "{{ http_proxy }}"
+        https_proxy: "{{ http_proxy }}"
+        no_proxy: "{{ no_proxy }}"
 
     - name: Update Helm repositories
       command: helm repo update
+      environment:
+        http_proxy: "{{ http_proxy }}"
+        https_proxy: "{{ http_proxy }}"
+        no_proxy: "{{ no_proxy }}"
 
     - name: Create 'tracing' namespace
       command: kubectl create ns tracing
 
     - name: Install Clickhouse Helm chart in 'tracing' namespace
-      command: helm install clickhouse pascaliske/clickhouse -n tracing --set persistentVolumeClaim.storageClassName=local-path
+      command: helm install clickhouse pascaliske/clickhouse --version 0.3.1 -n tracing --set persistentVolumeClaim.storageClassName=local-path
+      environment:
+        http_proxy: "{{ http_proxy }}"
+        https_proxy: "{{ http_proxy }}"
+        no_proxy: "{{ no_proxy }}"
 
     - name: Wait for Clickhouse pod to be ready
       command: kubectl wait --namespace tracing --for=condition=ready pod -l app.kubernetes.io/name=clickhouse --timeout=120s
@@ -47,12 +45,24 @@
 
     - name: Add OpenTelemetry Helm repository
       command: helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts
+      environment:
+        http_proxy: "{{ http_proxy }}"
+        https_proxy: "{{ http_proxy }}"
+        no_proxy: "{{ no_proxy }}"
 
     - name: Update Helm repositories
       command: helm repo update
+      environment:
+        http_proxy: "{{ http_proxy }}"
+        https_proxy: "{{ http_proxy }}"
+        no_proxy: "{{ no_proxy }}"
 
     - name: Install OpenTelemetry Collector Helm chart in 'tracing' namespace
-      command: helm install tracing open-telemetry/opentelemetry-collector -n tracing -f ../helm-values/otel-collector.yaml
+      command: helm install tracing open-telemetry/opentelemetry-collector --version 0.139.1 -n tracing -f ../helm-values/otel-collector.yaml
+      environment:
+        http_proxy: "{{ http_proxy }}"
+        https_proxy: "{{ http_proxy }}"
+        no_proxy: "{{ no_proxy }}"
 
     - name: Wait for OpenTelemetry Collector pod to be ready
       command: kubectl wait --namespace tracing --for=condition=ready pod -l app.kubernetes.io/name=opentelemetry-collector --timeout=120s

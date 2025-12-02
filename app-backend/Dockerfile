@@ -1,5 +1,15 @@
 FROM python:3.11-slim
 
+# Accept proxy build arguments
+ARG http_proxy
+ARG https_proxy
+ARG no_proxy
+
+# Set proxy environment variables for package managers
+ENV http_proxy=${http_proxy}
+ENV https_proxy=${https_proxy}
+ENV no_proxy=${no_proxy}
+
 RUN apt-get update -y && apt-get install -y --no-install-recommends --fix-missing \
     libsqlite3-0 \
     libjemalloc-dev \

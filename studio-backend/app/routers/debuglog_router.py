@@ -85,6 +85,34 @@ def find_pod_dependencies(pod, all_pods, services, namespace, core_v1_api):
     # Combine all environment variables for further analysis
     all_env_vars = env_vars + init_env_vars + configmap_env_vars
     
+    # Special handling for app-backend pods - filter out dependent services
+    is_app_backend = pod.metadata.name and 'app-backend' in pod.metadata.name
+    if is_app_backend:
+        # For app-backend, we want to exclude references from dependent_services
+        # but keep direct OPEA service references
+        filtered_env_vars = []
+        for env_val in all_env_vars:
+            # Skip if this looks like workflow-info.json content with dependent_services
+            if isinstance(env_val, str) and '"dependent_services"' in env_val:
+                # Parse the JSON to extract only direct service references, not dependent ones
+                try:
+                    import json
+                    workflow_data = json.loads(env_val)
+                    if 'nodes' in workflow_data:
+                        # Only include OPEA service names, not their dependencies
+                        opea_services = []
+                        for node_id, node_data in workflow_data['nodes'].items():
+                            if node_data.get('name', '').startswith('opea_service@'):
+                                opea_services.append(node_data['name'])
+                        # Add these as simple strings for pattern matching
+                        filtered_env_vars.extend(opea_services)
+                except:
+                    # If JSON parsing fails, skip this env var
+                    pass
+            else:
+                filtered_env_vars.append(env_val)
+        all_env_vars = filtered_env_vars
+    
     # # Debug output
     # print(f"Analyzing dependencies for pod: {pod.metadata.name}")
     # print(f"ConfigMap refs: {configmap_refs}")

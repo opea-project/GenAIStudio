@@ -5,8 +5,9 @@ import { useNavigate } from 'react-router-dom'
 
 // material-ui
 import { useTheme } from '@mui/material/styles'
-import { Avatar, Box, ButtonBase, Switch } from '@mui/material'
+import { Avatar, Box, ButtonBase, Switch, Typography, IconButton, useMediaQuery } from '@mui/material'
 import { styled } from '@mui/material/styles'
+import MenuIcon from '@mui/icons-material/Menu'
 
 // project imports
 import LogoSection from '../LogoSection'
@@ -87,9 +88,10 @@ const MaterialUISwitch = styled(Switch)(({ theme }) => ({
     }
 }))
 
-const Header = ({userId}) => {
+const Header = ({userId, handleLeftDrawerToggle}) => {
     // console.log ('Header', userId)
     const theme = useTheme()
+    const matchDownMd = useMediaQuery(theme.breakpoints.down('md'))
     // const navigate = useNavigate()
 
     // const customization = useSelector((state) => state.customization)
@@ -122,18 +124,39 @@ const Header = ({userId}) => {
                     width: '100%', // Full width of the parent container
                 }}
             >
-                {/* Logo Section */}
+                {/* Left Section - Mobile menu + Logo */}
                 <Box
                     sx={{
                         display: 'flex',
                         alignItems: 'center',
-                        width: 228, // Fixed width for logo
+                        gap: 2,
                         [theme.breakpoints.down('md')]: {
-                            width: 'auto', // Adjust for smaller screens
+                            gap: 1,
                         },
                     }}
                 >
-                    <Box component="span" sx={{ display: { xs: 'none', md: 'block' }, flexGrow: 1 }}>
+                    {/* Mobile menu button */}
+                    {matchDownMd && handleLeftDrawerToggle && (
+                        <IconButton
+                            onClick={handleLeftDrawerToggle}
+                            sx={{
+                                color: theme.palette.text.primary,
+                                '&:hover': {
+                                    backgroundColor: theme.palette.action.hover
+                                }
+                            }}
+                        >
+                            <MenuIcon />
+                        </IconButton>
+                    )}
+                    
+                    {/* Logo - always visible on mobile, hidden on desktop in header */}
+                    <Box component="span" sx={{ display: { xs: 'block', md: 'none' } }}>
+                        <LogoSection />
+                    </Box>
+                    
+                    {/* Desktop logo - hidden on mobile */}
+                    <Box component="span" sx={{ display: { xs: 'none', md: 'block' } }}>
                         <LogoSection />
                     </Box>
                 </Box>

@@ -367,7 +367,7 @@ export const FlowListTable = ({ data, images, isLoading, filterFunction, updateF
         setDeployWebSocketForId(id, wsInstance);
         
         wsInstance.onopen = () => {
-            console.log('[WebSocket] Connected for click deployment monitoring', id);
+            console.log('[WS] Connected for click deployment monitoring', id);
             wsInstance.send(JSON.stringify({ 
                 hostname: deploymentConfig.hostname, 
                 username: deploymentConfig.username, 
@@ -378,7 +378,7 @@ export const FlowListTable = ({ data, images, isLoading, filterFunction, updateF
         wsInstance.onmessage = (event) => {
             let data;
             try { data = JSON.parse(event.data); } catch { return; }
-            console.log('[WebSocket] Click deployment message:', data);
+            console.log('[WS] Click deployment message:', data);
             
             if (data.status === 'Success') {
                 setDeployStatusForId(id, ['Success', data.message]);
@@ -431,19 +431,19 @@ export const FlowListTable = ({ data, images, isLoading, filterFunction, updateF
         };
         
         wsInstance.onerror = (error) => {
-            console.error('[WebSocket] Click deployment error:', error);
+            console.error('[WS] Click deployment error:', error);
             setDeployStatusForId(id, ['Error', 'Connection error during deployment monitoring']);
             wsInstance.close();
             setDeployWebSocketForId(id, null);
         };
         
         wsInstance.onclose = (event) => {
-            console.log(`[WebSocket] Click deployment closed: code=${event.code}, reason='${event.reason}', wasClean=${event.wasClean}`);
+            console.log(`[WS] Click deployment closed: code=${event.code}, reason='${event.reason}', wasClean=${event.wasClean}`);
             setDeployWebSocketForId(id, null);
             
             // Check deployment status if abnormal closure
             if (event.code !== 1000 && event.code !== 1001) {
-                console.log('[WebSocket] Abnormal closure detected, checking deployment status...');
+                console.log('[WS] Abnormal closure detected, checking deployment status...');
                 setTimeout(async () => {
                     try {
                         const response = await chatflowsApi.getSpecificChatflow(id);
@@ -617,11 +617,10 @@ export const FlowListTable = ({ data, images, isLoading, filterFunction, updateF
                                 </TableSortLabel>
                             </StyledTableCell>
                             {userRole === 'admin' &&
-                                <StyledTableCell style={{ width: '25%' }} key='8'>
+                                <StyledTableCell style={{ width: '15%' }} key='8'>
                                     <Stack
                                         direction={{ xs: 'column', sm: 'row' }}
                                         spacing={1}
-                                        justifyContent='center'
                                     >
                                         User
                                     </Stack>

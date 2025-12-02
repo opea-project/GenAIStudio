@@ -39,10 +39,19 @@ jobs:
       - name: Deploy GenAI Studio
         run: |
           sudo apt install ansible -y
-          ansible-playbook genai-studio.yml -e "container_registry=${OPEA_IMAGE_REPO}opea" -e "container_tag=${{ inputs.tag }}" -e "mysql_host=mysql.mysql.svc.cluster.local"
+          ansible-playbook genai-studio.yml -e "container_registry=${OPEA_IMAGE_REPO}opea" -e "container_tag=${{ inputs.tag }}" -e "mysql_host=mysql.mysql.svc.cluster.local" -e "http_proxy=${http_proxy}" || {
+            echo "Ansible playbook failed. Checking pod status..."
+            echo "=== Pods in studio namespace ==="
+            kubectl get pods -n studio
+            echo "=== Logs and events for non-Ready pods in studio namespace ==="
+            for pod in $(kubectl get pods -n studio --field-selector=status.phase!=Running,status.phase!=Succeeded -o jsonpath='{.items[*].metadata.name}'); do
+              echo "--- Pod: $pod ---"
+              kubectl describe pod $pod -n studio
+              kubectl logs $pod -n studio --all-containers=true --tail=100 || echo "Could not fetch logs for $pod"
+            done
+            exit 1
+          }
           sleep 5
-          kubectl wait --for=condition=ready pod --all --namespace=studio --timeout=300s --field-selector=status.phase!=Succeeded
-          kubectl wait --for=condition=ready pod --all --namespace=monitoring --timeout=300s --field-selector=status.phase!=Succeeded
         working-directory: ${{ github.workspace }}/setup-scripts/setup-genai-studio/
 
       - name: Set up Node.js
@@ -74,25 +83,10 @@ jobs:
           name: playwright-test-results
           path: ${{ github.workspace }}/tests/playwright/playwright-report
       
-      - name: Cleanup sandbox namespaces
+      - name: Cleanup GenAI Studio
         if: always()
         run: |
-          if kubectl get namespace mysql; then
-            kubectl delete ns mysql || true
-          fi
-          if kubectl get namespace tracing; then
-            kubectl delete ns tracing || true
-          fi
-          for ns in $(kubectl get namespaces -o jsonpath='{.items[*].metadata.name}' | tr ' ' '\n' | grep '^sandbox-'); do
-            kubectl delete namespace $ns || true
-          done
-          if kubectl get namespace studio; then
-            kubectl delete -f manifests/studio-manifest.yaml || true
-            kubectl wait --for=delete pod --all --namespace=studio --timeout=300s
-          fi
-          if kubectl get namespace monitoring; then
-            kubectl delete -f manifests/monitoring-manifest.yaml || true
-            kubectl wait --for=delete pod --all --namespace=monitoring --timeout=300s
-          fi
+          echo "Running GenAI Studio cleanup script..."
+          ./cleanup-genai-studio.sh || echo "Cleanup script completed with warnings"
         working-directory: ${{ github.workspace }}/setup-scripts/setup-genai-studio/
 

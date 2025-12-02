@@ -17,9 +17,9 @@ data:
   SEARCH_BATCH_SIZE: "10"
   HF_TOKEN: "{huggingFaceToken}"
   HF_HOME: "/tmp/.cache/huggingface"
-  http_proxy: ""
-  https_proxy: ""
-  no_proxy: ""
+  http_proxy: "${HTTP_PROXY}"
+  https_proxy: "${HTTP_PROXY}"
+  no_proxy: "${NO_PROXY}"
   LOGFLAG: "True"
 ---
 # Source: data-prep/templates/service.yaml

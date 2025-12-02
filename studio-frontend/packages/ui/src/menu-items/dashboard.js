@@ -8,11 +8,13 @@ import {
     IconLock,
     IconRobot,
     IconVariable,
-    IconFiles
+    IconFiles,
+    IconApps,
+    IconBrain
 } from '@tabler/icons-react'
 
 // constant
-const icons = { IconUsersGroup, IconHierarchy, IconBuildingStore, IconKey, IconTool, IconLock, IconRobot, IconVariable, IconFiles }
+const icons = { IconUsersGroup, IconHierarchy, IconBuildingStore, IconKey, IconTool, IconLock, IconRobot, IconVariable, IconFiles, IconApps, IconBrain }
 
 // ==============================|| DASHBOARD MENU ITEMS ||============================== //
 
@@ -23,27 +25,19 @@ const dashboard = {
     children: [
         {
             id: 'opeaflows',
-            title: 'OPEA Flows',
+            title: 'Workflows',
             type: 'item',
             url: '/opeaflows',
-            icon: icons.IconHierarchy,
-            breakcrumbs: true
+            icon: icons.IconApps,
+            breadcrumbs: true
         },
         {
-            id: 'sandbox',
-            title: 'OPEA Sandbox Evaluation',
+            id: 'finetuning',
+            title: 'Fine-tuning',
             type: 'item',
-            url: '/opeaflows',
-            icon: icons.IconHierarchy,
-            breakcrumbs: true
-        },
-        {
-            id: 'opeadeployment',
-            title: 'OPEA Deployment',
-            type: 'item',
-            url: '/opeaflows',
-            icon: icons.IconHierarchy,
-            breakcrumbs: true
+            url: '/finetuning',
+            icon: icons.IconBrain,
+            breadcrumbs: true
         }
         // {
         //     id: 'chatflows',

@@ -170,7 +170,7 @@ class AppService:
                 microservice_name = node['name'].split('@')[1]
                 if "docsum" in microservice_name:
                     self.is_docsum = True
-                service_node_ip = node_id.split('@')[1].replace('_','-') if USE_NODE_ID_AS_IP else HOST_IP
+                service_node_ip = f"opea-{node_id.split('@')[1].replace('_','-')}" if USE_NODE_ID_AS_IP else HOST_IP
                 microservice = templates[microservice_name].get_service(host_ip=service_node_ip, node_id_as_ip=USE_NODE_ID_AS_IP, port=os.getenv(f"{node_id.split('@')[1]}_port", None))
                 microservice.name = node_id
                 self.services[node_id] = microservice

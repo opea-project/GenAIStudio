@@ -13,8 +13,25 @@ import { containsBase64File, updateFlowDataWithFilePaths } from '../../utils/fil
 import { getRunningExpressApp } from '../../utils/getRunningExpressApp'
 import { utilGetUploadsConfig } from '../../utils/getUploadsConfig'
 import logger from '../../utils/logger'
-import axios from 'axios'
-import { Readable } from 'stream'
+import axios, { AxiosRequestConfig } from 'axios'
+import { HttpsProxyAgent } from 'https-proxy-agent'
+
+// Configure github axios to support HTTP_PROXY/HTTPS_PROXY environment variables
+const getGithubAxiosConfig = (): AxiosRequestConfig => {
+    const http_proxy = process.env.http_proxy || process.env.HTTP_PROXY
+    const agent = (http_proxy && http_proxy.trim() !== "") ? new HttpsProxyAgent(http_proxy) : undefined
+
+    return {
+        headers: {
+            Accept: 'application/vnd.github.v3+json',
+        },
+        proxy: false,
+        ...(agent && {
+            httpAgent: agent,
+            httpsAgent: agent,
+        }),
+    }
+}
 
 const STUDIO_SERVER_URL = process.env.STUDIO_SERVER_URL || 'http://studio-backend.studio.svc.cluster.local:5000'
 
@@ -161,17 +178,23 @@ const getAllChatflowsbyUserId = async (userid: string, type?: ChatflowType): Pro
 
 const importSampleChatflowsbyUserId = async (userid: string, type?: ChatflowType): Promise<ChatFlow[]> => {
     try {
-        const response = await axios.get('https://api.github.com/repos/opea-project/GenAIStudio/contents/sample-workflows');
+        const axiosConfig = getGithubAxiosConfig()
+        
+        console.log('Importing sample chatflows for user:', userid);
+
+        const response = await axios.get(
+            'https://api.github.com/repos/opea-project/GenAIStudio/contents/sample-workflows',
+            axiosConfig
+        );
+
+        console.log('Response from GitHub:', response.data);
+
         const files = response.data.filter((item: any) => item.type === 'file');
-        console.log(`Number of files: ${files.length}`);
 
         const chatflows: Partial<ChatFlow>[] = [];
-
         for (const file of files) {
-            console.log(`Download URL: ${file.download_url}`);
-            const fileResponse = await axios.get(file.download_url);
+            const fileResponse = await axios.get(file.download_url, axiosConfig);
             const parsedFlowData = fileResponse.data;
-
             const newChatflow: Partial<ChatFlow> = {
                 userid: userid,
                 name: file.name.replace('.json', ''),
@@ -180,7 +203,6 @@ const importSampleChatflowsbyUserId = async (userid: string, type?: ChatflowType
                 deployed: false,
                 isPublic: false
             };
-
             chatflows.push(newChatflow);
         }
         const insertResponse = await importChatflows(chatflows);

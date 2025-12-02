@@ -150,6 +150,25 @@ data:
             proxy_set_header Connection "upgrade";
         }
 
+        # WebSocket connection for fine-tuning job monitoring and downloads
+        # Routes directly to studio-frontend's socket.io handlers
+        location /socket.io {
+            proxy_pass http://${STUDIO_FRONTEND_DNS};
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            
+            # Ensure WebSocket upgrade headers
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection "upgrade";
+            
+            # Disable buffering for WebSocket
+            proxy_buffering off;
+            proxy_cache off;
+        }
+
         location /studio-backend {
             proxy_pass http://${STUDIO_BACKEND_DNS};
             proxy_set_header Host $host;
@@ -347,21 +366,21 @@ spec:
     spec:
       containers:
       - name: studio-backend
-        image: ${REGISTRY}/studio-backend:${TAG}
+        image: "${REGISTRY}/studio-backend:${TAG}"
         imagePullPolicy: Always
         env:
         - name: APP_FRONTEND_IMAGE
-          value: ${REGISTRY}/app-frontend:${TAG}
+          value: "${REGISTRY}/app-frontend:${TAG}"
         - name: APP_BACKEND_IMAGE
-          value: ${REGISTRY}/app-backend:${TAG}
+          value: "${REGISTRY}/app-backend:${TAG}"
         - name: REGISTRY
-          value: ${REGISTRY}
+          value: "opea"
         - name: TAG
-          value: ${TAG}
+          value: "1.4"
         - name: SBX_HTTP_PROXY
           value: ${HTTP_PROXY}
         - name: SBX_NO_PROXY
-          value: ${NO_PROXY}      
+          value: ${NO_PROXY}
         envFrom:
         - configMapRef:
             name: studio-config
@@ -395,6 +414,19 @@ spec:
             path: id_rsa
             mode: 0400
       serviceAccountName: studio-backend-sa
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: shared-finetuning-output
+  namespace: studio
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 1Gi
 ---
 apiVersion: v1
 kind: Service
@@ -432,8 +464,11 @@ spec:
       containers:
       - name: studio-frontend
         securityContext: {}
-        image: ${REGISTRY}/studio-frontend:${TAG}
+        image: "${REGISTRY}/studio-frontend:${TAG}"
         imagePullPolicy: Always
+        envFrom:
+        - configMapRef:
+            name: studio-config
         env:
         - name: DATABASE_TYPE
           value: mysql
@@ -449,6 +484,12 @@ spec:
           value: studio
         - name: DATABASE_SSL
           value: "false"
+        - name: HTTP_PROXY
+          value: "${HTTP_PROXY}"
+        - name: HTTPS_PROXY
+          value: "${HTTP_PROXY}"
+        - name: NO_PROXY
+          value: "${NO_PROXY}"
         ports:
         - name: studio-frontend
           containerPort: 8080
@@ -460,6 +501,8 @@ spec:
         - name: ssh-key-volume
           mountPath: /root/.ssh
           readOnly: true
+        - name: shared-output-volume
+          mountPath: /tmp/finetuning/output
       volumes:
       - name: tmp
         emptyDir: {}
@@ -470,6 +513,9 @@ spec:
           - key: studio-id_rsa.pub
             path: id_rsa.pub
             mode: 0644
+      - name: shared-output-volume
+        persistentVolumeClaim:
+          claimName: shared-finetuning-output
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -502,6 +548,13 @@ spec:
             DOWNLOAD_URL="https://codeload.github.com/${OWNER}/${REPO}/tar.gz/${BRANCH}"
             curl "${DOWNLOAD_URL}" | tar -xz --strip-components=4 -C /opt/keycloak/themes "${REPO}-${BRANCH}/${KC_ASSETS_DIR}/themes"
             curl "${DOWNLOAD_URL}" | tar -xz --strip-components=4 -C /opt/keycloak/data "${REPO}-${BRANCH}/${KC_ASSETS_DIR}/data"
+        env:
+        - name: http_proxy
+          value: ${HTTP_PROXY}
+        - name: https_proxy
+          value: ${HTTP_PROXY}
+        - name: NO_PROXY
+          value: ${NO_PROXY}
         envFrom:
         - configMapRef:
             name: studio-config
@@ -515,7 +568,7 @@ spec:
           runAsGroup: 0
       containers:
       - name: keycloak
-        image: quay.io/keycloak/keycloak:latest
+        image: quay.io/keycloak/keycloak:26.2.5
         volumeMounts:
         - name: app-tls
           mountPath: /etc/ssl
@@ -599,3 +652,64 @@ spec:
     targetPort: 8443
   selector:
     app: keycloak
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: finetuning-server
+  namespace: studio
+spec:
+  type: ClusterIP
+  ports:
+    - name: api
+      protocol: TCP
+      port: 8015
+      targetPort: 8015
+    - name: dashboard
+      protocol: TCP
+      port: 8265
+      targetPort: 8265
+  selector:
+    app: finetuning-server
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: finetuning-server
+  namespace: studio
+  labels:
+    app: finetuning-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: finetuning-server
+  template:
+    metadata:
+      labels:
+        app: finetuning-server
+    spec:
+      containers:
+      - name: finetuning-server
+        image: opea/finetuning:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8015
+        - containerPort: 8265
+        env:
+        - name: http_proxy
+          value: ${HTTP_PROXY}
+        - name: https_proxy
+          value: ${HTTP_PROXY}
+        - name: NO_PROXY
+          value: ${NO_PROXY}
+        resources: {}
+        volumeMounts:
+        - name: shared-output-volume
+          mountPath: /home/user/comps/finetuning/src/output
+      volumes:
+      - name: shared-output-volume
+        persistentVolumeClaim:
+          claimName: shared-finetuning-output

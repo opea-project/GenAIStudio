@@ -53,6 +53,12 @@ spec:
           value: 'true'
         - name: LOGFLAG
           value: 'True'
+        - name: http_proxy
+          value: "${HTTP_PROXY}"
+        - name: https_proxy
+          value: "${HTTP_PROXY}"
+        - name: no_proxy
+          value: "${NO_PROXY}"
         __TELEMETRY_ENDPOINT__
         securityContext:
           allowPrivilegeEscalation: false
@@ -219,7 +225,7 @@ spec:
     spec:
       containers:
       - name: chathistory-mongo
-        image: opea/chathistory-mongo:latest
+        image: opea/chathistory-mongo:1.3
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 6012

@@ -9,16 +9,17 @@ export default defineConfig(async ({ mode }) => {
         const serverEnv = dotenv.config({ processEnv: {}, path: '../server/.env' }).parsed
         const serverHost = serverEnv?.['HOST'] ?? 'localhost'
         const serverPort = parseInt(serverEnv?.['PORT'] ?? '3000')
-        if (!Number.isNaN(serverPort) && serverPort > 0 && serverPort < 65535) {
-            proxy = {
-                '/api': {
-                    target: `http://${serverHost}:${serverPort}`,
-                    changeOrigin: true
-                },
-                '/socket.io': {
-                    target: `http://${serverHost}:${serverPort}`,
-                    changeOrigin: true
-                }
+        proxy = {
+            '/api': {
+                target: `http://${serverHost}:${serverPort}`,
+                changeOrigin: true,
+                secure: false
+            },
+            '/socket.io': {
+                target: `http://${serverHost}:${serverPort}`,
+                changeOrigin: true,
+                ws: true,
+                secure: false
             }
         }
     }

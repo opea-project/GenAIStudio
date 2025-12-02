@@ -1,0 +1,29 @@
+---
+- name: Install prerequisites for GenAI Studio
+  hosts: localhost
+  vars_files:
+    - ../vars.yml
+  tasks:
+    - name: Check if Helm is installed
+      command: helm version --short
+      register: helm_check
+      failed_when: false
+      changed_when: false
+
+    - name: Install Helm
+      shell: curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+      environment:
+        http_proxy: "{{ http_proxy }}"
+        https_proxy: "{{ http_proxy }}"
+        no_proxy: "{{ no_proxy }}"
+      when: helm_check.rc != 0
+
+    - name: Verify Helm installation
+      command: helm version --short
+      changed_when: false
+
+    - name: Check if kubectl is available
+      command: kubectl version --client
+      register: kubectl_check
+      failed_when: kubectl_check.rc != 0
+      changed_when: false

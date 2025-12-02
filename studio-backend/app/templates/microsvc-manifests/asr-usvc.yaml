@@ -10,9 +10,9 @@ metadata:
 data:
   HEALTHCHECK_ENDPOINT: "{whisper_endpoint}:{whisper_port}"
   ASR_ENDPOINT: "http://{whisper_endpoint}:{whisper_port}"
-  http_proxy: ""
-  https_proxy: ""
-  no_proxy: ""
+  http_proxy: "${HTTP_PROXY}"
+  https_proxy: "${HTTP_PROXY}"
+  no_proxy: "${NO_PROXY}"
   LOGFLAG: "True"
 
 ---
