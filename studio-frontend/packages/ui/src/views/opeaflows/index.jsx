@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 // material-ui
-import { Box, Skeleton, Stack, Input, Typography } from '@mui/material'
+import { Box, Skeleton, Stack, Input, Typography, Alert } from '@mui/material'
 import { useTheme } from '@mui/material/styles'
 
 // project imports
@@ -41,6 +41,7 @@ const Opeaflows = () => {
 
     const [isLoading, setLoading] = useState(true)
     const [error, setError] = useState(null)
+    const [importError, setImportError] = useState(null)
     const [images, setImages] = useState({})
     const [search, setSearch] = useState('')
     const [loginDialogOpen, setLoginDialogOpen] = useState(false)
@@ -95,11 +96,20 @@ const Opeaflows = () => {
 
     const importSamples = () => {
         setLoading(true);
-        chatflowsApi.importSampleChatflowsbyUserId(keycloak.tokenParsed.email).then(() => {
-            getAllOpeaflowsApi.request();
-        }).catch(() => {
-            setLoading(false);
-        });
+        setImportError(null);
+        chatflowsApi.importSampleChatflowsbyUserId(keycloak.tokenParsed.email)
+            .then(() => {
+                getAllOpeaflowsApi.request();
+                setImportError(null);
+            })
+            .catch((error) => {
+                setLoading(false);
+                const errorMessage = error?.response?.data?.message || 
+                                    error?.message || 
+                                    'Failed to import sample workflows. Please try again later.';
+                setImportError(errorMessage);
+                console.error('Error importing sample chatflows:', error);
+            });
     }
     
     const goToCanvas = (selectedChatflow) => {
@@ -161,6 +171,11 @@ const Opeaflows = () => {
                 <ErrorBoundary error={error} />
             ) : (
                 <Stack flexDirection='column' sx={{ gap: 3 }}>
+                    {importError && (
+                        <Alert severity='error' onClose={() => setImportError(null)} sx={{ mb: 2 }}>
+                            <strong>Import Failed:</strong> {importError}
+                        </Alert>
+                    )}
                     <Box>
                         <Typography 
                             sx={{

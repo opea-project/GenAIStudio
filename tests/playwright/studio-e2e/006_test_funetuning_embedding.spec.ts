@@ -64,5 +64,5 @@ test('006_test_funetuning_embedding', async ({ browser, baseURL }) => {
 
     await page.locator('button').nth(5).click();
     await page.getByRole('menuitem', { name: 'Delete Job' }).click();
-
+    await page.getByRole('button', { name: 'Delete', exact: true }).click();
 });

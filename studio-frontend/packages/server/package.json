@@ -87,7 +87,8 @@
         "typeorm": "^0.3.6",
         "uuid": "^9.0.1",
         "winston": "^3.9.0",
-        "https-proxy-agent": "^7.0.4"
+        "https-proxy-agent": "^7.0.4",
+        "archiver": "^6.0.1"
     },
     "devDependencies": {
         "@types/content-disposition": "0.5.8",
@@ -105,6 +106,7 @@
         "start-server-and-test": "^2.0.3",
         "ts-node": "^10.7.0",
         "tsc-watch": "^6.0.4",
-        "typescript": "^5.4.5"
+        "typescript": "^5.4.5",
+        "@types/archiver": "^6.0.2"
     }
 }
