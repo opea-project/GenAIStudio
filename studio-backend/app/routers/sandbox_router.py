@@ -19,6 +19,8 @@ async def deploy_sandbox(request: PipelineFlow):
     try:
         response = deploy_manifest_in_namespace(core_v1_api, apps_v1_api, json.loads(workflow_info.export_to_json()))
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
     return response

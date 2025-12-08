@@ -60,7 +60,7 @@ test('007_test_funetuning_reasoning', async ({ browser, baseURL }) => {
     await page.waitForTimeout(20000);
     await expect(page.getByRole('cell', { name: 'running' })).toHaveText('running');
     await expect(page.locator('div').filter({ hasText: 'Fine-tuning JobsCreate New' }).nth(3)).toContainText('reasoning');
-    await waitForStatusText(page, 'MuiChip-label MuiChip-labelSmall css-cxrmjv', 'succeeded', 20, 60000);
+    await waitForStatusText(page, 'td.MuiTableCell-root div.MuiChip-root', 'succeeded', 20, 60000);
 
     await page.locator('button').nth(5).click();
     await page.getByRole('menuitem', { name: 'Delete Job' }).click();
