@@ -426,7 +426,7 @@ spec:
   storageClassName: local-path
   resources:
     requests:
-      storage: 1Gi
+      storage: 30Gi
 ---
 apiVersion: v1
 kind: Service

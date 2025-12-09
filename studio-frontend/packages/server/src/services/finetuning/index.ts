@@ -13,6 +13,10 @@ import { getRunningExpressApp } from '../../utils/getRunningExpressApp'
 import { FineTuningJob } from '../../database/entities/FineTuningJob'
 import logger from '../../utils/logger'
 
+// Declare timer globals for Node.js
+declare function setTimeout(cb: (...args: any[]) => void, ms?: number): any
+declare function clearTimeout(id: any): void
+
 const execAsync = promisify(exec)
 
 const FINETUNING_SERVICE_URL = process.env.FINETUNING_HOST ? `http://${process.env.FINETUNING_HOST}:8015` : 'undefined'
@@ -35,93 +39,6 @@ const axiosClient: AxiosInstance = axios.create({
 
 // In-memory mapping: filename (raw and decoded) -> { id, rawFilename }
 const uploadedFileIdMap: Map<string, { id: string; rawFilename: string }> = new Map()
-
-/**
- * Helper function to zip a fine-tuning job output directory
- * Checks if zip already exists and is up-to-date before creating a new one
- * @param outputDir - Full path to the output directory for the job
- * @param jobId - ID of the fine-tuning job
- * @returns Path to the zipped file or null if failed
- */
-const ensureFineTuningOutputZip = async (outputDir: string, jobId: string): Promise<string | null> => {
-    try {
-        // eslint-disable-next-line no-console
-        console.debug(`finetuningService.ensureFineTuningOutputZip - processing output for job: ${jobId}`)
-        
-        // Validate output directory exists
-        if (!fs.existsSync(outputDir)) {
-            // eslint-disable-next-line no-console
-            console.warn(`finetuningService.ensureFineTuningOutputZip - output directory not found: ${outputDir}`)
-            return null
-        }
-
-        const zipFilePath = `${outputDir}.zip`
-        const outputStats = fs.statSync(outputDir)
-        
-        // Check if zip exists and is up-to-date
-        if (fs.existsSync(zipFilePath)) {
-            const zipStats = fs.statSync(zipFilePath)
-            // If zip is newer than the output directory, skip re-zipping
-            if (zipStats.mtimeMs > outputStats.mtimeMs) {
-                // eslint-disable-next-line no-console
-                console.debug(`finetuningService.ensureFineTuningOutputZip - zip already up-to-date: ${zipFilePath}`)
-                return zipFilePath
-            }
-            // Remove outdated zip
-            try {
-                fs.unlinkSync(zipFilePath)
-                // eslint-disable-next-line no-console
-                console.debug(`finetuningService.ensureFineTuningOutputZip - removed outdated zip: ${zipFilePath}`)
-            } catch (e) {
-                // eslint-disable-next-line no-console
-                console.warn(`finetuningService.ensureFineTuningOutputZip - failed to remove outdated zip: ${e}`)
-            }
-        }
-
-        // Create zip file using archiver (standard ZIP format compatible with Windows)
-        // eslint-disable-next-line no-console
-        console.debug(`finetuningService.ensureFineTuningOutputZip - starting to zip output for job ${jobId}`)
-        try {
-            return await new Promise((resolve, reject) => {
-                const output = fs.createWriteStream(zipFilePath)
-                const archive = archiver('zip', {
-                    zlib: { level: 6 } // compression level
-                })
-
-                output.on('close', () => {
-                    // eslint-disable-next-line no-console
-                    console.debug(`finetuningService.ensureFineTuningOutputZip - zip created successfully for job ${jobId}: ${zipFilePath} (${archive.pointer()} bytes)`)
-                    resolve(zipFilePath)
-                })
-
-                output.on('error', (err: any) => {
-                    // eslint-disable-next-line no-console
-                    console.error(`finetuningService.ensureFineTuningOutputZip - write stream error: ${err?.message || err}`)
-                    reject(err)
-                })
-
-                archive.on('error', (err: any) => {
-                    // eslint-disable-next-line no-console
-                    console.error(`finetuningService.ensureFineTuningOutputZip - archiver error: ${err?.message || err}`)
-                    reject(err)
-                })
-
-                archive.pipe(output)
-                // Add the entire directory to the archive with basename as root
-                archive.directory(outputDir, path.basename(outputDir))
-                archive.finalize()
-            })
-        } catch (execErr: any) {
-            // eslint-disable-next-line no-console
-            console.error(`finetuningService.ensureFineTuningOutputZip - archiver failed for job ${jobId}: ${execErr?.message || execErr}`)
-            return null
-        }
-    } catch (error: any) {
-        // eslint-disable-next-line no-console
-        console.error(`finetuningService.ensureFineTuningOutputZip - error: ${error?.message || error}`)
-        return null
-    }
-}
 
 /**
  * Upload a training file to the finetuning service
@@ -783,12 +700,12 @@ const deleteFineTuningJob = async (fineTuningJobId: string) => {
 }
 
 /**
- * Download fine-tuning job output as a zip file
- * Creates zip if needed, or returns existing zip immediately
+ * Prepare fine-tuning job output as a zip file for download
+ * Called by WebSocket to create and cache the zip
  * @param jobId - ID of the fine-tuning job
  * @returns Path to the zipped file or null if not found
  */
-const downloadFineTuningOutput = async (jobId: string): Promise<string | null> => {
+const prepareFineTuningOutputZip = async (jobId: string): Promise<string | null> => {
     try {
         if (!jobId) {
             throw new InternalFlowiseError(StatusCodes.BAD_REQUEST, 'Job ID is required')
@@ -816,18 +733,82 @@ const downloadFineTuningOutput = async (jobId: string): Promise<string | null> =
             throw new InternalFlowiseError(StatusCodes.FORBIDDEN, 'Invalid job output path')
         }
 
-        // Ensure the output is zipped (returns immediately if zip is up-to-date)
-        const finalZipPath = await ensureFineTuningOutputZip(jobOutputDir, jobId)
-        if (!finalZipPath) {
-            throw new InternalFlowiseError(
-                StatusCodes.INTERNAL_SERVER_ERROR,
-                `Failed to create zip for job ${jobId}`
-            )
-        }
+        const zipFilePath = `${jobOutputDir}.zip`
 
+        // Create zip file using archiver
         // eslint-disable-next-line no-console
-        console.debug(`finetuningService.downloadFineTuningOutput - file ready for download: ${finalZipPath}`)
-        return finalZipPath
+        console.debug(`finetuningService.downloadFineTuningOutput - creating zip for job ${jobId}`)
+        
+        // Log directory contents for diagnostics
+        try {
+            const dirContents = fs.readdirSync(jobOutputDir)
+            // eslint-disable-next-line no-console
+            console.debug(`finetuningService.downloadFineTuningOutput - output directory contains ${dirContents.length} items: ${dirContents.slice(0, 10).join(', ')}${dirContents.length > 10 ? '...' : ''}`)
+        } catch (e) {
+            // eslint-disable-next-line no-console
+            console.warn(`finetuningService.downloadFineTuningOutput - could not list directory: ${e}`)
+        }
+        
+        try {
+            return await new Promise((resolve, reject) => {
+                const output = fs.createWriteStream(zipFilePath)
+                const archive = archiver('zip', {
+                    zlib: { level: 0 } // no compression for speed
+                })
+                
+                const zipTimeoutMs = 30 * 60 * 1000 // 30 minutes
+                let resolved = false
+                
+                const timeoutHandle = setTimeout(() => {
+                    if (!resolved) {
+                        resolved = true
+                        // eslint-disable-next-line no-console
+                        console.error(`finetuningService.downloadFineTuningOutput - archiver timeout for job ${jobId}`)
+                        try { output.destroy() } catch (e) {}
+                        try { archive.destroy() } catch (e) {}
+                        reject(new Error('Archiver timeout'))
+                    }
+                }, zipTimeoutMs)
+
+                output.on('close', () => {
+                    if (!resolved) {
+                        resolved = true
+                        clearTimeout(timeoutHandle)
+                        // eslint-disable-next-line no-console
+                        console.debug(`finetuningService.downloadFineTuningOutput - zip created: ${zipFilePath}`)
+                        resolve(zipFilePath)
+                    }
+                })
+
+                output.on('error', (err: any) => {
+                    if (!resolved) {
+                        resolved = true
+                        clearTimeout(timeoutHandle)
+                        // eslint-disable-next-line no-console
+                        console.error(`finetuningService.downloadFineTuningOutput - write stream error: ${err?.message || err}`)
+                        reject(err)
+                    }
+                })
+
+                archive.on('error', (err: any) => {
+                    if (!resolved) {
+                        resolved = true
+                        clearTimeout(timeoutHandle)
+                        // eslint-disable-next-line no-console
+                        console.error(`finetuningService.downloadFineTuningOutput - archiver error: ${err?.message || err}`)
+                        reject(err)
+                    }
+                })
+
+                archive.pipe(output)
+                archive.directory(jobOutputDir, path.basename(jobOutputDir))
+                archive.finalize()
+            })
+        } catch (archiverErr: any) {
+            // eslint-disable-next-line no-console
+            console.error(`finetuningService.downloadFineTuningOutput - archiver failed for job ${jobId}: ${archiverErr?.message || archiverErr}`)
+            return null
+        }
     } catch (error: any) {
         if (error instanceof InternalFlowiseError) {
             throw error
@@ -838,6 +819,46 @@ const downloadFineTuningOutput = async (jobId: string): Promise<string | null> =
             StatusCodes.INTERNAL_SERVER_ERROR,
             `Error: finetuningService.downloadFineTuningOutput - ${getErrorMessage(error)}`
         )
+    }
+}
+
+/**
+ * Download fine-tuning job output - HTTP endpoint
+ * Returns path to cached ZIP file
+ * @param jobId - ID of the fine-tuning job
+ * @returns Path to the zipped file or null if not found
+ */
+const downloadFineTuningOutput = async (jobId: string): Promise<string | null> => {
+    try {
+        if (!jobId) {
+            return null
+        }
+
+        const OUTPUT_BASE_DIR = '/tmp/finetuning/output'
+        const zipFilePath = `${OUTPUT_BASE_DIR}/${jobId}.zip`
+
+        // Check if zip file exists
+        if (fs.existsSync(zipFilePath)) {
+            try {
+                const stat = fs.statSync(zipFilePath)
+                if (stat.size > 0) {
+                    // eslint-disable-next-line no-console
+                    console.debug(`finetuningService.downloadFineTuningOutput - returning cached zip: ${zipFilePath}`)
+                    return zipFilePath
+                }
+            } catch (e) {
+                // eslint-disable-next-line no-console
+                console.warn(`finetuningService.downloadFineTuningOutput - could not stat zip file: ${e}`)
+            }
+        }
+
+        // eslint-disable-next-line no-console
+        console.warn(`finetuningService.downloadFineTuningOutput - zip file not found: ${zipFilePath}`)
+        return null
+    } catch (error: any) {
+        // eslint-disable-next-line no-console
+        console.error(`finetuningService.downloadFineTuningOutput - error: ${error?.message || error}`)
+        return null
     }
 }
 
@@ -929,5 +950,6 @@ export default {
     cancelFineTuningJob,
     deleteFineTuningJob,
     getFineTuningJobLogs,
+    prepareFineTuningOutputZip,
     downloadFineTuningOutput
 }

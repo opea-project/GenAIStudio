@@ -3,6 +3,9 @@ import { StatusCodes } from 'http-status-codes'
 import { InternalFlowiseError } from '../../errors/internalFlowiseError'
 import finetuningService from '../../services/finetuning'
 
+// Declare timer globals for Node.js
+declare function setTimeout(cb: (...args: any[]) => void, ms?: number): any
+
 /**
  * Upload a training file
  * POST /api/v1/finetuning/files
@@ -154,6 +157,7 @@ const getFineTuningJobLogs = async (req: Request, res: Response, next: NextFunct
 /**
  * Download fine-tuning job output as a zip file
  * GET /api/v1/finetuning/download-ft/:jobId
+ * Creates zip, streams it to client, then deletes the zip file after download completes
  */
 const downloadFineTuningOutput = async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -166,14 +170,17 @@ const downloadFineTuningOutput = async (req: Request, res: Response, next: NextF
             )
         }
 
-        // Get the zip file path (creates if needed, but returns immediately if already exists)
+        // Get the zip file path from service
         const filePath = await finetuningService.downloadFineTuningOutput(jobId)
+        
         if (!filePath) {
             throw new InternalFlowiseError(
                 StatusCodes.NOT_FOUND,
-                `Error: finetuningController.downloadFineTuningOutput - output not found for job: ${jobId}`
+                `Error: finetuningController.downloadFineTuningOutput - zip file not found for job: ${jobId}. Please request download via WebSocket first.`
             )
         }
+
+        const fs = require('fs')
 
         // Set response headers for file download
         const fileName = `${jobId}-output.zip`
@@ -181,16 +188,45 @@ const downloadFineTuningOutput = async (req: Request, res: Response, next: NextF
         res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`)
         
         // Stream the file
-        const fs = require('fs')
         const fileStream = fs.createReadStream(filePath)
+        
+        // Log when stream opens
+        fileStream.on('open', () => {
+            console.debug(`finetuningController.downloadFineTuningOutput - starting to stream: ${filePath}`)
+        })
+        
+        // Delete zip file after response fully finishes (browser completes download)
+        res.on('finish', () => {
+            setTimeout(() => {
+                try {
+                    if (fs.existsSync(filePath)) {
+                        fs.unlinkSync(filePath)
+                        console.debug(`finetuningController.downloadFineTuningOutput - deleted zip after download complete: ${filePath}`)
+                    }
+                } catch (deleteErr: any) {
+                    console.warn(`finetuningController.downloadFineTuningOutput - failed to delete zip: ${deleteErr?.message || deleteErr}`)
+                }
+            }, 100)
+        })
+        
         fileStream.on('error', (err: any) => {
-            console.error('Error streaming fine-tuning output file:', err)
+            console.error('finetuningController.downloadFineTuningOutput - error streaming file:', err)
+            // Try to delete zip on error too
+            try {
+                if (fs.existsSync(filePath)) {
+                    fs.unlinkSync(filePath)
+                    console.debug(`finetuningController.downloadFineTuningOutput - deleted zip after error: ${filePath}`)
+                }
+            } catch (deleteErr: any) {
+                console.warn(`finetuningController.downloadFineTuningOutput - failed to delete zip on error: ${deleteErr?.message || deleteErr}`)
+            }
             if (!res.headersSent) {
                 res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
                     error: 'Error streaming fine-tuning output file'
                 })
             }
         })
+        
         fileStream.pipe(res)
     } catch (error) {
         next(error)

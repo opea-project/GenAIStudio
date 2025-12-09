@@ -99,10 +99,18 @@ export const setupFineTuningDownloadHandlers = (io: Server) => {
 
                 // Kick off the async preparation and store the promise so others can join
                 task.status = 'zipping'
+                
+                // Emit progress update to socket immediately
+                socket.emit('download-finetuning-progress', {
+                    jobId,
+                    status: 'zipping',
+                    message: 'Creating zip archive (this may take a few minutes)...'
+                })
+                
                 task.promise = (async () => {
                     try {
-                        // Call the service to prepare the zip file (returns path)
-                        const zipFilePath = await finetuningService.downloadFineTuningOutput(jobId)
+                        // Call the service to prepare the zip file
+                        const zipFilePath = await finetuningService.prepareFineTuningOutputZip(jobId)
 
                         if (!zipFilePath) {
                             task.status = 'error'
