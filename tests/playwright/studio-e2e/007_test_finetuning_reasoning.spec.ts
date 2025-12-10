@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import { waitForStatusText } from '../utils';
 import path from 'path';
 
-const trainDataset = path.resolve(__dirname, '../../test-files/toy_finetune_data.jsonl');
+const trainDataset = path.resolve(__dirname, '../../test-files/medical_o1_sft_50.json');
 
 async function setupResponseListener(page, apiResponse) {
     page.on('response', async (response) => {
@@ -28,7 +28,7 @@ async function setupResponseListener(page, apiResponse) {
     });
 }
 
-test('006_test_funetuning_embedding', async ({ browser, baseURL }) => {
+test('007_test_finetuning_reasoning', async ({ browser, baseURL }) => {
     test.setTimeout(1200000);
     let apiResponse = { value: '' };
     const context = await browser.newContext({
@@ -48,9 +48,9 @@ test('006_test_funetuning_embedding', async ({ browser, baseURL }) => {
     await page.getByRole('button', { name: 'Fine-tuning' }).click();
     await page.getByRole('button', { name: 'Create New Job' }).click();
     await page.getByRole('combobox', { name: 'Base Model' }).click();
-    await page.getByRole('option', { name: 'BAAI/bge-base-en-v1.5' }).click();
+    await page.getByRole('option', { name: 'Qwen/Qwen2.5-7B' }).click();
     await page.getByText('Instruction Tuning').click();
-    await page.getByRole('option', { name: 'Embedding' }).click();
+    await page.getByRole('option', { name: 'Reasoning' }).click();
     let fileChooserPromise = page.waitForEvent('filechooser');
     await page.getByRole('button', { name: 'Choose File' }).click();
     let fileChooser = await fileChooserPromise;
@@ -59,7 +59,7 @@ test('006_test_funetuning_embedding', async ({ browser, baseURL }) => {
     await page.getByRole('button', { name: 'Create Job' }).click();
     await page.waitForTimeout(20000);
     await expect(page.getByRole('cell', { name: 'running' })).toHaveText('running');
-    await expect(page.locator('div').filter({ hasText: 'Fine-tuning JobsCreate New' }).nth(3)).toContainText('embedding');
+    await expect(page.locator('div').filter({ hasText: 'Fine-tuning JobsCreate New' }).nth(3)).toContainText('reasoning');
     await waitForStatusText(page, 'td.MuiTableCell-root div.MuiChip-root', 'succeeded', 20, 60000);
 
     await page.locator('button').nth(5).click();

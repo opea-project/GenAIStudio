@@ -28,7 +28,7 @@ async function setupResponseListener(page, apiResponse) {
     });
 }
 
-test('005_test_funetuning_rerank', async ({ browser, baseURL }) => {
+test('005_test_finetuning_rerank', async ({ browser, baseURL }) => {
     test.setTimeout(1200000);
     let apiResponse = { value: '' };
     const context = await browser.newContext({
