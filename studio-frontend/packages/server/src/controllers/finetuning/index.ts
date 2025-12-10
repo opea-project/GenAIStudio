@@ -182,49 +182,42 @@ const downloadFineTuningOutput = async (req: Request, res: Response, next: NextF
 
         const fs = require('fs')
 
+        // Get file stats for Content-Length header (enables browser progress bar)
+        const fileStats = fs.statSync(filePath)
+        const fileSize = fileStats.size
+
         // Set response headers for file download
         const fileName = `${jobId}-output.zip`
         res.setHeader('Content-Type', 'application/zip')
         res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`)
+        res.setHeader('Content-Length', fileSize)
         
         // Stream the file
         const fileStream = fs.createReadStream(filePath)
         
         // Log when stream opens
         fileStream.on('open', () => {
-            console.debug(`finetuningController.downloadFineTuningOutput - starting to stream: ${filePath}`)
+            console.debug(`finetuningController.downloadFineTuningOutput - starting to stream: ${filePath} (${fileSize} bytes)`)
+        })
+
+        // Log when the file stream closes (end of stream on server side)
+        fileStream.on('close', () => {
+            console.debug(`finetuningController.downloadFineTuningOutput - end stream: ${filePath}`)
         })
         
-        // Delete zip file after response fully finishes (browser completes download)
-        res.on('finish', () => {
-            setTimeout(() => {
-                try {
-                    if (fs.existsSync(filePath)) {
-                        fs.unlinkSync(filePath)
-                        console.debug(`finetuningController.downloadFineTuningOutput - deleted zip after download complete: ${filePath}`)
-                    }
-                } catch (deleteErr: any) {
-                    console.warn(`finetuningController.downloadFineTuningOutput - failed to delete zip: ${deleteErr?.message || deleteErr}`)
-                }
-            }, 100)
-        })
-        
+        // Multiple users can download the same ZIP simultaneously
         fileStream.on('error', (err: any) => {
             console.error('finetuningController.downloadFineTuningOutput - error streaming file:', err)
-            // Try to delete zip on error too
-            try {
-                if (fs.existsSync(filePath)) {
-                    fs.unlinkSync(filePath)
-                    console.debug(`finetuningController.downloadFineTuningOutput - deleted zip after error: ${filePath}`)
-                }
-            } catch (deleteErr: any) {
-                console.warn(`finetuningController.downloadFineTuningOutput - failed to delete zip on error: ${deleteErr?.message || deleteErr}`)
-            }
             if (!res.headersSent) {
                 res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
                     error: 'Error streaming fine-tuning output file'
                 })
             }
+        })
+
+        // Log when HTTP response finishes sending bytes to client
+        res.on('finish', () => {
+            console.debug(`finetuningController.downloadFineTuningOutput - response finished streaming: ${filePath}`)
         })
         
         fileStream.pipe(res)

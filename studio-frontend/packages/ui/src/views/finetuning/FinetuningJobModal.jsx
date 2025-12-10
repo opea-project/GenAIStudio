@@ -779,7 +779,7 @@ const FinetuningJobModal = ({ open, onClose, onJobCreated }) => {
                                                     value={formData.dataset.padding_side}
                                                     onChange={(e) => handleConfigChange('dataset', 'padding_side', e.target.value)}
                                                     size="small"
-                                                    sx={{ width: '100%', maxWidth: 240 }}
+                                                    sx={{ width: '100%' }}
                                                 />
                                             </Box>
 
@@ -789,7 +789,7 @@ const FinetuningJobModal = ({ open, onClose, onJobCreated }) => {
                                                     value={formData.dataset.truncation_side}
                                                     onChange={(e) => handleConfigChange('dataset', 'truncation_side', e.target.value)}
                                                     size="small"
-                                                    sx={{ width: '100%', maxWidth: 240 }}
+                                                    sx={{ width: '100%' }}
                                                 />
                                             </Box>
 
@@ -799,7 +799,7 @@ const FinetuningJobModal = ({ open, onClose, onJobCreated }) => {
                                                     value={String(formData.dataset.padding)}
                                                     onChange={(e) => handleConfigChange('dataset', 'padding', e.target.value)}
                                                     size="small"
-                                                    sx={{ width: '100%', maxWidth: 240 }}
+                                                    sx={{ width: '100%' }}
                                                 />
                                             </Box>
 
@@ -809,7 +809,7 @@ const FinetuningJobModal = ({ open, onClose, onJobCreated }) => {
                                                     value={String(formData.dataset.truncation)}
                                                     onChange={(e) => handleConfigChange('dataset', 'truncation', e.target.value)}
                                                     size="small"
-                                                    sx={{ width: '100%', maxWidth: 240 }}
+                                                    sx={{ width: '100%' }}
                                                 />
                                             </Box>
 
@@ -819,7 +819,7 @@ const FinetuningJobModal = ({ open, onClose, onJobCreated }) => {
                                                     value={String(formData.dataset.mask_input)}
                                                     onChange={(e) => handleConfigChange('dataset', 'mask_input', e.target.value)}
                                                     size="small"
-                                                    sx={{ width: '100%', maxWidth: 240 }}
+                                                    sx={{ width: '100%' }}
                                                 />
                                             </Box>
 
@@ -829,7 +829,7 @@ const FinetuningJobModal = ({ open, onClose, onJobCreated }) => {
                                                     value={String(formData.dataset.mask_response)}
                                                     onChange={(e) => handleConfigChange('dataset', 'mask_response', e.target.value)}
                                                     size="small"
-                                                    sx={{ width: '100%', maxWidth: 240 }}
+                                                    sx={{ width: '100%' }}
                                                 />
                                             </Box>
                                         </Box>
