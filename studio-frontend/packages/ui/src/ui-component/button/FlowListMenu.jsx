@@ -1,29 +1,19 @@
 import { useState } from 'react'
 import { useDispatch } from 'react-redux'
 import PropTypes from 'prop-types'
+import { useTranslation } from 'react-i18next'
 
 import { styled, alpha } from '@mui/material/styles'
 import Menu from '@mui/material/Menu'
 import MenuItem from '@mui/material/MenuItem'
 import EditIcon from '@mui/icons-material/Edit'
-import Divider from '@mui/material/Divider'
 import FileCopyIcon from '@mui/icons-material/FileCopy'
-import IosShareIcon from '@mui/icons-material/IosShare';
+import IosShareIcon from '@mui/icons-material/IosShare'
 import FileDeleteIcon from '@mui/icons-material/Delete'
-import FileCategoryIcon from '@mui/icons-material/Category'
-import PictureInPictureAltIcon from '@mui/icons-material/PictureInPictureAlt'
-import ThumbsUpDownOutlinedIcon from '@mui/icons-material/ThumbsUpDownOutlined'
-import VpnLockOutlinedIcon from '@mui/icons-material/VpnLockOutlined'
-import MicNoneOutlinedIcon from '@mui/icons-material/MicNoneOutlined'
-import PlayCircleOutlineIcon from '@mui/icons-material/PlayCircleOutline';
-import BuildCircleOutlinedIcon from '@mui/icons-material/BuildCircleOutlined';
-import ExportTemplateOutlinedIcon from '@mui/icons-material/BookmarksOutlined'
 import Button from '@mui/material/Button'
-import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown'
 import { IconX } from '@tabler/icons-react'
 
 import chatflowsApi from '@/api/chatflows'
-
 import useApi from '@/hooks/useApi'
 import useConfirm from '@/hooks/useConfirm'
 import { uiBaseURL } from '@/store/constant'
@@ -32,14 +22,13 @@ import { closeSnackbar as closeSnackbarAction, enqueueSnackbar as enqueueSnackba
 import SaveChatflowDialog from '@/ui-component/dialog/SaveChatflowDialog'
 import TagDialog from '@/ui-component/dialog/TagDialog'
 import StarterPromptsDialog from '@/ui-component/dialog/StarterPromptsDialog'
-
 import { generateExportFlowData } from '@/utils/genericHelper'
 import useNotifier from '@/utils/useNotifier'
 import ChatFeedbackDialog from '../dialog/ChatFeedbackDialog'
 import AllowedDomainsDialog from '../dialog/AllowedDomainsDialog'
 import SpeechToTextDialog from '../dialog/SpeechToTextDialog'
 import ExportAsTemplateDialog from '@/ui-component/dialog/ExportAsTemplateDialog'
-import {Settings} from '@mui/icons-material'
+import { Settings } from '@mui/icons-material'
 
 const StyledMenu = styled((props) => (
     <Menu
@@ -78,6 +67,7 @@ const StyledMenu = styled((props) => (
 }))
 
 export default function FlowListMenu({ chatflow, isAgentCanvas, setError, updateFlowsApi, sandboxStatus, updateSandboxStatus }) {
+    const { t } = useTranslation()
     const { confirm } = useConfirm()
     const dispatch = useDispatch()
     const updateChatflowApi = useApi(chatflowsApi.updateChatflow)
@@ -94,39 +84,22 @@ export default function FlowListMenu({ chatflow, isAgentCanvas, setError, update
     const [conversationStartersDialogOpen, setConversationStartersDialogOpen] = useState(false)
     const [conversationStartersDialogProps, setConversationStartersDialogProps] = useState({})
     const [chatFeedbackDialogOpen, setChatFeedbackDialogOpen] = useState(false)
-    // const [runSandboxProps, setrunSandboxProps] = useState({})
     const [chatFeedbackDialogProps, setChatFeedbackDialogProps] = useState({})
     const [allowedDomainsDialogOpen, setAllowedDomainsDialogOpen] = useState(false)
     const [allowedDomainsDialogProps, setAllowedDomainsDialogProps] = useState({})
     const [speechToTextDialogOpen, setSpeechToTextDialogOpen] = useState(false)
     const [speechToTextDialogProps, setSpeechToTextDialogProps] = useState({})
-
     const [exportTemplateDialogOpen, setExportTemplateDialogOpen] = useState(false)
     const [exportTemplateDialogProps, setExportTemplateDialogProps] = useState({})
 
+    const title = isAgentCanvas ? t('flowlist.agent', 'Agent') : t('flowlist.chatflow', 'Chatflow')
 
-    const title = isAgentCanvas ? 'Agents' : 'Chatflow'
-
-    const handleClick = (event) => {
-        setAnchorEl(event.currentTarget)
-    }
-
-    const handleClose = () => {
-        setAnchorEl(null)
-    }
+    const handleClick = (event) => setAnchorEl(event.currentTarget)
+    const handleClose = () => setAnchorEl(null)
 
     const handleFlowRename = () => {
         setAnchorEl(null)
         setFlowDialogOpen(true)
-    }
-
-    const handleFlowStarterPrompts = () => {
-        setAnchorEl(null)
-        setConversationStartersDialogProps({
-            title: 'Starter Prompts - ' + chatflow.name,
-            chatflow: chatflow
-        })
-        setConversationStartersDialogOpen(true)
     }
 
     const handleExportTemplate = () => {
@@ -137,10 +110,19 @@ export default function FlowListMenu({ chatflow, isAgentCanvas, setError, update
         setExportTemplateDialogOpen(true)
     }
 
+    const handleFlowStarterPrompts = () => {
+        setAnchorEl(null)
+        setConversationStartersDialogProps({
+            title: t('flowlist.starterPrompts', { name: chatflow.name }),
+            chatflow: chatflow
+        })
+        setConversationStartersDialogOpen(true)
+    }
+
     const handleFlowChatFeedback = () => {
         setAnchorEl(null)
         setChatFeedbackDialogProps({
-            title: 'Chat Feedback - ' + chatflow.name,
+            title: t('flowlist.chatFeedback', { name: chatflow.name }),
             chatflow: chatflow
         })
         setChatFeedbackDialogOpen(true)
@@ -149,7 +131,7 @@ export default function FlowListMenu({ chatflow, isAgentCanvas, setError, update
     const handleAllowedDomains = () => {
         setAnchorEl(null)
         setAllowedDomainsDialogProps({
-            title: 'Allowed Domains - ' + chatflow.name,
+            title: t('flowlist.allowedDomains', { name: chatflow.name }),
             chatflow: chatflow
         })
         setAllowedDomainsDialogOpen(true)
@@ -158,7 +140,7 @@ export default function FlowListMenu({ chatflow, isAgentCanvas, setError, update
     const handleSpeechToText = () => {
         setAnchorEl(null)
         setSpeechToTextDialogProps({
-            title: 'Speech To Text - ' + chatflow.name,
+            title: t('flowlist.speechToText', { name: chatflow.name }),
             chatflow: chatflow
         })
         setSpeechToTextDialogOpen(true)
@@ -190,52 +172,13 @@ export default function FlowListMenu({ chatflow, isAgentCanvas, setError, update
         }
     }
 
-    const handleFlowCategory = () => {
-        setAnchorEl(null)
-        if (chatflow.category) {
-            setCategoryDialogProps({
-                category: chatflow.category.split(';')
-            })
-        }
-        setCategoryDialogOpen(true)
-    }
-
-    const saveFlowCategory = async (categories) => {
-        setCategoryDialogOpen(false)
-        // save categories as string
-        const categoryTags = categories.join(';')
-        const updateBody = {
-            category: categoryTags,
-            chatflow
-        }
-        try {
-            await updateChatflowApi.request(chatflow.id, updateBody)
-            await updateFlowsApi.request()
-        } catch (error) {
-            if (setError) setError(error)
-            enqueueSnackbar({
-                message: typeof error.response.data === 'object' ? error.response.data.message : error.response.data,
-                options: {
-                    key: new Date().getTime() + Math.random(),
-                    variant: 'error',
-                    persist: true,
-                    action: (key) => (
-                        <Button style={{ color: 'white' }} onClick={() => closeSnackbar(key)}>
-                            <IconX />
-                        </Button>
-                    )
-                }
-            })
-        }
-    }
-
     const handleDelete = async () => {
         setAnchorEl(null)
         const confirmPayload = {
-            title: `Delete`,
-            description: `Delete ${title} ${chatflow.name}?`,
-            confirmButtonName: 'Delete',
-            cancelButtonName: 'Cancel'
+            title: t('flowlist.delete'),
+            description: t('flowlist.deleteConfirm', { name: chatflow.name }),
+            confirmButtonName: t('flowlist.delete'),
+            cancelButtonName: t('flowlist.cancel')
         }
         const isConfirmed = await confirm(confirmPayload)
 
@@ -287,15 +230,51 @@ export default function FlowListMenu({ chatflow, isAgentCanvas, setError, update
             const flowData = JSON.parse(chatflow.flowData)
             let dataStr = JSON.stringify(generateExportFlowData(flowData), null, 2)
             let dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr)
-
             let exportFileDefaultName = `${chatflow.name} ${title}.json`
-
             let linkElement = document.createElement('a')
             linkElement.setAttribute('href', dataUri)
             linkElement.setAttribute('download', exportFileDefaultName)
             linkElement.click()
         } catch (e) {
             console.error(e)
+        }
+    }
+
+    const handleFlowCategory = () => {
+        setAnchorEl(null)
+        if (chatflow.category) {
+            setCategoryDialogProps({
+                category: chatflow.category.split(';')
+            })
+        }
+        setCategoryDialogOpen(true)
+    }
+
+    const saveFlowCategory = async (categories) => {
+        setCategoryDialogOpen(false)
+        const categoryTags = categories.join(';')
+        const updateBody = {
+            category: categoryTags,
+            chatflow
+        }
+        try {
+            await updateChatflowApi.request(chatflow.id, updateBody)
+            await updateFlowsApi.request()
+        } catch (error) {
+            if (setError) setError(error)
+            enqueueSnackbar({
+                message: typeof error.response.data === 'object' ? error.response.data.message : error.response.data,
+                options: {
+                    key: new Date().getTime() + Math.random(),
+                    variant: 'error',
+                    persist: true,
+                    action: (key) => (
+                        <Button style={{ color: 'white' }} onClick={() => closeSnackbar(key)}>
+                            <IconX />
+                        </Button>
+                    )
+                }
+            })
         }
     }
 
@@ -308,10 +287,8 @@ export default function FlowListMenu({ chatflow, isAgentCanvas, setError, update
                 aria-expanded={open ? 'true' : undefined}
                 disableElevation
                 onClick={handleClick}
-                // endIcon={<KeyboardArrowDownIcon />}
                 startIcon={<Settings />}
-            >
-            </Button>
+            />
             <StyledMenu
                 id='demo-customized-menu'
                 MenuListProps={{
@@ -323,60 +300,86 @@ export default function FlowListMenu({ chatflow, isAgentCanvas, setError, update
             >
                 <MenuItem onClick={handleFlowRename} disableRipple>
                     <EditIcon />
-                    Rename
+                    {t('flowlist.rename')}
                 </MenuItem>
                 <MenuItem onClick={handleDuplicate} disableRipple>
                     <FileCopyIcon />
-                    Duplicate
+                    {t('flowlist.duplicate')}
                 </MenuItem>
                 <MenuItem onClick={handleExport} disableRipple>
                     <IosShareIcon />
-                    Export
+                    {t('flowlist.export')}
                 </MenuItem>
                 <MenuItem onClick={handleDelete} disableRipple>
                     <FileDeleteIcon />
-                    Delete
+                    {t('flowlist.delete')}
                 </MenuItem>
+                {/* 下面如果需要可继续添加菜单项，如StarterPrompts、AllowedDomains、SpeechToText等 */}
             </StyledMenu>
             <SaveChatflowDialog
                 show={flowDialogOpen}
                 dialogProps={{
-                    title: `Rename ${title}`,
-                    confirmButtonName: 'Rename',
-                    cancelButtonName: 'Cancel'
+                    title: `${t('flowlist.rename')} ${title}`,
+                    confirmButtonName: t('flowlist.rename'),
+                    cancelButtonName: t('flowlist.cancel')
                 }}
                 onCancel={() => setFlowDialogOpen(false)}
                 onConfirm={saveFlowRename}
             />
             <TagDialog
                 isOpen={categoryDialogOpen}
-                dialogProps={categoryDialogProps}
+                dialogProps={{
+                    ...categoryDialogProps,
+                    title: t('flowlist.setCategory'),
+                    confirmButtonName: t('flowlist.save'),
+                    cancelButtonName: t('flowlist.cancel')
+                }}
                 onClose={() => setCategoryDialogOpen(false)}
                 onSubmit={saveFlowCategory}
             />
             <StarterPromptsDialog
                 show={conversationStartersDialogOpen}
-                dialogProps={conversationStartersDialogProps}
+                dialogProps={{
+                    ...conversationStartersDialogProps,
+                    confirmButtonName: t('flowlist.ok'),
+                    cancelButtonName: t('flowlist.cancel')
+                }}
                 onCancel={() => setConversationStartersDialogOpen(false)}
             />
             <ChatFeedbackDialog
                 show={chatFeedbackDialogOpen}
-                dialogProps={chatFeedbackDialogProps}
+                dialogProps={{
+                    ...chatFeedbackDialogProps,
+                    confirmButtonName: t('flowlist.ok'),
+                    cancelButtonName: t('flowlist.cancel')
+                }}
                 onCancel={() => setChatFeedbackDialogOpen(false)}
             />
             <AllowedDomainsDialog
                 show={allowedDomainsDialogOpen}
-                dialogProps={allowedDomainsDialogProps}
+                dialogProps={{
+                    ...allowedDomainsDialogProps,
+                    confirmButtonName: t('flowlist.ok'),
+                    cancelButtonName: t('flowlist.cancel')
+                }}
                 onCancel={() => setAllowedDomainsDialogOpen(false)}
             />
             <SpeechToTextDialog
                 show={speechToTextDialogOpen}
-                dialogProps={speechToTextDialogProps}
+                dialogProps={{
+                    ...speechToTextDialogProps,
+                    confirmButtonName: t('flowlist.ok'),
+                    cancelButtonName: t('flowlist.cancel')
+                }}
                 onCancel={() => setSpeechToTextDialogOpen(false)}
             />
             <ExportAsTemplateDialog
                 show={exportTemplateDialogOpen}
-                dialogProps={exportTemplateDialogProps}
+                dialogProps={{
+                    ...exportTemplateDialogProps,
+                    confirmButtonName: t('flowlist.export'),
+                    cancelButtonName: t('flowlist.cancel')
+                }}
                 onCancel={() => setExportTemplateDialogOpen(false)}
             />
         </div>
