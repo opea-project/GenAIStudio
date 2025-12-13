@@ -1,5 +1,11 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
+from app.compat import ensure_urllib3_getheaders
+
+# Restore HTTPResponse.getheaders expected by kubernetes-python when running with urllib3 2.x.
+ensure_urllib3_getheaders()
+
 from kubernetes import config
 
 # Load the kubeconfig file
