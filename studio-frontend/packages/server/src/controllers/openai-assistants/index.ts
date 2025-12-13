@@ -53,8 +53,9 @@ const getFileFromAssistant = async (req: Request, res: Response, next: NextFunct
         const chatflowId = req.body.chatflowId as string
         const chatId = req.body.chatId as string
         const fileName = req.body.fileName as string
+        const orgId = '' // Organization ID not required in this context
         res.setHeader('Content-Disposition', contentDisposition(fileName))
-        const fileStream = await streamStorageFile(chatflowId, chatId, fileName)
+        const fileStream = await streamStorageFile(chatflowId, chatId, fileName, orgId)
 
         if (!fileStream) throw new InternalFlowiseError(StatusCodes.INTERNAL_SERVER_ERROR, `Error: getFileFromAssistant`)
 

@@ -1,6 +1,6 @@
 import express from 'express'
 import upsertHistoryController from '../../controllers/upsert-history'
-const router = express.Router()
+const router: express.Router = express.Router()
 
 // CREATE
 

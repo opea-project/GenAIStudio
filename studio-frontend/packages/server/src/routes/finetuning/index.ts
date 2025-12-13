@@ -2,7 +2,7 @@ import express from 'express'
 import multer from 'multer'
 import finetuningController from '../../controllers/finetuning'
 
-const router = express.Router()
+const router: express.Router = express.Router()
 
 // Use memory storage for multer to store files in buffer
 const upload = multer({ storage: multer.memoryStorage() })

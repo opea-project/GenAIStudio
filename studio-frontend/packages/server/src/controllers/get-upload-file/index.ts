@@ -5,6 +5,12 @@ import { streamStorageFile } from 'flowise-components'
 import { StatusCodes } from 'http-status-codes'
 import { InternalFlowiseError } from '../../errors/internalFlowiseError'
 
+interface AuthenticatedRequest extends Request {
+    user?: {
+        activeOrganizationId?: string
+    }
+}
+
 const streamUploadedFile = async (req: Request, res: Response, next: NextFunction) => {
     try {
         if (!req.query.chatflowId || !req.query.chatId || !req.query.fileName) {
@@ -13,8 +19,9 @@ const streamUploadedFile = async (req: Request, res: Response, next: NextFunctio
         const chatflowId = req.query.chatflowId as string
         const chatId = req.query.chatId as string
         const fileName = req.query.fileName as string
+        const orgId = (req as AuthenticatedRequest).user?.activeOrganizationId || ''
         res.setHeader('Content-Disposition', contentDisposition(fileName))
-        const fileStream = await streamStorageFile(chatflowId, chatId, fileName)
+        const fileStream = await streamStorageFile(chatflowId, chatId, fileName, orgId)
 
         if (!fileStream) throw new InternalFlowiseError(StatusCodes.INTERNAL_SERVER_ERROR, `Error: streamStorageFile`)
 

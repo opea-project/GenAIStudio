@@ -1,4 +1,4 @@
-import { Command, Flags } from '@oclif/core'
+import { Command, Flags, Args } from '@oclif/core'
 import path from 'path'
 import * as Server from '../index'
 import * as DataSource from '../DataSource'
@@ -14,7 +14,7 @@ enum EXIT_CODE {
 let processExitCode = EXIT_CODE.SUCCESS
 
 export default class Start extends Command {
-    static args = []
+    static args = {}
     static flags = {
         FLOWISE_USERNAME: Flags.string(),
         FLOWISE_PASSWORD: Flags.string(),

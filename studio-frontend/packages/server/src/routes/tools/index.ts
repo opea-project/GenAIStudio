@@ -1,7 +1,7 @@
 import express from 'express'
 import toolsController from '../../controllers/tools'
 
-const router = express.Router()
+const router: express.Router = express.Router()
 
 // CREATE
 router.post('/', toolsController.createTool)

@@ -3,7 +3,7 @@ import multer from 'multer'
 import path from 'path'
 import openaiAssistantsController from '../../controllers/openai-assistants'
 
-const router = express.Router()
+const router: express.Router = express.Router()
 const upload = multer({ dest: `${path.join(__dirname, '..', '..', '..', 'uploads')}/` })
 
 router.post('/download/', openaiAssistantsController.getFileFromAssistant)

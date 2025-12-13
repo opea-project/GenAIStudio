@@ -43,7 +43,7 @@ import vectorRouter from './vectors'
 import verifyRouter from './verify'
 import versionRouter from './versions'
 
-const router = express.Router()
+const router: express.Router = express.Router()
 
 router.use('/ping', pingRouter)
 router.use('/apikey', apikeyRouter)

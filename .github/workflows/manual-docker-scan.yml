@@ -69,6 +69,7 @@ jobs:
           ignore-unfixed: true
           vuln-type: 'os,library'
           severity: 'CRITICAL,HIGH'
+          # timeout: '10m0s'
 
       - name: Cleanup
         if: always()

@@ -1,6 +1,6 @@
 import express from 'express'
 import fetchLinksController from '../../controllers/fetch-links'
-const router = express.Router()
+const router: express.Router = express.Router()
 
 // READ
 router.get('/', fetchLinksController.getAllLinks)

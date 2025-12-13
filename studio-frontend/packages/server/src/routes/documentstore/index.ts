@@ -1,6 +1,6 @@
 import express from 'express'
 import documentStoreController from '../../controllers/documentstore'
-const router = express.Router()
+const router: express.Router = express.Router()
 
 /** Document Store Routes */
 // Create document store
