@@ -361,7 +361,7 @@ export const buildAgentGraph = async (
                         const connectedToolNode = reactFlowNodes.find((node) => node.id === tooNodeId)
 
                         // Map raw tool calls to used tools, to be shown on interrupted message
-                        const mappedToolCalls = lastMessageRaw.tool_calls.map((toolCall) => {
+                        const mappedToolCalls = lastMessageRaw.tool_calls.map((toolCall: any) => {
                             return { tool: toolCall.name, toolInput: toolCall.args, toolOutput: '' }
                         })
 

@@ -1,6 +1,6 @@
 import express from 'express'
 import credentialsController from '../../controllers/credentials'
-const router = express.Router()
+const router: express.Router = express.Router()
 
 // CREATE
 router.post('/', credentialsController.createCredential)

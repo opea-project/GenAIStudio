@@ -3,7 +3,7 @@ import multer from 'multer'
 import path from 'path'
 import vectorsController from '../../controllers/vectors'
 
-const router = express.Router()
+const router: express.Router = express.Router()
 
 const upload = multer({ dest: `${path.join(__dirname, '..', '..', '..', 'uploads')}/` })
 

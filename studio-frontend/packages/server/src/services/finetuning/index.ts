@@ -6,11 +6,16 @@ import * as path from 'path'
 import { exec } from 'child_process'
 import { promisify } from 'util'
 import { StatusCodes } from 'http-status-codes'
+import archiver from 'archiver'
 import { InternalFlowiseError } from '../../errors/internalFlowiseError'
 import { getErrorMessage } from '../../errors/utils'
 import { getRunningExpressApp } from '../../utils/getRunningExpressApp'
 import { FineTuningJob } from '../../database/entities/FineTuningJob'
 import logger from '../../utils/logger'
+
+// Declare timer globals for Node.js
+declare function setTimeout(cb: (...args: any[]) => void, ms?: number): any
+declare function clearTimeout(id: any): void
 
 const execAsync = promisify(exec)
 
@@ -34,75 +39,6 @@ const axiosClient: AxiosInstance = axios.create({
 
 // In-memory mapping: filename (raw and decoded) -> { id, rawFilename }
 const uploadedFileIdMap: Map<string, { id: string; rawFilename: string }> = new Map()
-
-/**
- * Helper function to zip a fine-tuning job output directory
- * Checks if zip already exists and is up-to-date before creating a new one
- * @param outputDir - Full path to the output directory for the job
- * @param jobId - ID of the fine-tuning job
- * @returns Path to the zipped file or null if failed
- */
-const ensureFineTuningOutputZip = async (outputDir: string, jobId: string): Promise<string | null> => {
-    try {
-        // eslint-disable-next-line no-console
-        console.debug(`finetuningService.ensureFineTuningOutputZip - processing output for job: ${jobId}`)
-        
-        // Validate output directory exists
-        if (!fs.existsSync(outputDir)) {
-            // eslint-disable-next-line no-console
-            console.warn(`finetuningService.ensureFineTuningOutputZip - output directory not found: ${outputDir}`)
-            return null
-        }
-
-        const zipFilePath = `${outputDir}.zip`
-        const outputStats = fs.statSync(outputDir)
-        
-        // Check if zip exists and is up-to-date
-        if (fs.existsSync(zipFilePath)) {
-            const zipStats = fs.statSync(zipFilePath)
-            // If zip is newer than the output directory, skip re-zipping
-            if (zipStats.mtimeMs > outputStats.mtimeMs) {
-                // eslint-disable-next-line no-console
-                console.debug(`finetuningService.ensureFineTuningOutputZip - zip already up-to-date: ${zipFilePath}`)
-                return zipFilePath
-            }
-            // Remove outdated zip
-            try {
-                fs.unlinkSync(zipFilePath)
-                // eslint-disable-next-line no-console
-                console.debug(`finetuningService.ensureFineTuningOutputZip - removed outdated zip: ${zipFilePath}`)
-            } catch (e) {
-                // eslint-disable-next-line no-console
-                console.warn(`finetuningService.ensureFineTuningOutputZip - failed to remove outdated zip: ${e}`)
-            }
-        }
-
-        // Create zip file using tar (more efficient than node zip libraries)
-        // eslint-disable-next-line no-console
-        console.debug(`finetuningService.ensureFineTuningOutputZip - starting to zip output for job ${jobId}`)
-        try {
-            const parentDir = path.dirname(outputDir)
-            const dirName = path.basename(outputDir)
-            const cmd = `cd "${parentDir}" && tar -czf "${path.basename(zipFilePath)}" "${dirName}"`
-            await execAsync(cmd, { 
-                maxBuffer: 1024 * 1024 * 100, // 100MB buffer for large outputs
-                timeout: 600000 // 10 minute timeout
-            })
-            
-            // eslint-disable-next-line no-console
-            console.debug(`finetuningService.ensureFineTuningOutputZip - zip created successfully for job ${jobId}: ${zipFilePath}`)
-            return zipFilePath
-        } catch (execErr: any) {
-            // eslint-disable-next-line no-console
-            console.error(`finetuningService.ensureFineTuningOutputZip - tar failed for job ${jobId}: ${execErr?.message || execErr}`)
-            return null
-        }
-    } catch (error: any) {
-        // eslint-disable-next-line no-console
-        console.error(`finetuningService.ensureFineTuningOutputZip - error: ${error?.message || error}`)
-        return null
-    }
-}
 
 /**
  * Upload a training file to the finetuning service
@@ -248,136 +184,298 @@ const updateJobInDb = async (jobId: string, updates: Partial<any>) => {
     }
 }
 
-/**
- * Create a fine-tuning job
- */
-const createFineTuningJob = async (jobConfig: {
-    training_file: string
-    model: string
-    General?: {
-        task?: string
-        lora_config?: any
+
+// Utility: convert "true"/"false" (string) to boolean; leave non-boolean inputs as-is.
+const coerceBooleanString = (v: any): any => {
+  if (typeof v === 'string') {
+    const s = v.trim().toLowerCase();
+    if (s === 'true') return true;
+    if (s === 'false') return false;
+  }
+  return v;
+};
+
+// Utility: ensure padding is one of allowed values or a boolean.
+// If pad_to_max is true, force "max_length".
+const sanitizePadding = (dataset: any) => {
+  if (!dataset) return;
+
+  // Coerce common string booleans first
+  if (dataset.hasOwnProperty('padding')) {
+    const val = dataset.padding;
+    const coerced = coerceBooleanString(val);
+
+    // Allowed enum values
+    const allowedEnums = ['longest', 'max_length', 'do_not_pad'] as const;
+
+    if (typeof coerced === 'boolean') {
+      dataset.padding = coerced; // transformers accepts boolean true/false
+    } else if (typeof coerced === 'string') {
+      const s = coerced.trim().toLowerCase();
+      if (allowedEnums.includes(s as any)) {
+        dataset.padding = s; // valid enum string
+      } else if (s === 'true') {
+        // Defensive: sometimes people pass "true" explicitly
+        dataset.padding = true;
+      } else if (s === 'false') {
+        dataset.padding = false;
+      } else {
+        // Fallback: pick a safe default
+        dataset.padding = 'max_length';
+      }
+    } else {
+      // Fallback if something weird comes in
+      dataset.padding = 'max_length';
     }
-    Dataset?: {
-        max_length?: number
-        query_max_len?: number
-        passage_max_len?: number
-        padding?: string
+  }
+
+  // If pad_to_max is present as string, coerce to boolean.
+  if (dataset.hasOwnProperty('pad_to_max')) {
+    dataset.pad_to_max = coerceBooleanString(dataset.pad_to_max);
+  }
+
+  // If pad_to_max is true, padding MUST be "max_length" for consistency
+  if (dataset.pad_to_max === true) {
+    dataset.padding = 'max_length';
+    // Also ensure max_length is set when needed
+    if (!dataset.max_length && (dataset.query_max_len || dataset.passage_max_len)) {
+      // If per-type max lengths exist, we can keep them; otherwise default global max_length.
+      dataset.max_length = Math.max(
+        Number(dataset.query_max_len || 0),
+        Number(dataset.passage_max_len || 0),
+        512
+      );
     }
-    Training?: {
-        epochs?: number
-        batch_size?: number
-        gradient_accumulation_steps?: number
+  }
+};
+
+// Utility: coerce other Dataset booleans and align preprocessor with task.
+const sanitizeDataset = (payload: any) => {
+  const ds = payload?.Dataset;
+  if (!ds) return;
+
+  // Coerce known booleans that might arrive as strings
+  if (ds.hasOwnProperty('truncation')) ds.truncation = coerceBooleanString(ds.truncation);
+  if (ds.hasOwnProperty('mask_input')) ds.mask_input = coerceBooleanString(ds.mask_input);
+  if (ds.hasOwnProperty('mask_response')) ds.mask_response = coerceBooleanString(ds.mask_response);
+
+  sanitizePadding(ds);
+
+  // Align preprocessor with task if embedding
+  const task = payload?.General?.task || payload?.task;
+  if (task === 'embedding') {
+    if (ds.data_preprocess_type === 'neural_chat') {
+      ds.data_preprocess_type = 'embedding';
     }
-}) => {
-    try {
-        // Work with the jobConfig as-provided by the UI.
-        const forwardedJobConfig = { ...jobConfig }
+    // Masking typically not used for embeddings
+    if (typeof ds.mask_input !== 'undefined') ds.mask_input = false;
+    if (typeof ds.mask_response !== 'undefined') ds.mask_response = false;
+  }
 
-        // (Removed verbose initial jobConfig logging to reduce noise)
-        const sanitizedPayload = JSON.parse(JSON.stringify(forwardedJobConfig))
+  // Optional: ensure padding_side/truncation_side sanity (keep defaults if not set)
+  if (!ds.padding_side) ds.padding_side = 'right';
+  if (!ds.truncation_side) ds.truncation_side = 'right';
+};
 
-        // Remove empty nested objects that may confuse the server
-        if (sanitizedPayload.General && Object.keys(sanitizedPayload.General).length === 0) {
-            delete sanitizedPayload.General
-        }
-        if (sanitizedPayload.Dataset && Object.keys(sanitizedPayload.Dataset).length === 0) {
-            delete sanitizedPayload.Dataset
-        }
-        if (sanitizedPayload.Training && Object.keys(sanitizedPayload.Training).length === 0) {
-            delete sanitizedPayload.Training
-        }
-        
-        if (sanitizedPayload.training_file && typeof sanitizedPayload.training_file === 'string') {
-            const originalFilename = sanitizedPayload.training_file
-            
-            // Try to decode first in case it's URL-encoded
-            let lookupKey = originalFilename
-            try {
-                const decoded = decodeURIComponent(originalFilename)
-                lookupKey = decoded
-            } catch (e) {
-                // ignore decode errors
-            }
-            
-            // Check if we have a stored mapping from the upload
-            let stored = uploadedFileIdMap.get(lookupKey)
-            if (!stored && lookupKey !== originalFilename) {
-                // Also try the original (encoded) key
-                stored = uploadedFileIdMap.get(originalFilename)
-            }
-            
-            if (stored && stored.rawFilename) {
-                sanitizedPayload.training_file = stored.rawFilename
-            }
-        }
-
-        // Try a sequence of attempts to accommodate naming/encoding/id differences.
-        const attemptPost = async (payload: any, label = 'attempt') => {
-            try {
-                // eslint-disable-next-line no-console
-                console.debug(`finetuningService.createFineTuningJob - ${label} payload:`, payload)
-                const resp = await axiosClient.post('/v1/fine_tuning/jobs', payload)
-                // eslint-disable-next-line no-console
-                console.debug(`finetuningService.createFineTuningJob - ${label} response:`, typeof resp?.data === 'string' ? resp.data : JSON.stringify(resp?.data))
-                return resp
-            } catch (err: any) {
-                // Log detailed info for debugging
-                try {
-                    // eslint-disable-next-line no-console
-                    console.error(`finetuningService.createFineTuningJob - ${label} failed`, {
-                        message: err?.message,
-                        status: err?.response?.status,
-                        responseData: typeof err?.response?.data === 'string' ? err.response.data : JSON.stringify(err?.response?.data),
-                        payload
-                    })
-                } catch (logErr) {
-                    // ignore logging errors
-                }
-                throw err
-            }
-        }
-
-        // Send the sanitized payload
-        const resp = await attemptPost(sanitizedPayload, 'final')
-        const respData = resp.data
-        // If the external service didn't echo back the task, preserve task from our sanitized payload
+// Utility: avoid DDP for single-worker CPU runs (if these fields are present)
+const sanitizeTraining = (payload: any) => {
+  const tr = payload?.Training;
+  if (!tr) return;
+    // If accelerate_mode is DDP but workers <= 1, remove accelerate_mode
+    // so the backend can choose a sensible default. 
+    const workers = Number(tr.num_training_workers ?? 1);
+    const device = (tr.device ?? '').toString().toLowerCase();
+    if (tr.accelerate_mode === 'DDP' && workers <= 1) {
         try {
-            const payloadTask = sanitizedPayload?.General?.task || sanitizedPayload?.task
-            if (payloadTask && !respData.task) {
-                // attach task so persistJobToDb stores it
-                try { respData.task = payloadTask } catch (e) { /* ignore */ }
-            }
+            delete tr.accelerate_mode
         } catch (e) {
-            // ignore
+            // Fallback: set to undefined to avoid sending an invalid literal
+            // when the payload is serialized.
+            // eslint-disable-next-line no-param-reassign
+            tr.accelerate_mode = undefined as any
         }
-
-        // Persist to local DB
-        try {
-            await persistJobToDb(respData)
-        } catch (e) {
-            // ignore
-        }
-        return respData
-    } catch (error: any) {
-        // Log error details from external service if available for debugging
-        try {
-            // eslint-disable-next-line no-console
-            console.error('finetuningService.createFineTuningJob - axios error:', {
-                message: error.message,
-                responseData: error.response ? (typeof error.response.data === 'string' ? error.response.data : JSON.stringify(error.response.data)) : undefined,
-                status: error.response ? error.response.status : undefined,
-                headers: error.response ? error.response.headers : undefined
-            })
-        } catch (logErr) {
-            // ignore logging errors
-        }
-        throw new InternalFlowiseError(
-            StatusCodes.INTERNAL_SERVER_ERROR,
-            `Error: finetuningService.createFineTuningJob - ${getErrorMessage(error)}`
-        )
-    }
 }
+
+  // Optional: if device unspecified but accelerate_mode DDP, leave as-is; trainer may decide backend.
+};
+
+// Central sanitizer that mutates the payload
+const sanitizeFineTuningPayload = (payload: any) => {
+  if (!payload || typeof payload !== 'object') return payload;
+
+  // Coerce top-level task if provided as string-like (no-op if already OK)
+  if (payload.General && typeof payload.General.task === 'string') {
+    payload.General.task = payload.General.task.trim();
+  }
+
+    // If lora_config is explicitly null/empty, remove it entirely so we don't
+    // send `lora_config: null` to the backend which may assert on it.
+    try {
+        if (payload.General && Object.prototype.hasOwnProperty.call(payload.General, 'lora_config')) {
+            const lc = payload.General.lora_config
+            const isEmptyObject = lc && typeof lc === 'object' && Object.keys(lc).length === 0
+            if (lc === null || typeof lc === 'undefined' || isEmptyObject) {
+                delete payload.General.lora_config
+            }
+        }
+    } catch (e) {
+        // ignore
+    }
+
+  // Apply dataset and training sanitizers
+  sanitizeDataset(payload);
+  sanitizeTraining(payload);
+
+  return payload;
+};
+
+const createFineTuningJob = async (jobConfig: {
+  training_file: string;
+  model: string;
+  General?: {
+    task?: string;
+    lora_config?: any;
+  };
+  Dataset?: {
+    max_length?: number;
+    query_max_len?: number;
+    passage_max_len?: number;
+    padding?: string;
+  };
+  Training?: {
+    epochs?: number;
+    batch_size?: number;
+    gradient_accumulation_steps?: number;
+  };
+}) => {
+  try {
+    // Work with the jobConfig as-provided by the UI.
+    const forwardedJobConfig = { ...jobConfig };
+
+    // (Removed verbose initial jobConfig logging to reduce noise)
+    const sanitizedPayload = JSON.parse(JSON.stringify(forwardedJobConfig));
+
+    // Remove empty nested objects that may confuse the server
+    if (sanitizedPayload.General && Object.keys(sanitizedPayload.General).length === 0) {
+      delete sanitizedPayload.General;
+    }
+    if (sanitizedPayload.Dataset && Object.keys(sanitizedPayload.Dataset).length === 0) {
+      delete sanitizedPayload.Dataset;
+    }
+    if (sanitizedPayload.Training && Object.keys(sanitizedPayload.Training).length === 0) {
+      delete sanitizedPayload.Training;
+    }
+
+    // Normalize file name using uploadedFileIdMap
+    if (sanitizedPayload.training_file && typeof sanitizedPayload.training_file === 'string') {
+      const originalFilename = sanitizedPayload.training_file;
+
+      // Try to decode first in case it's URL-encoded
+      let lookupKey = originalFilename;
+      try {
+        const decoded = decodeURIComponent(originalFilename);
+        lookupKey = decoded;
+      } catch (e) {
+        // ignore decode errors
+      }
+
+      // Check if we have a stored mapping from the upload
+      let stored = uploadedFileIdMap.get(lookupKey);
+      if (!stored && lookupKey !== originalFilename) {
+        // Also try the original (encoded) key
+        stored = uploadedFileIdMap.get(originalFilename);
+      }
+
+      if (stored && stored.rawFilename) {
+        sanitizedPayload.training_file = stored.rawFilename;
+      }
+    }
+
+    // >>> NEW: sanitize fragile fields (padding, truncation, preprocessor, DDP, etc.)
+    sanitizeFineTuningPayload(sanitizedPayload);
+
+    // Try a sequence of attempts to accommodate naming/encoding/id differences.
+    const attemptPost = async (payload: any, label = 'attempt') => {
+      try {
+        // eslint-disable-next-line no-console
+        console.debug(`finetuningService.createFineTuningJob - ${label} payload:`, payload);
+        const resp = await axiosClient.post('/v1/fine_tuning/jobs', payload);
+        // eslint-disable-next-line no-console
+        console.debug(
+          `finetuningService.createFineTuningJob - ${label} response:`,
+          typeof resp?.data === 'string' ? resp.data : JSON.stringify(resp?.data)
+        );
+        return resp;
+      } catch (err: any) {
+        // Log detailed info for debugging
+        try {
+          // eslint-disable-next-line no-console
+          console.error(`finetuningService.createFineTuningJob - ${label} failed`, {
+            message: err?.message,
+            status: err?.response?.status,
+            responseData:
+              typeof err?.response?.data === 'string'
+                ? err.response.data
+                : JSON.stringify(err?.response?.data),
+            payload,
+          });
+        } catch (logErr) {
+          // ignore logging errors
+        }
+        throw err;
+      }
+    };
+
+    // Send the sanitized payload
+    const resp = await attemptPost(sanitizedPayload, 'final');
+    const respData = resp.data;
+
+    // If the external service didn't echo back the task, preserve task from our sanitized payload
+    try {
+      const payloadTask = sanitizedPayload?.General?.task || sanitizedPayload?.task;
+      if (payloadTask && !respData.task) {
+        // attach task so persistJobToDb stores it
+        try {
+          respData.task = payloadTask;
+        } catch (e) {
+          /* ignore */
+        }
+      }
+    } catch (e) {
+      // ignore
+    }
+
+    // Persist to local DB
+    try {
+      await persistJobToDb(respData);
+    } catch (e) {
+      // ignore
+    }
+    return respData;
+  } catch (error: any) {
+    // Log error details from external service if available for debugging
+    try {
+      // eslint-disable-next-line no-console
+      console.error('finetuningService.createFineTuningJob - axios error:', {
+        message: error.message,
+        responseData: error.response
+          ? typeof error.response.data === 'string'
+            ? error.response.data
+            : JSON.stringify(error.response.data)
+          : undefined,
+        status: error.response ? error.response.status : undefined,
+        headers: error.response ? error.response.headers : undefined,
+      });
+    } catch (logErr) {
+      // ignore logging errors
+    }
+    throw new InternalFlowiseError(
+      StatusCodes.INTERNAL_SERVER_ERROR,
+      `Error: finetuningService.createFineTuningJob - ${getErrorMessage(error)}`
+    );
+  }
+};
+
 
 /**
  * List all fine-tuning jobs
@@ -602,12 +700,12 @@ const deleteFineTuningJob = async (fineTuningJobId: string) => {
 }
 
 /**
- * Download fine-tuning job output as a zip file
- * Creates zip if needed, or returns existing zip immediately
+ * Prepare fine-tuning job output as a zip file for download
+ * Called by WebSocket to create and cache the zip
  * @param jobId - ID of the fine-tuning job
  * @returns Path to the zipped file or null if not found
  */
-const downloadFineTuningOutput = async (jobId: string): Promise<string | null> => {
+const prepareFineTuningOutputZip = async (jobId: string): Promise<string | null> => {
     try {
         if (!jobId) {
             throw new InternalFlowiseError(StatusCodes.BAD_REQUEST, 'Job ID is required')
@@ -635,18 +733,82 @@ const downloadFineTuningOutput = async (jobId: string): Promise<string | null> =
             throw new InternalFlowiseError(StatusCodes.FORBIDDEN, 'Invalid job output path')
         }
 
-        // Ensure the output is zipped (returns immediately if zip is up-to-date)
-        const finalZipPath = await ensureFineTuningOutputZip(jobOutputDir, jobId)
-        if (!finalZipPath) {
-            throw new InternalFlowiseError(
-                StatusCodes.INTERNAL_SERVER_ERROR,
-                `Failed to create zip for job ${jobId}`
-            )
-        }
+        const zipFilePath = `${jobOutputDir}.zip`
 
+        // Create zip file using archiver
         // eslint-disable-next-line no-console
-        console.debug(`finetuningService.downloadFineTuningOutput - file ready for download: ${finalZipPath}`)
-        return finalZipPath
+        console.debug(`finetuningService.downloadFineTuningOutput - creating zip for job ${jobId}`)
+        
+        // Log directory contents for diagnostics
+        try {
+            const dirContents = fs.readdirSync(jobOutputDir)
+            // eslint-disable-next-line no-console
+            console.debug(`finetuningService.downloadFineTuningOutput - output directory contains ${dirContents.length} items: ${dirContents.slice(0, 10).join(', ')}${dirContents.length > 10 ? '...' : ''}`)
+        } catch (e) {
+            // eslint-disable-next-line no-console
+            console.warn(`finetuningService.downloadFineTuningOutput - could not list directory: ${e}`)
+        }
+        
+        try {
+            return await new Promise((resolve, reject) => {
+                const output = fs.createWriteStream(zipFilePath)
+                const archive = archiver('zip', {
+                    zlib: { level: 0 } // no compression for speed
+                })
+                
+                const zipTimeoutMs = 30 * 60 * 1000 // 30 minutes
+                let resolved = false
+                
+                const timeoutHandle = setTimeout(() => {
+                    if (!resolved) {
+                        resolved = true
+                        // eslint-disable-next-line no-console
+                        console.error(`finetuningService.downloadFineTuningOutput - archiver timeout for job ${jobId}`)
+                        try { output.destroy() } catch (e) {}
+                        try { archive.destroy() } catch (e) {}
+                        reject(new Error('Archiver timeout'))
+                    }
+                }, zipTimeoutMs)
+
+                output.on('close', () => {
+                    if (!resolved) {
+                        resolved = true
+                        clearTimeout(timeoutHandle)
+                        // eslint-disable-next-line no-console
+                        console.debug(`finetuningService.downloadFineTuningOutput - zip created: ${zipFilePath}`)
+                        resolve(zipFilePath)
+                    }
+                })
+
+                output.on('error', (err: any) => {
+                    if (!resolved) {
+                        resolved = true
+                        clearTimeout(timeoutHandle)
+                        // eslint-disable-next-line no-console
+                        console.error(`finetuningService.downloadFineTuningOutput - write stream error: ${err?.message || err}`)
+                        reject(err)
+                    }
+                })
+
+                archive.on('error', (err: any) => {
+                    if (!resolved) {
+                        resolved = true
+                        clearTimeout(timeoutHandle)
+                        // eslint-disable-next-line no-console
+                        console.error(`finetuningService.downloadFineTuningOutput - archiver error: ${err?.message || err}`)
+                        reject(err)
+                    }
+                })
+
+                archive.pipe(output)
+                archive.directory(jobOutputDir, path.basename(jobOutputDir))
+                archive.finalize()
+            })
+        } catch (archiverErr: any) {
+            // eslint-disable-next-line no-console
+            console.error(`finetuningService.downloadFineTuningOutput - archiver failed for job ${jobId}: ${archiverErr?.message || archiverErr}`)
+            return null
+        }
     } catch (error: any) {
         if (error instanceof InternalFlowiseError) {
             throw error
@@ -657,6 +819,46 @@ const downloadFineTuningOutput = async (jobId: string): Promise<string | null> =
             StatusCodes.INTERNAL_SERVER_ERROR,
             `Error: finetuningService.downloadFineTuningOutput - ${getErrorMessage(error)}`
         )
+    }
+}
+
+/**
+ * Download fine-tuning job output - HTTP endpoint
+ * Returns path to cached ZIP file
+ * @param jobId - ID of the fine-tuning job
+ * @returns Path to the zipped file or null if not found
+ */
+const downloadFineTuningOutput = async (jobId: string): Promise<string | null> => {
+    try {
+        if (!jobId) {
+            return null
+        }
+
+        const OUTPUT_BASE_DIR = '/tmp/finetuning/output'
+        const zipFilePath = `${OUTPUT_BASE_DIR}/${jobId}.zip`
+
+        // Check if zip file exists
+        if (fs.existsSync(zipFilePath)) {
+            try {
+                const stat = fs.statSync(zipFilePath)
+                if (stat.size > 0) {
+                    // eslint-disable-next-line no-console
+                    console.debug(`finetuningService.downloadFineTuningOutput - returning cached zip: ${zipFilePath}`)
+                    return zipFilePath
+                }
+            } catch (e) {
+                // eslint-disable-next-line no-console
+                console.warn(`finetuningService.downloadFineTuningOutput - could not stat zip file: ${e}`)
+            }
+        }
+
+        // eslint-disable-next-line no-console
+        console.warn(`finetuningService.downloadFineTuningOutput - zip file not found: ${zipFilePath}`)
+        return null
+    } catch (error: any) {
+        // eslint-disable-next-line no-console
+        console.error(`finetuningService.downloadFineTuningOutput - error: ${error?.message || error}`)
+        return null
     }
 }
 
@@ -748,5 +950,6 @@ export default {
     cancelFineTuningJob,
     deleteFineTuningJob,
     getFineTuningJobLogs,
+    prepareFineTuningOutputZip,
     downloadFineTuningOutput
 }

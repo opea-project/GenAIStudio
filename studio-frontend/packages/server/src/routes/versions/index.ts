@@ -1,6 +1,6 @@
 import express from 'express'
 import versionsController from '../../controllers/versions'
-const router = express.Router()
+const router: express.Router = express.Router()
 
 // READ
 router.get('/', versionsController.getVersion)

@@ -3,11 +3,6 @@ import { useState, useEffect } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import PropTypes from 'prop-types'
 
-import rehypeMathjax from 'rehype-mathjax'
-import rehypeRaw from 'rehype-raw'
-import remarkGfm from 'remark-gfm'
-import remarkMath from 'remark-math'
-
 // MUI
 import {
     Box,
@@ -536,28 +531,7 @@ const PromptLangsmithHubDialog = ({ promptType, show, onCancel, onSubmit }) => {
                                                                 }
                                                             }}
                                                         >
-                                                            <MemoizedReactMarkdown
-                                                                remarkPlugins={[remarkGfm, remarkMath]}
-                                                                rehypePlugins={[rehypeMathjax, rehypeRaw]}
-                                                                components={{
-                                                                    code({ inline, className, children, ...props }) {
-                                                                        const match = /language-(\w+)/.exec(className || '')
-                                                                        return !inline ? (
-                                                                            <CodeBlock
-                                                                                key={Math.random()}
-                                                                                isDialog={true}
-                                                                                language={(match && match[1]) || ''}
-                                                                                value={String(children).replace(/\n$/, '')}
-                                                                                {...props}
-                                                                            />
-                                                                        ) : (
-                                                                            <code className={className} {...props}>
-                                                                                {children}
-                                                                            </code>
-                                                                        )
-                                                                    }
-                                                                }}
-                                                            >
+                                                            <MemoizedReactMarkdown isDialog={true}>
                                                                 {selectedPrompt?.readme}
                                                             </MemoizedReactMarkdown>
                                                         </div>

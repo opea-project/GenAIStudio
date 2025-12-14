@@ -3,6 +3,9 @@ import { StatusCodes } from 'http-status-codes'
 import { InternalFlowiseError } from '../../errors/internalFlowiseError'
 import finetuningService from '../../services/finetuning'
 
+// Declare timer globals for Node.js
+declare function setTimeout(cb: (...args: any[]) => void, ms?: number): any
+
 /**
  * Upload a training file
  * POST /api/v1/finetuning/files
@@ -154,6 +157,7 @@ const getFineTuningJobLogs = async (req: Request, res: Response, next: NextFunct
 /**
  * Download fine-tuning job output as a zip file
  * GET /api/v1/finetuning/download-ft/:jobId
+ * Creates zip, streams it to client, then deletes the zip file after download completes
  */
 const downloadFineTuningOutput = async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -166,31 +170,56 @@ const downloadFineTuningOutput = async (req: Request, res: Response, next: NextF
             )
         }
 
-        // Get the zip file path (creates if needed, but returns immediately if already exists)
+        // Get the zip file path from service
         const filePath = await finetuningService.downloadFineTuningOutput(jobId)
+        
         if (!filePath) {
             throw new InternalFlowiseError(
                 StatusCodes.NOT_FOUND,
-                `Error: finetuningController.downloadFineTuningOutput - output not found for job: ${jobId}`
+                `Error: finetuningController.downloadFineTuningOutput - zip file not found for job: ${jobId}. Please request download via WebSocket first.`
             )
         }
+
+        const fs = require('fs')
+
+        // Get file stats for Content-Length header (enables browser progress bar)
+        const fileStats = fs.statSync(filePath)
+        const fileSize = fileStats.size
 
         // Set response headers for file download
         const fileName = `${jobId}-output.zip`
         res.setHeader('Content-Type', 'application/zip')
         res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`)
+        res.setHeader('Content-Length', fileSize)
         
         // Stream the file
-        const fs = require('fs')
         const fileStream = fs.createReadStream(filePath)
+        
+        // Log when stream opens
+        fileStream.on('open', () => {
+            console.debug(`finetuningController.downloadFineTuningOutput - starting to stream: ${filePath} (${fileSize} bytes)`)
+        })
+
+        // Log when the file stream closes (end of stream on server side)
+        fileStream.on('close', () => {
+            console.debug(`finetuningController.downloadFineTuningOutput - end stream: ${filePath}`)
+        })
+        
+        // Multiple users can download the same ZIP simultaneously
         fileStream.on('error', (err: any) => {
-            console.error('Error streaming fine-tuning output file:', err)
+            console.error('finetuningController.downloadFineTuningOutput - error streaming file:', err)
             if (!res.headersSent) {
                 res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
                     error: 'Error streaming fine-tuning output file'
                 })
             }
         })
+
+        // Log when HTTP response finishes sending bytes to client
+        res.on('finish', () => {
+            console.debug(`finetuningController.downloadFineTuningOutput - response finished streaming: ${filePath}`)
+        })
+        
         fileStream.pipe(res)
     } catch (error) {
         next(error)

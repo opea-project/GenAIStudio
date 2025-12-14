@@ -1,7 +1,7 @@
 import express from 'express'
 import assistantsController from '../../controllers/assistants'
 
-const router = express.Router()
+const router: express.Router = express.Router()
 
 // CREATE
 router.post('/', assistantsController.createAssistant)

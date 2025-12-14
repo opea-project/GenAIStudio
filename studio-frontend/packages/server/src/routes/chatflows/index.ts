@@ -1,6 +1,6 @@
 import express from 'express'
 import chatflowsController from '../../controllers/chatflows'
-const router = express.Router()
+const router: express.Router = express.Router()
 
 // CREATE
 router.post('/', chatflowsController.saveChatflow)

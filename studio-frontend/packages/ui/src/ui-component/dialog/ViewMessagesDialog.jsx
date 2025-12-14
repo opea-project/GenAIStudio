@@ -3,10 +3,6 @@ import { useDispatch, useSelector } from 'react-redux'
 import { useState, useEffect, forwardRef } from 'react'
 import PropTypes from 'prop-types'
 import moment from 'moment'
-import rehypeMathjax from 'rehype-mathjax'
-import rehypeRaw from 'rehype-raw'
-import remarkGfm from 'remark-gfm'
-import remarkMath from 'remark-math'
 import axios from 'axios'
 import { cloneDeep } from 'lodash'
 
@@ -642,27 +638,8 @@ const ViewMessagesDialog = ({ show, dialogProps, onCancel }) => {
         } else {
             return (
                 <MemoizedReactMarkdown
-                    remarkPlugins={[remarkGfm, remarkMath]}
-                    rehypePlugins={[rehypeMathjax, rehypeRaw]}
-                    components={{
-                        code({ inline, className, children, ...props }) {
-                            const match = /language-(\w+)/.exec(className || '')
-                            return !inline ? (
-                                <CodeBlock
-                                    key={Math.random()}
-                                    chatflowid={dialogProps.chatflow.id}
-                                    isDialog={true}
-                                    language={(match && match[1]) || ''}
-                                    value={String(children).replace(/\n$/, '')}
-                                    {...props}
-                                />
-                            ) : (
-                                <code className={className} {...props}>
-                                    {children}
-                                </code>
-                            )
-                        }
-                    }}
+                    chatflowid={dialogProps.chatflow.id}
+                    isDialog={true}
                 >
                     {item.data}
                 </MemoizedReactMarkdown>
@@ -1113,44 +1090,8 @@ const ViewMessagesDialog = ({ show, dialogProps, onCancel }) => {
                                                                                         )}
                                                                                         {agent.messages.length > 0 && (
                                                                                             <MemoizedReactMarkdown
-                                                                                                remarkPlugins={[remarkGfm, remarkMath]}
-                                                                                                rehypePlugins={[rehypeMathjax, rehypeRaw]}
-                                                                                                components={{
-                                                                                                    code({
-                                                                                                        inline,
-                                                                                                        className,
-                                                                                                        children,
-                                                                                                        ...props
-                                                                                                    }) {
-                                                                                                        const match = /language-(\w+)/.exec(
-                                                                                                            className || ''
-                                                                                                        )
-                                                                                                        return !inline ? (
-                                                                                                            <CodeBlock
-                                                                                                                key={Math.random()}
-                                                                                                                chatflowid={
-                                                                                                                    dialogProps.chatflow.id
-                                                                                                                }
-                                                                                                                isDialog={true}
-                                                                                                                language={
-                                                                                                                    (match && match[1]) ||
-                                                                                                                    ''
-                                                                                                                }
-                                                                                                                value={String(
-                                                                                                                    children
-                                                                                                                ).replace(/\n$/, '')}
-                                                                                                                {...props}
-                                                                                                            />
-                                                                                                        ) : (
-                                                                                                            <code
-                                                                                                                className={className}
-                                                                                                                {...props}
-                                                                                                            >
-                                                                                                                {children}
-                                                                                                            </code>
-                                                                                                        )
-                                                                                                    }
-                                                                                                }}
+                                                                                                chatflowid={dialogProps.chatflow.id}
+                                                                                                isDialog={true}
                                                                                             >
                                                                                                 {agent.messages.length > 1
                                                                                                     ? agent.messages.join('\\n')
@@ -1264,27 +1205,8 @@ const ViewMessagesDialog = ({ show, dialogProps, onCancel }) => {
                                                                 <div className='markdownanswer'>
                                                                     {/* Messages are being rendered in Markdown format */}
                                                                     <MemoizedReactMarkdown
-                                                                        remarkPlugins={[remarkGfm, remarkMath]}
-                                                                        rehypePlugins={[rehypeMathjax, rehypeRaw]}
-                                                                        components={{
-                                                                            code({ inline, className, children, ...props }) {
-                                                                                const match = /language-(\w+)/.exec(className || '')
-                                                                                return !inline ? (
-                                                                                    <CodeBlock
-                                                                                        key={Math.random()}
-                                                                                        chatflowid={dialogProps.chatflow.id}
-                                                                                        isDialog={true}
-                                                                                        language={(match && match[1]) || ''}
-                                                                                        value={String(children).replace(/\n$/, '')}
-                                                                                        {...props}
-                                                                                    />
-                                                                                ) : (
-                                                                                    <code className={className} {...props}>
-                                                                                        {children}
-                                                                                    </code>
-                                                                                )
-                                                                            }
-                                                                        }}
+                                                                        chatflowid={dialogProps.chatflow.id}
+                                                                        isDialog={true}
                                                                     >
                                                                         {message.message}
                                                                     </MemoizedReactMarkdown>

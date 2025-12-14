@@ -108,7 +108,7 @@ export class NodesPool {
     private async getFiles(dir: string): Promise<string[]> {
         const dirents = await promises.readdir(dir, { withFileTypes: true })
         const files = await Promise.all(
-            dirents.map((dirent: Dirent) => {
+            dirents.map((dirent) => {
                 const res = path.resolve(dir, dirent.name)
                 return dirent.isDirectory() ? this.getFiles(res) : res
             })

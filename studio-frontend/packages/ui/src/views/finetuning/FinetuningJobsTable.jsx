@@ -124,6 +124,7 @@ const FinetuningJobsTable = ({ data, isLoading = false, onRefresh = null, filter
     const [logsOpen, setLogsOpen] = useState(false)
     const [logsData, setLogsData] = useState('')
     const [logsLoading, setLogsLoading] = useState(false)
+    const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
     const logsContainerRef = useRef(null)
 
     // Auto-refresh logs every 3 seconds when logs dialog is open
@@ -687,18 +688,7 @@ const FinetuningJobsTable = ({ data, isLoading = false, onRefresh = null, filter
                 <MenuItem 
                     onClick={async () => { 
                         if (!selectedJob) return
-                        if (!window.confirm('Are you sure you want to delete this job?')) return
-                        setActionLoading(true)
-                        try {
-                            await finetuningApi.deleteJob(selectedJob.id)
-                            handleMenuClose()
-                            if (onRefresh) onRefresh()
-                        } catch (error) {
-                            console.error('Error deleting job:', error)
-                            alert('Failed to delete job: ' + (error.message || 'Unknown error'))
-                        } finally {
-                            setActionLoading(false)
-                        }
+                        setDeleteConfirmOpen(true)
                     }}
                     disabled={actionLoading}
                 >
@@ -765,6 +755,43 @@ const FinetuningJobsTable = ({ data, isLoading = false, onRefresh = null, filter
                         }}
                     >
                         Close
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Delete Confirmation Dialog */}
+            <Dialog open={deleteConfirmOpen} onClose={() => setDeleteConfirmOpen(false)} maxWidth="xs" fullWidth>
+                <DialogTitle>Delete Job</DialogTitle>
+                <DialogContent>
+                    <Typography variant="body2">
+                        Are you sure you want to delete this job? This action cannot be undone.
+                    </Typography>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setDeleteConfirmOpen(false)}>
+                        Cancel
+                    </Button>
+                    <Button 
+                        onClick={async () => {
+                            if (!selectedJob) return
+                            setActionLoading(true)
+                            try {
+                                await finetuningApi.deleteJob(selectedJob.id)
+                                setDeleteConfirmOpen(false)
+                                handleMenuClose()
+                                if (onRefresh) onRefresh()
+                            } catch (error) {
+                                console.error('Error deleting job:', error)
+                                alert('Failed to delete job: ' + (error.message || 'Unknown error'))
+                            } finally {
+                                setActionLoading(false)
+                            }
+                        }}
+                        color="error"
+                        variant="contained"
+                        disabled={actionLoading}
+                    >
+                        Delete
                     </Button>
                 </DialogActions>
             </Dialog>
