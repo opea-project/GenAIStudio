@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <title>Globalization Governance Dashboard</title>
+    <style>
+      body {
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        margin: 0;
+        padding: 16px;
+        background: #f5f5f7;
+      }
+
+      h1 {
+        margin: 0 0 8px;
+        font-size: 24px;
+      }
+
+      .subtitle {
+        margin-bottom: 16px;
+        color: #555;
+        font-size: 14px;
+      }
+
+      .summary-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 12px;
+        margin-bottom: 16px;
+      }
+
+      .card {
+        background: #fff;
+        border-radius: 8px;
+        padding: 12px 14px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+      }
+
+      .card-title {
+        font-size: 12px;
+        color: #777;
+        margin-bottom: 4px;
+      }
+
+      .card-value {
+        font-size: 20px;
+        font-weight: 600;
+      }
+
+      .tag-list {
+        margin-top: 4px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+      }
+
+      .tag {
+        padding: 2px 6px;
+        border-radius: 999px;
+        font-size: 11px;
+        background: #f0f0f5;
+      }
+
+      .tag.lang {
+        background: #e6f0ff;
+      }
+
+      .tag.tenant {
+        background: #e6fff3;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12px;
+        background: #fff;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+      }
+
+      thead {
+        background: #f0f0f5;
+      }
+
+      th, td {
+        padding: 8px 10px;
+        border-bottom: 1px solid #eee;
+        text-align: left;
+        white-space: nowrap;
+      }
+
+      tbody tr:nth-child(even) {
+        background: #fafafa;
+      }
+
+      .event-type {
+        padding: 2px 6px;
+        border-radius: 999px;
+        font-size: 11px;
+        display: inline-block;
+      }
+
+      .event-type.prompt_preview {
+        background: #e6f0ff;
+        color: #1f4fff;
+      }
+
+      .event-type.allowed {
+        background: #e6fff3;
+        color: #128750;
+      }
+
+      .event-type.blocked {
+        background: #ffecec;
+        color: #d64040;
+      }
+
+      .updated-at {
+        font-size: 11px;
+        color: #777;
+        margin-bottom: 12px;
+      }
+
+      .status-dot {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        margin-right: 6px;
+        background: #22c55e;
+      }
+
+      .status-dot.offline {
+        background: #ef4444;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Globalization Governance Dashboard</h1>
+    <div class="subtitle">
+      <span id="service-status">
+        <span class="status-dot" id="status-dot"></span>
+        Service: globalization-governance
+      </span>
+    </div>
+
+    <div class="updated-at" id="last-updated">Last updated: -</div>
+
+    <div class="summary-grid">
+      <div class="card">
+        <div class="card-title">总事件数</div>
+        <div class="card-value" id="total-events">0</div>
+      </div>
+      <div class="card">
+        <div class="card-title">被策略拦截次数</div>
+        <div class="card-value" id="blocked-events">0</div>
+      </div>
+      <div class="card">
+        <div class="card-title">按语言分布</div>
+        <div class="tag-list" id="lang-distribution"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">按租户分布</div>
+        <div class="tag-list" id="tenant-distribution"></div>
+      </div>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>时间</th>
+          <th>租户</th>
+          <th>区域</th>
+          <th>语言</th>
+          <th>事件类型</th>
+          <th>详情</th>
+        </tr>
+      </thead>
+      <tbody id="events-body">
+      </tbody>
+    </table>
+
+    <script>
+      const statusDot = document.getElementById("status-dot");
+      const lastUpdatedEl = document.getElementById("last-updated");
+      const totalEventsEl = document.getElementById("total-events");
+      const blockedEventsEl = document.getElementById("blocked-events");
+      const langDistEl = document.getElementById("lang-distribution");
+      const tenantDistEl = document.getElementById("tenant-distribution");
+      const eventsBodyEl = document.getElementById("events-body");
+
+      function formatDate(isoString) {
+        if (!isoString) return "-";
+        const d = new Date(isoString);
+        return d.toLocaleString();
+      }
+
+      function updateSummary(events) {
+        const total = events.length;
+        const blocked = events.filter((e) => e.event_type === "blocked").length;
+
+        const perLang = {};
+        const perTenant = {};
+
+        events.forEach((e) => {
+          perLang[e.language] = (perLang[e.language] || 0) + 1;
+          perTenant[e.tenant_id] = (perTenant[e.tenant_id] || 0) + 1;
+        });
+
+        totalEventsEl.textContent = total;
+        blockedEventsEl.textContent = blocked;
+
+        // 语言分布 tags
+        langDistEl.innerHTML = "";
+        Object.entries(perLang)
+          .sort((a, b) => b[1] - a[1])
+          .forEach(([lang, count]) => {
+            const span = document.createElement("span");
+            span.className = "tag lang";
+            span.textContent = `${lang}: ${count}`;
+            langDistEl.appendChild(span);
+          });
+
+        // 租户分布 tags
+        tenantDistEl.innerHTML = "";
+        Object.entries(perTenant)
+          .sort((a, b) => b[1] - a[1])
+          .forEach(([tenant, count]) => {
+            const span = document.createElement("span");
+            span.className = "tag tenant";
+            span.textContent = `${tenant}: ${count}`;
+            tenantDistEl.appendChild(span);
+          });
+      }
+
+      function renderTable(events) {
+        eventsBodyEl.innerHTML = "";
+        const sorted = [...events].sort(
+          (a, b) => new Date(b.created_at) - new Date(a.created_at)
+        );
+
+        sorted.forEach((e) => {
+          const tr = document.createElement("tr");
+
+          const tdTime = document.createElement("td");
+          tdTime.textContent = formatDate(e.created_at);
+          tr.appendChild(tdTime);
+
+          const tdTenant = document.createElement("td");
+          tdTenant.textContent = e.tenant_id;
+          tr.appendChild(tdTenant);
+
+          const tdRegion = document.createElement("td");
+          tdRegion.textContent = e.region;
+          tr.appendChild(tdRegion);
+
+          const tdLang = document.createElement("td");
+          tdLang.textContent = e.language;
+          tr.appendChild(tdLang);
+
+          const tdType = document.createElement("td");
+          const typeTag = document.createElement("span");
+          typeTag.className = "event-type " + e.event_type;
+          typeTag.textContent = e.event_type;
+          tdType.appendChild(typeTag);
+          tr.appendChild(tdType);
+
+          const tdPayload = document.createElement("td");
+          tdPayload.textContent = JSON.stringify(e.payload);
+          tr.appendChild(tdPayload);
+
+          eventsBodyEl.appendChild(tr);
+        });
+      }
+
+      async function fetchEvents() {
+        try {
+          const res = await fetch("/v1/globalization/events?limit=200");
+          if (!res.ok) {
+            throw new Error("Failed to fetch events");
+          }
+          const data = await res.json();
+          statusDot.classList.remove("offline");
+          lastUpdatedEl.textContent =
+            "Last updated: " + new Date().toLocaleString();
+          updateSummary(data);
+          renderTable(data);
+        } catch (err) {
+          console.error(err);
+          statusDot.classList.add("offline");
+        }
+      }
+
+      // 首次加载 + 定时刷新
+      fetchEvents();
+      setInterval(fetchEvents, 5000);
+    </script>
+  </body>
+</html>
