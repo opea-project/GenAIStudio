@@ -3,3 +3,4 @@ test-results/
 **/report.html
 docker-compose
 **/node_modules/
+**.venv/
