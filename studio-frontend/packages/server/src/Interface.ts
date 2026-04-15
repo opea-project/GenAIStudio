@@ -1,4 +1,80 @@
-import { IAction, ICommonObject, IFileUpload, INode, INodeData as INodeDataFromComponent, INodeParams } from 'flowise-components'
+// Local type definitions (previously from flowise-components)
+export interface ICommonObject {
+    [key: string]: any
+}
+
+export interface IFileUpload {
+    data?: string
+    type: string
+    name: string
+    mime: string
+}
+
+export interface IAction {
+    id?: string
+    elements?: ICommonObject[]
+    mapping?: ICommonObject
+}
+
+export interface INodeParams {
+    label?: string
+    name: string
+    type: string
+    default?: any
+    optional?: boolean
+    hint?: string
+    acceptVariable?: boolean
+    options?: ICommonObject[]
+    rows?: number
+    list?: boolean
+    placeholder?: string
+    additionalParams?: boolean
+    credentialNames?: string[]
+    fileType?: string
+    id?: string
+    inputs?: INodeParams[]
+    [key: string]: any
+}
+
+export interface INode {
+    label?: string
+    name: string
+    type?: string
+    icon?: string
+    category?: string
+    version?: number
+    description?: string
+    baseClasses?: string[]
+    inputs?: INodeParams[]
+    outputs?: INodeParams[]
+    outputAnchors?: INodeParams[]
+    credential?: ICommonObject
+    filePath?: string
+    badge?: string
+    tags?: string[]
+    author?: string
+    loadMethods?: ICommonObject
+    vectorStoreMethods?: ICommonObject
+    [key: string]: any
+}
+
+export interface INodeDataFromComponent {
+    id: string
+    label: string
+    version?: number
+    name: string
+    type: string
+    category: string
+    icon?: string
+    description?: string
+    baseClasses?: string[]
+    inputs?: ICommonObject
+    outputs?: ICommonObject
+    instance?: any
+    loadMethod?: string
+    credential?: ICommonObject
+    [key: string]: any
+}
 
 export type MessageType = 'apiMessage' | 'userMessage'
 

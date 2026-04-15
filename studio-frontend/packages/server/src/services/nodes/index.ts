@@ -1,12 +1,17 @@
 import { cloneDeep } from 'lodash'
 import { StatusCodes } from 'http-status-codes'
 import { getRunningExpressApp } from '../../utils/getRunningExpressApp'
-import { INodeData } from '../../Interface'
-import { INodeOptionsValue, ICommonObject, handleEscapeCharacters } from 'flowise-components'
-import { databaseEntities } from '../../utils'
+import { INodeData, ICommonObject } from '../../Interface'
+import { databaseEntities, handleEscapeCharacters } from '../../utils'
 import logger from '../../utils/logger'
 import { InternalFlowiseError } from '../../errors/internalFlowiseError'
 import { getErrorMessage } from '../../errors/utils'
+
+export interface INodeOptionsValue {
+    label: string
+    name: string
+    description?: string
+}
 
 // Get all component nodes
 const getAllNodes = async () => {

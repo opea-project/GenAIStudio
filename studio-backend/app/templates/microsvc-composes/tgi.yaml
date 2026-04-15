@@ -1,5 +1,5 @@
 "{{endpoint}}":
-  image: ghcr.io/huggingface/text-generation-inference:2.6.0-intel-cpu
+  image: ghcr.io/huggingface/text-generation-inference:2.4.1-intel-cpu
   container_name: "{{endpoint}}"
   ports:
     - "{{port_key}}:80"

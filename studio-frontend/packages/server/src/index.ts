@@ -13,14 +13,11 @@ import { getDataSource } from './DataSource'
 import { NodesPool } from './NodesPool'
 import { ChatFlow } from './database/entities/ChatFlow'
 import { ChatflowPool } from './ChatflowPool'
-import { CachePool } from './CachePool'
 import { initializeRateLimiter } from './utils/rateLimit'
 import { getAPIKeys } from './utils/apiKey'
 import { sanitizeMiddleware, getCorsOptions, getAllowedIframeOrigins } from './utils/XSS'
-import { Telemetry } from './utils/telemetry'
 import flowiseApiV1Router from './routes'
 import errorHandlerMiddleware from './middlewares/errors'
-import { SSEStreamer } from './utils/SSEStreamer'
 import { validateAPIKey } from './utils/validateKey'
 import { setupFineTuningDownloadHandlers } from './ws/finetuningDownload'
 import { setupFineTuningStatusHandlers } from './ws/finetuningStatus'
@@ -37,10 +34,7 @@ export class App {
     app: express.Application
     nodesPool: NodesPool
     chatflowPool: ChatflowPool
-    cachePool: CachePool
-    telemetry: Telemetry
     AppDataSource: DataSource = getDataSource()
-    sseStreamer: SSEStreamer
 
     constructor() {
         this.app = express()
@@ -78,11 +72,6 @@ export class App {
             const AllChatFlow: IChatFlow[] = await getAllChatFlow()
             await initializeRateLimiter(AllChatFlow)
 
-            // Initialize cache pool
-            this.cachePool = new CachePool()
-
-            // Initialize telemetry
-            this.telemetry = new Telemetry()
             logger.info('📦 [server]: Data Source has been initialized!')
         } catch (error) {
             logger.error('❌ [server]: Error during Data Source initialization:', error)
@@ -136,11 +125,6 @@ export class App {
             '/api/v1/vector/upsert/',
             '/api/v1/node-icon/',
             '/api/v1/components-credentials-icon/',
-            '/api/v1/chatflows-streaming',
-            '/api/v1/chatflows-uploads',
-            '/api/v1/openai-assistants-file/download',
-            '/api/v1/feedback',
-            '/api/v1/leads',
             '/api/v1/get-upload-file',
             '/api/v1/ip',
             '/api/v1/ping',
@@ -211,7 +195,6 @@ export class App {
         }
 
         this.app.use('/api/v1', flowiseApiV1Router)
-        this.sseStreamer = new SSEStreamer(this.app)
 
         // ----------------------------------------
         // Configure number of proxies in Host Environment
@@ -267,9 +250,7 @@ export class App {
 
     async stopApp() {
         try {
-            const removePromises: any[] = []
-            removePromises.push(this.telemetry.flush())
-            await Promise.all(removePromises)
+            logger.info('[server]: Flowise Server shutting down...')
         } catch (e) {
             logger.error(`❌[server]: Flowise Server shut down error: ${e}`)
         }

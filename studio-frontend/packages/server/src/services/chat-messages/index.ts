@@ -5,7 +5,6 @@ import { utilGetChatMessage } from '../../utils/getChatMessage'
 import { utilAddChatMessage } from '../../utils/addChatMesage'
 import { getRunningExpressApp } from '../../utils/getRunningExpressApp'
 import { ChatMessageFeedback } from '../../database/entities/ChatMessageFeedback'
-import { removeFilesFromStorage } from 'flowise-components'
 import logger from '../../utils/logger'
 import { ChatMessage } from '../../database/entities/ChatMessage'
 import { InternalFlowiseError } from '../../errors/internalFlowiseError'
@@ -110,14 +109,6 @@ const removeAllChatMessages = async (
         const feedbackDeleteOptions: FindOptionsWhere<ChatMessageFeedback> = { chatId }
         await appServer.AppDataSource.getRepository(ChatMessageFeedback).delete(feedbackDeleteOptions)
 
-        // Delete all uploads corresponding to this chatflow/chatId
-        if (chatId) {
-            try {
-                await removeFilesFromStorage(chatflowid, chatId)
-            } catch (e) {
-                logger.error(`[server]: Error deleting file storage for chatflow ${chatflowid}, chatId ${chatId}: ${e}`)
-            }
-        }
         const dbResponse = await appServer.AppDataSource.getRepository(ChatMessage).delete(deleteOptions)
         return dbResponse
     } catch (error) {
