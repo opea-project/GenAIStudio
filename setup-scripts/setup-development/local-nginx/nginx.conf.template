@@ -1,0 +1,210 @@
+# Copyright (C) 2024 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+#
+# Local-compose equivalent of the studio-nginx config in studio-manifest.yaml.
+# Mirrors the same ?ns= routing logic so that sandbox app-frontend is reachable
+# from the browser when running docker-compose.local.yml.
+#
+# Access the studio via http://localhost:30010 (not localhost:3000 directly)
+# so that the nginx can route /?ns=<namespace> to the K8s sandbox app-frontend.
+#
+# Required env var:
+#   K8S_DNS_RESOLVER  — CoreDNS ClusterIP of your K8s cluster (e.g. 10.96.0.10
+#                       for kubeadm or 10.43.0.10 for k3s).  Needed so nginx
+#                       can resolve app-frontend.<namespace>.svc.cluster.local
+#                       at request time.
+
+server {
+    listen       80;
+    listen  [::]:80;
+
+    proxy_connect_timeout 600;
+    proxy_send_timeout 600;
+    proxy_read_timeout 600;
+    send_timeout 600;
+
+    client_max_body_size 10G;
+
+    # K8s CoreDNS — lets nginx resolve *.svc.cluster.local names at request time.
+    resolver ${K8S_DNS_RESOLVER} valid=30s;
+    resolver_timeout 5s;
+
+    # Location block for studio-frontend and app-frontend
+    location / {
+        # Initialize the default variable for namespace
+        set $namespace "";
+
+        # Check if the Referer contains '?ns=' and extract the ns argument
+        if ($http_referer ~* "([&?]ns=([^&]+))") {
+            set $namespace $2;  # Capture the value of 'ns'
+        }
+
+        # If 'ns' is not in the Referer, fallback to 'arg_ns'
+        if ($namespace = "") {
+            set $namespace $arg_ns;  # Use the value from the 'arg_ns'
+        }
+
+        # When no namespace — pass straight through to studio-frontend unchanged
+        if ($namespace = "") {
+            proxy_pass http://${STUDIO_FRONTEND_DNS};
+            break;
+        }
+
+        # Namespace present — route to sandbox app-frontend with no-cache headers
+        add_header Cache-Control "no-cache, no-store, must-revalidate";
+        add_header Pragma "no-cache";
+        add_header Expires "0";
+
+        set $app_frontend http://${APP_FRONTEND_DNS};
+        rewrite ^/(.*)$ /$1?ns=$namespace break;
+        proxy_pass $app_frontend;
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Location block for app-backend
+    location /v1/app-backend {
+        # Initialize the variable for namespace
+        set $namespace "";
+        if ($http_referer ~* "([&?]ns=([^&]+))") {
+            set $namespace $2;  # Capture the value of 'ns'
+        }
+
+        # If 'ns' is not in the Referer, fallback to 'arg_ns'
+        if ($namespace = "") {
+            set $namespace $arg_ns;
+        }
+
+        # Rewrite the request to include the namespace
+        rewrite ^/(.*)$ /$1?ns=$namespace break;
+
+        # Proxy to the desired service using the namespace
+        proxy_pass http://${APP_BACKEND_DNS};
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # Disable buffering for SSE
+        proxy_buffering off;
+        proxy_cache off;
+        proxy_http_version 1.1;
+        proxy_set_header Connection '';
+        chunked_transfer_encoding off;
+    }
+
+    # Location block for opea_service@prepare_doc_redis_prep
+    location /v1/dataprep {
+        # Initialize the variable for namespace
+        set $namespace "";
+        if ($http_referer ~* "([&?]ns=([^&]+))") {
+            set $namespace $2;  # Capture the value of 'ns'
+        }
+
+        # If 'ns' is not in the Referer, fallback to 'arg_ns'
+        # (used by server-side requests from studio-frontend Express)
+        if ($namespace = "") {
+            set $namespace $arg_ns;
+        }
+
+        # Rewrite the request to include the namespace
+        rewrite ^/(.*)$ /$1?ns=$namespace break;
+
+        # Proxy to the desired service using the namespace
+        proxy_pass http://${PREPARE_DOC_REDIS_PREP_DNS};
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Additional location block for Grafana static assets
+    location /grafana {
+        set $grafana_upstream http://${GRAFANA_DNS};
+        proxy_pass $grafana_upstream;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Proxy Grafana Live WebSocket connections
+    location /grafana/api/live/ {
+        set $grafana_upstream http://${GRAFANA_DNS};
+        proxy_pass $grafana_upstream;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # Ensure WebSocket upgrade headers
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+
+    # WebSocket connection for fine-tuning job monitoring and downloads
+    # Routes directly to studio-frontend's socket.io handlers
+    location /socket.io {
+        proxy_pass http://${STUDIO_FRONTEND_DNS};
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # Ensure WebSocket upgrade headers
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+
+        # Disable buffering for WebSocket
+        proxy_buffering off;
+        proxy_cache off;
+    }
+
+    location /studio-backend {
+        proxy_pass http://${STUDIO_BACKEND_DNS};
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /studio-backend/ws {
+        proxy_pass http://${STUDIO_BACKEND_DNS}/studio-backend/ws;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # Ensure WebSocket upgrade headers
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+
+    # Location block for chathistory service
+    location /v1/chathistory {
+        # Initialize the variable for namespace
+        set $namespace "";
+        if ($http_referer ~* "([&?]ns=([^&]+))") {
+            set $namespace $2;  # Capture the value of 'ns'
+        }
+
+        # Rewrite the request to include the namespace
+        rewrite ^/(.*)$ /$1?ns=$namespace break;
+
+        # Proxy to the desired service using the namespace
+        proxy_pass http://${APP_CHATHISTORY_DNS};
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}

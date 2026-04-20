@@ -37,6 +37,9 @@ const evaluationApi = {
     // Pull/register a new judge model
     pullModel: (payload) => client.post('/evaluation/models/pull', payload),
 
+    // Check files in sandbox Data Management (dataprep)
+    getSandboxDataManagementFiles: (payload) => client.post('/evaluation/sandbox-files', payload),
+
     // Delete an evaluation run
     deleteRun: (runId) => client.delete(`/evaluation/runs/${runId}`),
 

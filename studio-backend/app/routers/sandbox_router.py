@@ -36,6 +36,22 @@ async def delete_sandbox(request: WorkflowId):
 
     return response
 
+@router.get("/sandbox/list")
+async def list_sandboxes():
+    core_v1_api = client.CoreV1Api()
+    try:
+        namespaces = core_v1_api.list_namespace()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    sandboxes = [
+        {"id": ns.metadata.name, "status": ns.status.phase}
+        for ns in namespaces.items
+        if ns.metadata.name.startswith("sandbox-")
+    ]
+    return {"sandboxes": sandboxes}
+
+
 @router.websocket("/ws/sandbox-status") 
 async def check_sandbox_status(websocket: WebSocket):     
     print('checking sandbox status')

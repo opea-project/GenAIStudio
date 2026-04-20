@@ -1,5 +1,21 @@
 {
     "$schema": "https://turbo.build/schema.json",
+    "globalEnv": [
+        "DATABASE_TYPE",
+        "DATABASE_HOST",
+        "DATABASE_PORT",
+        "DATABASE_NAME",
+        "DATABASE_USER",
+        "DATABASE_PASSWORD",
+        "DATABASE_SSL",
+        "DATABASE_SSL_KEY_BASE64",
+        "FINETUNING_SERVICE_DNS",
+        "FINETUNING_RAY_DNS",
+        "STUDIO_SERVER_URL",
+        "PREPARE_DOC_REDIS_PREP_DNS",
+        "LOG_LEVEL",
+        "LOG_PATH"
+    ],
     "tasks": {
         "build": {
             "dependsOn": ["^build"],

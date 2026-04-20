@@ -1,6 +1,7 @@
 test-results/
 **.log
 **/report.html
+.env
 docker-compose
 **/node_modules/
 **.venv/

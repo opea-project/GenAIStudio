@@ -9,10 +9,17 @@ export default defineConfig(async ({ mode }) => {
         const serverEnv = dotenv.config({ processEnv: {}, path: '../server/.env' }).parsed
         const serverHost = serverEnv?.['HOST'] ?? 'localhost'
         const serverPort = parseInt(serverEnv?.['PORT'] ?? '3000')
+        const studioBackendTarget = process.env.STUDIO_SERVER_URL ?? 'http://localhost:5001'
         proxy = {
             '/api': {
                 target: `http://${serverHost}:${serverPort}`,
                 changeOrigin: true,
+                secure: false
+            },
+            '/studio-backend': {
+                target: studioBackendTarget,
+                changeOrigin: true,
+                ws: true,
                 secure: false
             },
             '/socket.io': {
@@ -39,7 +46,10 @@ export default defineConfig(async ({ mode }) => {
             open: true,
             proxy,
             port: process.env.VITE_PORT ?? 8088,
-            host: process.env.VITE_HOST ?? '0.0.0.0'
+            host: process.env.VITE_HOST ?? '0.0.0.0',
+            watch: {
+                usePolling: true
+            }
         }
     }
 })

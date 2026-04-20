@@ -37,6 +37,8 @@ import { IconPlus, IconRefresh, IconWand, IconX } from '@tabler/icons-react'
 // API
 import evaluationApi from '@/api/evaluation'
 
+import { StyledButton } from '@/ui-component/button/StyledButton'
+
 const StyledTableCell = styled(TableCell)(({ theme }) => ({
     borderColor: theme.palette.grey[900] + 25,
     [`&.${tableCellClasses.head}`]: {
@@ -377,32 +379,35 @@ const DatasetTab = ({ isVisible }) => {
 
     return (
         <Box>
-            <Stack direction='row' justifyContent='flex-end' alignItems='center' sx={{ mb: 2 }} spacing={1}>
+            <Stack direction='row' justifyContent='flex-start' alignItems='center' sx={{ mb: 2 }} spacing={1}>
+                <StyledButton
+                    variant='contained'
+                    startIcon={<IconPlus size={16} />}
+                    onClick={() => setNewDatasetOpen(true)}
+                    sx={{ borderRadius: 2, height: 40 }}
+                >
+                    Create New Dataset
+                </StyledButton>
+                <StyledButton
+                    variant='outlined'
+                    startIcon={<IconWand size={16} />}
+                    onClick={() => setSynthesizeOpen(true)}
+                    sx={{ borderRadius: 2, height: 40 }}
+                >
+                    Synthesize Dataset
+                </StyledButton>
                 <Tooltip title='Refresh'>
-                    <Button
+                    <StyledButton
                         size='small'
                         variant='outlined'
                         onClick={loadDatasets}
                         disabled={isLoading}
                         startIcon={isLoading ? <CircularProgress size={14} /> : <IconRefresh size={16} />}
+                        sx={{ borderRadius: 2, height: 40 }}
                     >
                         Refresh
-                    </Button>
+                    </StyledButton>
                 </Tooltip>
-                <Button
-                    variant='outlined'
-                    startIcon={<IconWand size={16} />}
-                    onClick={() => setSynthesizeOpen(true)}
-                >
-                    Synthesize
-                </Button>
-                <Button
-                    variant='contained'
-                    startIcon={<IconPlus size={16} />}
-                    onClick={() => setNewDatasetOpen(true)}
-                >
-                    New Dataset
-                </Button>
             </Stack>
 
             {error && (

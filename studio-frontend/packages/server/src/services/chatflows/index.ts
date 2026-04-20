@@ -1,4 +1,6 @@
 import { StatusCodes } from 'http-status-codes'
+import fs from 'fs/promises'
+import path from 'path'
 import { ChatflowType, IReactFlowObject } from '../../Interface'
 import { ChatFlow } from '../../database/entities/ChatFlow'
 import { ChatMessage } from '../../database/entities/ChatMessage'
@@ -29,7 +31,32 @@ const getGithubAxiosConfig = (): AxiosRequestConfig => {
     }
 }
 
-const STUDIO_SERVER_URL = process.env.STUDIO_SERVER_URL || 'http://studio-backend.studio.svc.cluster.local:5000'
+const SAMPLE_WORKFLOWS_DIR = process.env.SAMPLE_WORKFLOWS_DIR || path.resolve(process.cwd(), '..', '..', 'sample-workflows')
+
+const getStudioServerUrl = () => process.env.STUDIO_SERVER_URL || 'http://studio-backend.studio.svc.cluster.local:5000'
+
+const loadLocalSampleChatflows = async (userid: string, type?: ChatflowType): Promise<Partial<ChatFlow>[]> => {
+    const files = (await fs.readdir(SAMPLE_WORKFLOWS_DIR))
+        .filter((fileName) => fileName.endsWith('.json'))
+        .sort()
+
+    const chatflows: Partial<ChatFlow>[] = []
+
+    for (const fileName of files) {
+        const filePath = path.join(SAMPLE_WORKFLOWS_DIR, fileName)
+        const parsedFlowData = JSON.parse(await fs.readFile(filePath, 'utf8'))
+        chatflows.push({
+            userid,
+            name: fileName.replace('.json', ''),
+            flowData: JSON.stringify(parsedFlowData),
+            type: type || 'OPEA',
+            deployed: false,
+            isPublic: false
+        })
+    }
+
+    return chatflows
+}
 
 const deleteChatflow = async (chatflowId: string): Promise<any> => {
     try {
@@ -111,39 +138,44 @@ const getAllChatflowsbyUserId = async (userid: string, type?: ChatflowType): Pro
 const importSampleChatflowsbyUserId = async (userid: string, type?: ChatflowType): Promise<ChatFlow[]> => {
     try {
         const axiosConfig = getGithubAxiosConfig()
-        
-        console.log('Importing sample chatflows for user:', userid);
 
-        const response = await axios.get(
-            'https://api.github.com/repos/opea-project/GenAIStudio/contents/sample-workflows',
-            axiosConfig
-        );
+        console.log('Importing sample chatflows for user:', userid)
 
-        console.log('Response from GitHub:', response.data);
+        let chatflows: Partial<ChatFlow>[] = []
 
-        const files = response.data.filter((item: any) => item.type === 'file');
+        try {
+            chatflows = await loadLocalSampleChatflows(userid, type)
+            logger.info(`[server]: Loaded ${chatflows.length} sample chatflows from local directory ${SAMPLE_WORKFLOWS_DIR}`)
+        } catch (localError) {
+            logger.warn(`[server]: Falling back to GitHub sample workflows: ${getErrorMessage(localError)}`)
 
-        const chatflows: Partial<ChatFlow>[] = [];
-        for (const file of files) {
-            const fileResponse = await axios.get(file.download_url, axiosConfig);
-            const parsedFlowData = fileResponse.data;
-            const newChatflow: Partial<ChatFlow> = {
-                userid: userid,
-                name: file.name.replace('.json', ''),
-                flowData: JSON.stringify(parsedFlowData),
-                type: 'OPEA',
-                deployed: false,
-                isPublic: false
-            };
-            chatflows.push(newChatflow);
+            const response = await axios.get(
+                'https://api.github.com/repos/opea-project/GenAIStudio/contents/sample-workflows',
+                axiosConfig
+            )
+
+            const files = response.data.filter((item: any) => item.type === 'file')
+            for (const file of files) {
+                const fileResponse = await axios.get(file.download_url, axiosConfig)
+                const parsedFlowData = fileResponse.data
+                chatflows.push({
+                    userid,
+                    name: file.name.replace('.json', ''),
+                    flowData: JSON.stringify(parsedFlowData),
+                    type: type || 'OPEA',
+                    deployed: false,
+                    isPublic: false
+                })
+            }
         }
-        const insertResponse = await importChatflows(chatflows);
-        return insertResponse;
+
+        const insertResponse = await importChatflows(chatflows)
+        return insertResponse
     } catch (error) {
         throw new InternalFlowiseError(
             StatusCodes.INTERNAL_SERVER_ERROR,
             `Error: chatflowsService.importSampleChatflowsbyUserId - ${getErrorMessage(error)}`
-        );
+        )
     }
 }
 
@@ -349,7 +381,7 @@ const deployChatflowSandboxService = async (chatflowId: string) => {
     console.log('deployChatflowSandboxService', chatflowId)
     try {
         const chatflow = await generatePipelineJson(chatflowId)
-        const studioServerUrl = STUDIO_SERVER_URL
+        const studioServerUrl = getStudioServerUrl()
         const deploySandboxEndpoint = 'studio-backend/deploy-sandbox'
         console.log('chatflow', JSON.stringify(chatflow))
         console.log('studioServerUrl', studioServerUrl)
@@ -373,7 +405,7 @@ const deployChatflowSandboxService = async (chatflowId: string) => {
 const stopChatflowSandboxService = async (chatflowId: string) => {
     console.log('stopChatflowSandboxService', chatflowId)
     try {
-        const studioServerUrl = STUDIO_SERVER_URL
+        const studioServerUrl = getStudioServerUrl()
         const deleteSandboxEndpoint = 'studio-backend/delete-sandbox'
         console.log('studioServerUrl', studioServerUrl)
         console.log('deleteSandboxEndpoint', deleteSandboxEndpoint)
@@ -397,7 +429,7 @@ const buildDeploymentPackageService = async (chatflowId: string, deploymentConfi
     console.log('buildDeploymentPackageService', chatflowId, deploymentConfig)
     try {
         const chatflow = await generatePipelineJson(chatflowId)
-        const studioServerUrl = STUDIO_SERVER_URL
+        const studioServerUrl = getStudioServerUrl()
         const buildDeploymentPackageEndpoint = 'studio-backend/download-zip'
         console.log('chatflow', JSON.stringify(chatflow))
         console.log('studioServerUrl', studioServerUrl)
@@ -423,7 +455,7 @@ const oneClickDeploymentService = async (chatflowId: string, deploymentConfig: R
     console.log('oneClickDeploymentService', chatflowId, deploymentConfig)
     try {
         const chatflow = await generatePipelineJson(chatflowId)
-        const studioServerUrl = STUDIO_SERVER_URL
+        const studioServerUrl = getStudioServerUrl()
         const endpoint = 'studio-backend/click-deployment'
         // console.log('chatflow', JSON.stringify(chatflow))
         // console.log('studioServerUrl', studioServerUrl)

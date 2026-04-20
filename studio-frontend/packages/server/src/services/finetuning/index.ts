@@ -19,8 +19,26 @@ declare function clearTimeout(id: any): void
 
 const execAsync = promisify(exec)
 
-const FINETUNING_SERVICE_URL = process.env.FINETUNING_HOST ? `http://${process.env.FINETUNING_HOST}:8015` : 'undefined'
+const normalizeFinetuningUrl = (rawValue: string | undefined) => {
+    if (!rawValue || rawValue.trim() === '') return undefined
+
+    const withScheme = /^https?:\/\//i.test(rawValue) ? rawValue : `http://${rawValue}`
+    const url = new URL(withScheme)
+
+    url.pathname = ''
+    url.search = ''
+    url.hash = ''
+
+    return url
+}
+
+const finetuningServiceUrl = normalizeFinetuningUrl(process.env.FINETUNING_SERVICE_DNS)
+const finetuningRayUrl = normalizeFinetuningUrl(process.env.FINETUNING_RAY_DNS)
+
+const FINETUNING_SERVICE_URL = finetuningServiceUrl?.toString().replace(/\/$/, '') || 'undefined'
+const FINETUNING_RAY_URL = finetuningRayUrl?.toString().replace(/\/$/, '') || 'undefined'
 console.debug('finetuningService - FINETUNING_SERVICE_URL', FINETUNING_SERVICE_URL)
+console.debug('finetuningService - FINETUNING_RAY_URL', FINETUNING_RAY_URL)
 
 // Create an axios client with keep-alive to reduce connection churn
 const agentOptions = { keepAlive: true, maxSockets: 20 }
@@ -865,20 +883,19 @@ const downloadFineTuningOutput = async (jobId: string): Promise<string | null> =
 /**
  * Get logs for a fine-tuning job by querying the Ray head node HTTP API.
  * It will call: http://<RAY_HEAD_NODE>/api/jobs/<job_id>/logs
- * Environment: set RAY_HEAD_NODE to the host:port of the Ray head (e.g. "ray-head.example.com:8265").
+ * Environment: FINETUNING_SERVICE_DNS and FINETUNING_RAY_DNS determine the
+ * finetuning service and Ray API endpoints.
  */
 const getFineTuningJobLogs = async (
     fineTuningJobId: string,
     options: { ray_job_id?: string } = {}
 ) => {
     try {
-        const rayHost = process.env.FINETUNING_HOST ? `${process.env.FINETUNING_HOST}:8265` : 'undefined'
-
         // If caller provided an explicit ray_job_id, use it. Otherwise attempt to discover the Ray submission id
         let submissionId: string | undefined = options.ray_job_id
 
         // Query Ray /api/jobs/ and select entries where entrypoint contains the FT id (jq-like)
-        const listUrl = `http://${rayHost}/api/jobs/`
+        const listUrl = `${FINETUNING_RAY_URL}/api/jobs/`
         console.debug('finetuningService.getFineTuningJobLogs - listUrl:', listUrl)
         try {
             const listResp = await axios.get(listUrl, { timeout: 20000 })
@@ -916,7 +933,7 @@ const getFineTuningJobLogs = async (
         }
 
         // Construct logs URL with optional tail and fetch logs
-        const url = `http://${rayHost}/api/jobs/${encodeURIComponent(String(submissionId))}/logs`
+        const url = `${FINETUNING_RAY_URL}/api/jobs/${encodeURIComponent(String(submissionId))}/logs`
         const resp = await axios.get(url, { timeout: 30000 })
         // Normalize logs response so newlines are preserved and objects/arrays are readable
         try {

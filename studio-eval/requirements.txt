@@ -1,0 +1,9 @@
+fastapi>=0.100.0,<0.200.0
+uvicorn[standard]>=0.23.0
+deepeval
+pandas>=2.0.0
+sqlalchemy>=2.0.0
+pymysql>=1.1.0
+httpx>=0.24.0
+pydantic==1.10.13
+cryptography>=41.0.0

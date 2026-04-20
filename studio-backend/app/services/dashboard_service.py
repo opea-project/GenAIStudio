@@ -8,7 +8,16 @@ from app.utils.dashboard_utils import load_and_replace_grafana_template
 # Read environment variables
 template_file_path = os.path.join(os.path.dirname(__file__), '..', 'templates', 'grafana-dashboards', 'sandbox-dashboard.json')
 
+
+def _is_grafana_disabled() -> bool:
+    return os.getenv("DISABLE_GRAFANA_DASHBOARD_SYNC", "false").lower() in {"1", "true", "yes", "on"}
+
 def import_grafana_dashboards(namespace_name):
+
+    if _is_grafana_disabled():
+        msg = "Grafana dashboard sync disabled by DISABLE_GRAFANA_DASHBOARD_SYNC"
+        print(msg)
+        return msg
 
     print("Getting post_url")
     grafana_url = os.getenv("GRAFANA_DNS", "localhost:30007")
@@ -32,16 +41,21 @@ def import_grafana_dashboards(namespace_name):
     
     print(f"Importing dashboard {namespace_name}")
     print(f"post_url: {post_url}")
+    response = None
     try:
         response = requests.post(post_url, headers=headers, data=json.dumps(dashboard_json))
         print(f"Response Status Code: {response.status_code}")
         print(f"Response Text: {response.text}")
     except Exception as e:
         print(f"Exception occurred: {e}")
-    
-    return response.text
+
+    return response.text if response is not None else "Grafana dashboard import skipped due to request error"
     
 def delete_dashboard(namespace_name):
+    if _is_grafana_disabled():
+        print("Grafana dashboard delete skipped by DISABLE_GRAFANA_DASHBOARD_SYNC")
+        return
+
     grafana_url = os.getenv("GRAFANA_DNS", "localhost:30007")
     post_url = f"http://{grafana_url}/grafana/api/dashboards/uid/{namespace_name.replace('sandbox-','')}"
     auth_str = f"admin:prom-operator"
