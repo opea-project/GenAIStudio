@@ -32,7 +32,7 @@ import { useTheme } from '@mui/material/styles'
 import { tableCellClasses } from '@mui/material/TableCell'
 
 // icons
-import { IconX, IconAlertTriangle } from '@tabler/icons-react'
+import { IconX, IconAlertTriangle, IconInfoCircle } from '@tabler/icons-react'
 
 // API
 import evaluationApi from '@/api/evaluation'
@@ -56,15 +56,22 @@ const StyledTableRow = styled(TableRow)(() => ({
     }
 }))
 
-const statusColor = (status) => {
-    switch (status) {
-        case true:
-            return 'success'
-        case false:
-            return 'error'
-        default:
-            return 'default'
+const GRADE_CONFIG = [
+    { grade: 'A', min: 0.90, color: '#2e7d32', label: 'Excellent',  range: '≥ 0.90' },
+    { grade: 'B', min: 0.75, color: '#558b2f', label: 'Good',       range: '0.75 – 0.89' },
+    { grade: 'C', min: 0.60, color: '#f57c00', label: 'Acceptable', range: '0.60 – 0.74' },
+    { grade: 'D', min: 0.50, color: '#e64a19', label: 'Poor',       range: '0.50 – 0.59' },
+    { grade: 'E', min: 0.40, color: '#c62828', label: 'Very Poor',  range: '0.40 – 0.49' },
+    { grade: 'F', min: -Infinity, color: '#7f0000', label: 'Failed', range: '< 0.40 or no score' },
+]
+const CANCELLED_STATUSES = ['stopped', 'cancelled', 'canceled']
+
+const getGrade = (avgScore) => {
+    if (avgScore === null || avgScore === undefined) return GRADE_CONFIG[GRADE_CONFIG.length - 1]
+    for (const cfg of GRADE_CONFIG) {
+        if (avgScore >= cfg.min) return cfg
     }
+    return GRADE_CONFIG[GRADE_CONFIG.length - 1]
 }
 
 const formatDate = (dateStr) => {
@@ -146,9 +153,14 @@ const RunDetailsModal = ({ open, onClose, runId }) => {
     const theme = useTheme()
 
     const [tabValue, setTabValue] = useState(0)
+    const [entryTabValue, setEntryTabValue] = useState(0)
 
     const handleTabChange = (event, newValue) => {
         setTabValue(newValue)
+    }
+    
+    const handleEntryTabChange = (event, newValue) => {
+        setEntryTabValue(newValue)
     }
 
     const [run, setRun] = useState(null)
@@ -164,8 +176,9 @@ const RunDetailsModal = ({ open, onClose, runId }) => {
     const [selectedEntry, setSelectedEntry] = useState(null)
     const [drawerOpen, setDrawerOpen] = useState(false)
 
-    const handleOpenDrawer = (result) => {
-        setSelectedEntry(result)
+    const handleOpenDrawer = (result, snapshotEntry) => {
+        setEntryTabValue(0)
+        setSelectedEntry({ ...result, _snapshotEntry: snapshotEntry })
         setDrawerOpen(true)
     }
 
@@ -175,11 +188,13 @@ const RunDetailsModal = ({ open, onClose, runId }) => {
     }
 
     const getEffectiveStatus = (runData) => {
-        if (runData.status === 'completed' && runData.results?.some((r) => r.passed === false)) {
-            return 'failed'
+        if (CANCELLED_STATUSES.includes(runData?.status)) {
+            return 'stopped'
         }
-        return runData.status
+        return runData?.status
     }
+
+    const isCancelledRun = (runData) => CANCELLED_STATUSES.includes(runData?.status)
 
     const getOrderedMetricEntries = (runData, result) => {
         if (!result?.metric_scores) return []
@@ -212,6 +227,10 @@ const RunDetailsModal = ({ open, onClose, runId }) => {
             .filter(Boolean)
     }
 
+    const getExpectedOutput = (result, snapshotEntry) => {
+        return result?.expected_output ?? snapshotEntry?.expected_output ?? result?.entry?.expected_output ?? null
+    }
+
     useEffect(() => {
         if (!open || !runId) return
 
@@ -226,11 +245,9 @@ const RunDetailsModal = ({ open, onClose, runId }) => {
                 setDataFilesError('')
                 const res = await evaluationApi.getRun(runId)
                 setRun(res.data)
-                try {
-                    const dsRes = await evaluationApi.getDataset(res.data.dataset_id)
-                    setDatasetName(dsRes.data.name)
-                } catch {
-                    // non-critical
+                // Use snapshot first; fall back to live fetch only for old runs without snapshot
+                if (res.data.dataset_name_snapshot) {
+                    setDatasetName(res.data.dataset_name_snapshot)
                 }
                 if (
                     applyConfigurationSnapshot(res.data.configuration_snapshot, {
@@ -351,17 +368,32 @@ const RunDetailsModal = ({ open, onClose, runId }) => {
                                                 Status
                                             </Typography>
                                             <Box sx={{ mt: 0.5 }}>
-                                                <Chip
-                                                    label={getEffectiveStatus(run)}
-                                                    color={
-                                                        getEffectiveStatus(run) === 'completed'
-                                                            ? 'success'
-                                                            : getEffectiveStatus(run) === 'failed'
-                                                              ? 'error'
-                                                              : 'primary'
-                                                    }
-                                                    size='small'
-                                                />
+                                                {(() => {
+                                                    const effStatus = getEffectiveStatus(run)
+                                                    const statusLabel = {
+                                                        running: 'running',
+                                                        pending: 'pending',
+                                                        completed: 'completed',
+                                                        failed: 'failed',
+                                                        stopped: 'cancelled',
+                                                    }[effStatus] ?? effStatus
+                                                    const statusColor = {
+                                                        running: 'primary',
+                                                        pending: 'default',
+                                                        completed: 'success',
+                                                        failed: 'error',
+                                                        stopped: 'default',
+                                                    }[effStatus] ?? 'default'
+                                                    const isActive = run.status === 'running' || run.status === 'pending'
+                                                    return (
+                                                        <Chip
+                                                            label={statusLabel}
+                                                            color={statusColor}
+                                                            size='small'
+                                                            icon={isActive ? <CircularProgress size={10} color='inherit' /> : undefined}
+                                                        />
+                                                    )
+                                                })()}
                                             </Box>
                                         </Box>
                                         <Box>
@@ -404,7 +436,7 @@ const RunDetailsModal = ({ open, onClose, runId }) => {
                                         </Box>
                                         <Box>
                                             <Typography variant='caption' color='textSecondary'>
-                                                Average Scores
+                                                Average Metric Scores
                                             </Typography>
                                             <Box sx={{ mt: 0.5 }}>
                                                 {run.results && run.results.length > 0 ? (
@@ -454,12 +486,90 @@ const RunDetailsModal = ({ open, onClose, runId }) => {
                         {/* Results Table */}
                         {run.results && run.results.length > 0 && (
                             <Box>
-                                <Typography variant='h6' sx={{ mb: 2 }}>
-                                    Evaluation Results ({run.results.length} entries)
-                                </Typography>
+                                <Stack direction='row' alignItems='center' sx={{ mb: 1.5 }}>
+                                    <Typography variant='h6'>
+                                        Evaluation Results ({run.results.length} entries)
+                                    </Typography>
+                                </Stack>
+                                {/* Grade Distribution Summary */}
                                 {(() => {
+                                    const gradeCounts = {}
+                                    GRADE_CONFIG.forEach((g) => { gradeCounts[g.grade] = 0 })
+                                    run.results.forEach((result) => {
+                                        const entries = (Array.isArray(run.metrics) ? run.metrics : [])
+                                            .map((m) => [m, result.metric_scores?.[m]])
+                                            .filter(([, s]) => Boolean(s))
+                                        const validScores = entries
+                                            .map(([, s]) => s.score)
+                                            .filter((s) => s !== null && s !== undefined && typeof s === 'number')
+                                        const avg = validScores.length > 0
+                                            ? validScores.reduce((a, b) => a + b, 0) / validScores.length
+                                            : null
+                                        gradeCounts[getGrade(avg).grade]++
+                                    })
+                                    return (
+                                        <Stack direction='row' alignItems='center' spacing={1} sx={{ mb: 2, flexWrap: 'wrap', rowGap: 1 }}>
+                                            <Typography variant='caption' color='textSecondary' sx={{ fontWeight: 600 }}>
+                                                Distribution:
+                                            </Typography>
+                                            {GRADE_CONFIG.map((cfg) => {
+                                                const count = gradeCounts[cfg.grade] ?? 0
+                                                return (
+                                                    <Box
+                                                        key={cfg.grade}
+                                                        sx={{
+                                                            display: 'inline-flex', alignItems: 'center', gap: 0.5,
+                                                            px: 1, py: 0.25,
+                                                            borderRadius: '10px',
+                                                            backgroundColor: cfg.color + '18',
+                                                            border: `1.5px solid ${cfg.color}55`,
+                                                            opacity: count === 0 ? 0.3 : 1,
+                                                            transition: 'opacity 0.2s',
+                                                        }}
+                                                    >
+                                                        <Typography variant='caption' sx={{ fontWeight: 700, color: cfg.color, lineHeight: 1 }}>
+                                                            Grade {cfg.grade}
+                                                        </Typography>
+                                                        <Typography variant='caption' sx={{ color: 'text.secondary', lineHeight: 1 }}>
+                                                            {count}
+                                                        </Typography>
+                                                    </Box>
+                                                )
+                                            })}
+                                            <Tooltip
+                                                placement='top'
+                                                title={
+                                                    <Box sx={{ p: 0.5 }}>
+                                                        <Typography variant='caption' sx={{ fontWeight: 700, display: 'block', mb: 0.75 }}>
+                                                            Grading Scale (avg metric score)
+                                                        </Typography>
+                                                        {GRADE_CONFIG.map((g) => (
+                                                            <Typography key={g.grade} variant='caption' sx={{ display: 'block', lineHeight: 1.8 }}>
+                                                                <strong style={{ color: g.color }}>{g.grade}</strong>
+                                                                {' – '}{g.label}: {g.range}
+                                                            </Typography>
+                                                        ))}
+                                                    </Box>
+                                                }
+                                            >
+                                                <IconButton size='small' sx={{ p: 0 }}>
+                                                    <IconInfoCircle size={14} />
+                                                </IconButton>
+                                            </Tooltip>
+                                        </Stack>
+                                    )
+                                })()}
+                                {(() => {
+                                        const snapshotMap = {}
+                                        if (Array.isArray(run.dataset_entries_snapshot)) {
+                                            run.dataset_entries_snapshot.forEach((e) => { snapshotMap[e.id] = e })
+                                        }
                                         const hasContext = run.results.some(
-                                            (r) => r.entry?.context && r.entry.context.length > 0
+                                            (r) => {
+                                                const snapshotEntry = snapshotMap[r.entry_id]
+                                                return (r.entry?.context && r.entry.context.length > 0)
+                                                    || (snapshotEntry?.context && snapshotEntry.context.length > 0)
+                                            }
                                         )
                                         return (
                                             <TableContainer component={Paper}>
@@ -467,95 +577,135 @@ const RunDetailsModal = ({ open, onClose, runId }) => {
                                                     <TableHead>
                                                         <TableRow sx={{ bgcolor: theme.palette.mode === 'dark' ? 'grey.800' : 'grey.100' }}>
                                                             <StyledTableCell sx={{ width: '80px' }}>Entry</StyledTableCell>
-                                                            <StyledTableCell sx={{ width: hasContext ? '18%' : '22%' }}>Input</StyledTableCell>
-                                                            {hasContext && <StyledTableCell sx={{ width: '14%' }}>Context</StyledTableCell>}
-                                                            <StyledTableCell sx={{ width: hasContext ? '24%' : '28%' }}>Actual Output</StyledTableCell>
-                                                            <StyledTableCell sx={{ width: '120px' }}>Metrics</StyledTableCell>
-                                                            <StyledTableCell align='center' sx={{ width: '100px' }}>Status</StyledTableCell>
-                                                            <StyledTableCell sx={{ width: hasContext ? '24%' : '28%' }}>Reason</StyledTableCell>
+                                                            <StyledTableCell sx={{ width: hasContext ? '14%' : '16%' }}>Input</StyledTableCell>
+                                                            {hasContext && <StyledTableCell sx={{ width: '12%' }}>Context</StyledTableCell>}
+                                                            <StyledTableCell sx={{ width: hasContext ? '16%' : '18%' }}>Actual Output</StyledTableCell>
+                                                            <StyledTableCell sx={{ width: hasContext ? '16%' : '18%' }}>Expected Output</StyledTableCell>
+                                                            <StyledTableCell sx={{ width: '160px' }}>
+                                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                                                    <span>Eval Score</span>
+                                                                </Box>
+                                                            </StyledTableCell>
+                                                            <StyledTableCell sx={{ width: hasContext ? '18%' : '20%' }}>Reason</StyledTableCell>
                                                         </TableRow>
                                                     </TableHead>
                                                     <TableBody>
-                                                        {run.results.map((result) => {
-                                                            const orderedMetricEntries = getOrderedMetricEntries(run, result)
-                                                            const failReasons = getResultReasons(run, result)
-                                                            const failReasonText = failReasons.join('\n')
-                                                            return (
-                                                                <StyledTableRow 
-                                                                    key={result.id}
-                                                                    hover
-                                                                    onClick={() => handleOpenDrawer(result)}
-                                                                    sx={{ cursor: 'pointer' }}
-                                                                >
-                                                                    <StyledTableCell>
-                                                                        <Typography variant='caption' sx={{ fontFamily: 'monospace' }}>
-                                                                            #{result.entry_id}
-                                                                        </Typography>
-                                                                    </StyledTableCell>
-                                                                    <StyledTableCell sx={{ position: 'relative', p: 0, overflow: 'hidden' }}>
-                                                                        <Box sx={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, overflow: 'hidden', padding: '8px 12px' }}>
-                                                                            <Typography variant='caption' sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', overflowWrap: 'anywhere', display: 'block' }}>
-                                                                                {result.entry?.input || '—'}
+                                                        {(() => {
+                                                            return run.results.map((result) => {
+                                                                const snapshotEntry = snapshotMap[result.entry_id]
+                                                                const orderedMetricEntries = getOrderedMetricEntries(run, result)
+                                                                const failReasons = getResultReasons(run, result)
+                                                                const failReasonText = failReasons.join('\n')
+                                                                const expectedOutput = getExpectedOutput(result, snapshotEntry)
+                                                                return (
+                                                                    <StyledTableRow 
+                                                                        key={result.id}
+                                                                        hover
+                                                                        onClick={() => handleOpenDrawer(result, snapshotEntry)}
+                                                                        sx={{ cursor: 'pointer' }}
+                                                                    >
+                                                                        <StyledTableCell>
+                                                                            <Typography variant='caption' sx={{ fontFamily: 'monospace' }}>
+                                                                                #{result.entry_id}
                                                                             </Typography>
-                                                                            <Box sx={(t) => ({ position: 'absolute', bottom: 0, left: 0, right: 0, height: '36px', background: `linear-gradient(to bottom, transparent, ${t.palette.background.paper})`, pointerEvents: 'none' })} />
-                                                                        </Box>
-                                                                    </StyledTableCell>
-                                                                    {hasContext && (
+                                                                        </StyledTableCell>
                                                                         <StyledTableCell sx={{ position: 'relative', p: 0, overflow: 'hidden' }}>
                                                                             <Box sx={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, overflow: 'hidden', padding: '8px 12px' }}>
                                                                                 <Typography variant='caption' sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', overflowWrap: 'anywhere', display: 'block' }}>
-                                                                                    {result.entry?.context?.length > 0 ? result.entry.context.join('\n\n') : '—'}
+                                                                                    {(snapshotEntry?.input ?? result.entry?.input) || '—'}
                                                                                 </Typography>
                                                                                 <Box sx={(t) => ({ position: 'absolute', bottom: 0, left: 0, right: 0, height: '36px', background: `linear-gradient(to bottom, transparent, ${t.palette.background.paper})`, pointerEvents: 'none' })} />
                                                                             </Box>
                                                                         </StyledTableCell>
-                                                                    )}
-                                                                    <StyledTableCell sx={{ position: 'relative', p: 0, overflow: 'hidden' }}>
-                                                                        <Box sx={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, overflow: 'hidden', padding: '8px 12px' }}>
-                                                                            <Typography variant='caption' sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', overflowWrap: 'anywhere', display: 'block' }}>
-                                                                                {result.actual_output || '—'}
-                                                                            </Typography>
-                                                                            <Box sx={(t) => ({ position: 'absolute', bottom: 0, left: 0, right: 0, height: '36px', background: `linear-gradient(to bottom, transparent, ${t.palette.background.paper})`, pointerEvents: 'none' })} />
-                                                                        </Box>
-                                                                    </StyledTableCell>
-                                                                    <StyledTableCell>
-                                                                        {orderedMetricEntries.length > 0 ? (
-                                                                            <Stack spacing={0.5}>
-                                                                                {orderedMetricEntries.map(([metricName, scores]) => (
-                                                                                    <Box key={metricName} sx={{ fontSize: '0.8rem' }}>
-                                                                                        <Typography variant='caption' component='div'>
-                                                                                            <strong>{metricName}:</strong> {formatMetricScore(scores.score)}
-                                                                                        </Typography>
-                                                                                    </Box>
-                                                                                ))}
-                                                                            </Stack>
-                                                                        ) : (
-                                                                            '—'
+                                                                        {hasContext && (
+                                                                            <StyledTableCell sx={{ position: 'relative', p: 0, overflow: 'hidden' }}>
+                                                                                <Box sx={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, overflow: 'hidden', padding: '8px 12px' }}>
+                                                                                    <Typography variant='caption' sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', overflowWrap: 'anywhere', display: 'block' }}>
+                                                                                        {(() => {
+                                                                                            const ctx = snapshotEntry?.context ?? result.entry?.context
+                                                                                            return ctx?.length > 0 ? ctx.join('\n\n') : '—'
+                                                                                        })()}
+                                                                                    </Typography>
+                                                                                    <Box sx={(t) => ({ position: 'absolute', bottom: 0, left: 0, right: 0, height: '36px', background: `linear-gradient(to bottom, transparent, ${t.palette.background.paper})`, pointerEvents: 'none' })} />
+                                                                                </Box>
+                                                                            </StyledTableCell>
                                                                         )}
-                                                                    </StyledTableCell>
-                                                                    <StyledTableCell align='center'>
-                                                                        <Chip
-                                                                            label={result.passed ? 'COMPLETED' : 'FAILED'}
-                                                                            color={statusColor(result.passed)}
-                                                                            size='small'
-                                                                        />
-                                                                    </StyledTableCell>
-                                                                    <StyledTableCell sx={{ whiteSpace: 'normal', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
-                                                                        {failReasons.length > 0 ? (
-                                                                            <Typography
-                                                                                variant='caption'
-                                                                                component='div'
-                                                                                sx={{ color: 'text.secondary', whiteSpace: 'pre-wrap', wordBreak: 'break-word', overflowWrap: 'anywhere' }}
-                                                                            >
-                                                                                {failReasonText}
-                                                                            </Typography>
-                                                                        ) : (
-                                                                            '—'
-                                                                        )}
-                                                                    </StyledTableCell>
-                                                                </StyledTableRow>
-                                                            )
-                                                        })}
+                                                                        <StyledTableCell sx={{ position: 'relative', p: 0, overflow: 'hidden' }}>
+                                                                            <Box sx={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, overflow: 'hidden', padding: '8px 12px' }}>
+                                                                                <Typography variant='caption' sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', overflowWrap: 'anywhere', display: 'block' }}>
+                                                                                    {result.actual_output || '—'}
+                                                                                </Typography>
+                                                                                <Box sx={(t) => ({ position: 'absolute', bottom: 0, left: 0, right: 0, height: '36px', background: `linear-gradient(to bottom, transparent, ${t.palette.background.paper})`, pointerEvents: 'none' })} />
+                                                                            </Box>
+                                                                        </StyledTableCell>
+                                                                        <StyledTableCell sx={{ position: 'relative', p: 0, overflow: 'hidden' }}>
+                                                                            <Box sx={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, overflow: 'hidden', padding: '8px 12px' }}>
+                                                                                <Typography variant='caption' sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', overflowWrap: 'anywhere', display: 'block' }}>
+                                                                                    {expectedOutput || '—'}
+                                                                                </Typography>
+                                                                                <Box sx={(t) => ({ position: 'absolute', bottom: 0, left: 0, right: 0, height: '36px', background: `linear-gradient(to bottom, transparent, ${t.palette.background.paper})`, pointerEvents: 'none' })} />
+                                                                            </Box>
+                                                                        </StyledTableCell>
+                                                                        <StyledTableCell>
+                                                                            {(() => {
+                                                                                const validScores = orderedMetricEntries
+                                                                                    .map(([, scores]) => scores.score)
+                                                                                    .filter((s) => s !== null && s !== undefined && typeof s === 'number')
+                                                                                const avgScore = validScores.length > 0
+                                                                                    ? validScores.reduce((a, b) => a + b, 0) / validScores.length
+                                                                                    : null
+                                                                                const gradeCfg = getGrade(avgScore)
+                                                                                return (
+                                                                                    <Stack spacing={1} alignItems='flex-start' sx={{ minWidth: 0, width: '100%' }}>
+                                                                                        <Tooltip title={`${gradeCfg.label} (${gradeCfg.range})`}>
+                                                                                            <Box sx={{
+                                                                                                display: 'inline-flex', alignItems: 'center',
+                                                                                                px: 1, py: 0.25,
+                                                                                                borderRadius: '10px',
+                                                                                                backgroundColor: gradeCfg.color + '18',
+                                                                                                border: `1.5px solid ${gradeCfg.color}55`,
+                                                                                                color: gradeCfg.color,
+                                                                                                fontWeight: 700,
+                                                                                                fontSize: '0.7rem',
+                                                                                                userSelect: 'none',
+                                                                                                whiteSpace: 'nowrap',
+                                                                                                cursor: 'default',
+                                                                                            }}>
+                                                                                                Grade {gradeCfg.grade}
+                                                                                            </Box>
+                                                                                        </Tooltip>
+                                                                                        {orderedMetricEntries.length > 0 ? (
+                                                                                            <Stack spacing={0.25}>
+                                                                                                {orderedMetricEntries.map(([metricName, scores]) => (
+                                                                                                    <Typography key={metricName} variant='caption' component='div' sx={{ whiteSpace: 'nowrap', color: 'text.secondary' }}>
+                                                                                                        {metricName}: <strong style={{ color: 'inherit' }}>{formatMetricScore(scores.score)}</strong>
+                                                                                                    </Typography>
+                                                                                                ))}
+                                                                                            </Stack>
+                                                                                        ) : (
+                                                                                            <Typography variant='caption'>—</Typography>
+                                                                                        )}
+                                                                                    </Stack>
+                                                                                )
+                                                                            })()}
+                                                                        </StyledTableCell>
+                                                                        <StyledTableCell sx={{ whiteSpace: 'normal', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
+                                                                            {failReasons.length > 0 ? (
+                                                                                <Typography
+                                                                                    variant='caption'
+                                                                                    component='div'
+                                                                                    sx={{ color: 'text.secondary', whiteSpace: 'pre-wrap', wordBreak: 'break-word', overflowWrap: 'anywhere' }}
+                                                                                >
+                                                                                    {failReasonText}
+                                                                                </Typography>
+                                                                            ) : (
+                                                                                '—'
+                                                                            )}
+                                                                        </StyledTableCell>
+                                                                    </StyledTableRow>
+                                                                )
+                                                            })
+                                                        })()}
                                                     </TableBody>
                                                 </Table>
                                             </TableContainer>
@@ -691,78 +841,129 @@ const RunDetailsModal = ({ open, onClose, runId }) => {
                 sx={{ zIndex: (theme) => theme.zIndex.modal + 10 }}
                 PaperProps={{ sx: { width: { xs: '100%', sm: 600, md: 800 }, p: 3, bgcolor: theme.palette.mode === 'dark' ? 'grey.900' : 'background.paper' } }}
             >
-                {selectedEntry && (
-                    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-                            <Typography variant="h6">Entry #{selectedEntry.entry_id} Details</Typography>
-                            <IconButton onClick={handleCloseDrawer} size="small">
-                                <IconX size={20} />
-                            </IconButton>
-                        </Box>
-                        <Divider sx={{ mb: 3 }} />
-                        <Box sx={{ flexGrow: 1, overflowY: 'auto' }}>
-                            <Stack spacing={3}>
-                                <Box>
-                                    <Typography variant="subtitle2" color="textSecondary" sx={{ mb: 1, textTransform: 'uppercase', letterSpacing: 0.5 }}>Input</Typography>
-                                    <Paper variant="outlined" sx={{ p: 2, bgcolor: theme.palette.mode === 'dark' ? 'grey.800' : 'grey.50' }}>
-                                        <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                                            {selectedEntry.entry?.input || '—'}
+            {selectedEntry && (
+                <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+                        <Typography variant="h6">Entry #{selectedEntry.entry_id} Details</Typography>
+                        <IconButton onClick={handleCloseDrawer} size="small">
+                            <IconX size={20} />
+                        </IconButton>
+                    </Box>
+                    <Stack spacing={1.25} sx={{ mb: 2, alignItems: 'flex-start' }}>
+                        {(() => {
+                            const entries = getOrderedMetricEntries(run, selectedEntry)
+                            const validScores = entries
+                                .map(([, s]) => s.score)
+                                .filter((s) => s !== null && s !== undefined && typeof s === 'number')
+                            const avgScore = validScores.length > 0
+                                ? validScores.reduce((a, b) => a + b, 0) / validScores.length
+                                : null
+                            const gradeCfg = getGrade(avgScore)
+                            return (
+                                <Stack spacing={1} sx={{ flex: 1, minWidth: 0, width: '100%' }}>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, flexWrap: 'wrap' }}>
+                                        <Typography variant="overline" color="textSecondary" sx={{ lineHeight: 1, flexShrink: 0 }}>
+                                            Eval Score:
                                         </Typography>
-                                    </Paper>
-                                </Box>
-                                
-                                {selectedEntry.entry?.context && selectedEntry.entry.context.length > 0 && (
-                                    <Box>
-                                        <Typography variant="subtitle2" color="textSecondary" sx={{ mb: 1, textTransform: 'uppercase', letterSpacing: 0.5 }}>Context</Typography>
-                                        <Paper variant="outlined" sx={{ p: 2, bgcolor: theme.palette.mode === 'dark' ? 'grey.800' : 'grey.50' }}>
-                                            {selectedEntry.entry.context.map((ctx, idx) => (
-                                                <Typography key={idx} variant="body2" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', mb: idx < selectedEntry.entry.context.length - 1 ? 2 : 0 }}>
-                                                    {ctx}
+                                        <Tooltip title={`${gradeCfg.label} (${gradeCfg.range})`}>
+                                            <Box sx={{
+                                                display: 'inline-flex', alignItems: 'center',
+                                                px: 1.25, py: 0.375,
+                                                borderRadius: '10px',
+                                                backgroundColor: gradeCfg.color + '18',
+                                                border: `1.5px solid ${gradeCfg.color}55`,
+                                                color: gradeCfg.color,
+                                                fontWeight: 700,
+                                                fontSize: '0.78rem',
+                                                userSelect: 'none',
+                                                cursor: 'default',
+                                                width: 'fit-content',
+                                            }}>
+                                                Grade {gradeCfg.grade}
+                                            </Box>
+                                        </Tooltip>
+                                    </Box>
+                                    {entries.length > 0 ? (
+                                        <Stack spacing={0.25}>
+                                            {entries.map(([metricName, scoreDetails]) => (
+                                                <Typography key={metricName} variant='caption' component='div' sx={{ whiteSpace: 'nowrap', color: 'text.secondary' }}>
+                                                    {metricName}: <strong style={{ color: 'inherit' }}>{formatMetricScore(scoreDetails.score)}</strong>
                                                 </Typography>
                                             ))}
-                                        </Paper>
-                                    </Box>
-                                )}
-
-                                <Box>
-                                    <Typography variant="subtitle2" color="textSecondary" sx={{ mb: 1, textTransform: 'uppercase', letterSpacing: 0.5 }}>Actual Output</Typography>
-                                    <Paper variant="outlined" sx={{ p: 2, bgcolor: theme.palette.mode === 'dark' ? 'grey.800' : 'grey.50' }}>
-                                        <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                                            {selectedEntry.actual_output || '—'}
-                                        </Typography>
-                                    </Paper>
-                                </Box>
-
-                                {selectedEntry.expected_output && (
-                                    <Box>
-                                        <Typography variant="subtitle2" color="textSecondary" sx={{ mb: 1, textTransform: 'uppercase', letterSpacing: 0.5 }}>Expected Output</Typography>
-                                        <Paper variant="outlined" sx={{ p: 2, bgcolor: theme.palette.mode === 'dark' ? 'grey.800' : 'grey.50' }}>
-                                            <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                                                {selectedEntry.expected_output}
-                                            </Typography>
-                                        </Paper>
-                                    </Box>
-                                )}
-
-                                <Box>
-                                    <Typography variant="subtitle2" color="textSecondary" sx={{ mb: 1, textTransform: 'uppercase', letterSpacing: 0.5 }}>Execution Status</Typography>
-                                    <Chip label={selectedEntry.passed ? 'COMPLETED' : 'FAILED'} color={statusColor(selectedEntry.passed)} size="small" />
-                                </Box>
-
-                                {getResultReasons(run, selectedEntry).length > 0 && (
-                                    <Box>
-                                        <Typography variant="subtitle2" color="textSecondary" sx={{ mb: 1, textTransform: 'uppercase', letterSpacing: 0.5 }}>Reasons</Typography>
-                                        <Paper variant="outlined" sx={{ p: 2, bgcolor: theme.palette.mode === 'dark' ? 'grey.800' : 'grey.50' }}>
-                                            <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                                                {getResultReasons(run, selectedEntry).join('\n')}
-                                            </Typography>
-                                        </Paper>
-                                    </Box>
-                                )}
-                            </Stack>
-                        </Box>
+                                        </Stack>
+                                    ) : (
+                                        <Typography variant='body2' color='textSecondary'>N/A</Typography>
+                                    )}
+                                </Stack>
+                            )
+                        })()}
+                    </Stack>
+                    <Divider />
+                    
+                    <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+                        <Tabs variant="scrollable" scrollButtons="auto" value={entryTabValue} onChange={handleEntryTabChange} aria-label="entry details tabs">
+                            <Tab label="Input" />
+                            <Tab label="Context" disabled={!((selectedEntry._snapshotEntry?.context ?? selectedEntry.entry?.context)?.length > 0)} />
+                            <Tab label="Actual Output" />
+                            <Tab label="Expected Output" disabled={!getExpectedOutput(selectedEntry, selectedEntry._snapshotEntry)} />
+                            <Tab label="Reasons" disabled={getResultReasons(run, selectedEntry).length === 0} />
+                        </Tabs>
                     </Box>
-                )}
+
+                    <Box sx={{ flexGrow: 1, overflowY: 'auto', p: 1, mt: 1 }}>
+                        <TabPanel value={entryTabValue} index={0}>
+                            <Paper variant="outlined" sx={{ p: 2, bgcolor: theme.palette.mode === 'dark' ? 'grey.800' : 'grey.50' }}>
+                                <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                                    {(selectedEntry._snapshotEntry?.input ?? selectedEntry.entry?.input) || '—'}
+                                </Typography>
+                            </Paper>
+                        </TabPanel>
+                        
+                        <TabPanel value={entryTabValue} index={1}>
+                            {(() => {
+                                const ctxList = selectedEntry._snapshotEntry?.context ?? selectedEntry.entry?.context
+                                return ctxList && ctxList.length > 0 && (
+                                    <Paper variant="outlined" sx={{ p: 2, bgcolor: theme.palette.mode === 'dark' ? 'grey.800' : 'grey.50' }}>
+                                        {ctxList.map((ctx, idx) => (
+                                            <Typography key={idx} variant="body2" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', mb: idx < ctxList.length - 1 ? 2 : 0 }}>
+                                                {ctx}
+                                            </Typography>
+                                        ))}
+                                    </Paper>
+                                )
+                            })()}
+                        </TabPanel>
+
+                        <TabPanel value={entryTabValue} index={2}>
+                            <Paper variant="outlined" sx={{ p: 2, bgcolor: theme.palette.mode === 'dark' ? 'grey.800' : 'grey.50' }}>
+                                <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                                    {selectedEntry.actual_output || '—'}
+                                </Typography>
+                            </Paper>
+                        </TabPanel>
+
+                        <TabPanel value={entryTabValue} index={3}>
+                            {getExpectedOutput(selectedEntry, selectedEntry._snapshotEntry) && (
+                                <Paper variant="outlined" sx={{ p: 2, bgcolor: theme.palette.mode === 'dark' ? 'grey.800' : 'grey.50' }}>
+                                    <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                                        {getExpectedOutput(selectedEntry, selectedEntry._snapshotEntry)}
+                                    </Typography>
+                                </Paper>
+                            )}
+                        </TabPanel>
+
+                        <TabPanel value={entryTabValue} index={4}>
+                            {getResultReasons(run, selectedEntry).length > 0 && (
+                                <Paper variant="outlined" sx={{ p: 2, bgcolor: theme.palette.mode === 'dark' ? 'grey.800' : 'grey.50' }}>
+                                    <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                                        {getResultReasons(run, selectedEntry).join('\n')}
+                                    </Typography>
+                                </Paper>
+                            )}
+                        </TabPanel>
+                    </Box>
+                </Box>
+            )}
             </Drawer>
         </Dialog>
     )

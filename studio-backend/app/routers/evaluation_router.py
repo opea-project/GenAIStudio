@@ -4,8 +4,8 @@ import httpx
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import Response
 
-EVAL_SERVICE_DNS = os.getenv(
-    "EVAL_SERVICE_DNS",
+STUDIO_EVAL_DNS = os.getenv(
+    "STUDIO_EVAL_DNS",
     "studio-eval-service.studio.svc.cluster.local:8000",
 )
 
@@ -14,7 +14,8 @@ router = APIRouter()
 
 @router.api_route("/evaluation/{path:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"])
 async def proxy_evaluation(path: str, request: Request):
-    target_url = f"http://{EVAL_SERVICE_DNS}/eval/{path}"
+    target_url = f"http://{STUDIO_EVAL_DNS}/eval/{path}"
+    upstream_timeout = 60.0
     query = request.url.query
     if query:
         target_url = f"{target_url}?{query}"
@@ -27,7 +28,7 @@ async def proxy_evaluation(path: str, request: Request):
     body = await request.body()
 
     try:
-        async with httpx.AsyncClient(timeout=60.0) as client:
+        async with httpx.AsyncClient(timeout=upstream_timeout) as client:
             upstream = await client.request(
                 method=request.method,
                 url=target_url,

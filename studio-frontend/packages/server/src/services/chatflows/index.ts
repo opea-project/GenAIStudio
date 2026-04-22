@@ -11,25 +11,7 @@ import { getErrorMessage } from '../../errors/utils'
 import { getAppVersion } from '../../utils'
 import { getRunningExpressApp } from '../../utils/getRunningExpressApp'
 import logger from '../../utils/logger'
-import axios, { AxiosRequestConfig } from 'axios'
-import { HttpsProxyAgent } from 'https-proxy-agent'
-
-// Configure github axios to support HTTP_PROXY/HTTPS_PROXY environment variables
-const getGithubAxiosConfig = (): AxiosRequestConfig => {
-    const http_proxy = process.env.http_proxy || process.env.HTTP_PROXY
-    const agent = (http_proxy && http_proxy.trim() !== "") ? new HttpsProxyAgent(http_proxy) : undefined
-
-    return {
-        headers: {
-            Accept: 'application/vnd.github.v3+json',
-        },
-        proxy: false,
-        ...(agent && {
-            httpAgent: agent,
-            httpsAgent: agent,
-        }),
-    }
-}
+import axios from 'axios'
 
 const SAMPLE_WORKFLOWS_DIR = process.env.SAMPLE_WORKFLOWS_DIR || path.resolve(process.cwd(), '..', '..', 'sample-workflows')
 
@@ -137,37 +119,9 @@ const getAllChatflowsbyUserId = async (userid: string, type?: ChatflowType): Pro
 
 const importSampleChatflowsbyUserId = async (userid: string, type?: ChatflowType): Promise<ChatFlow[]> => {
     try {
-        const axiosConfig = getGithubAxiosConfig()
-
         console.log('Importing sample chatflows for user:', userid)
-
-        let chatflows: Partial<ChatFlow>[] = []
-
-        try {
-            chatflows = await loadLocalSampleChatflows(userid, type)
-            logger.info(`[server]: Loaded ${chatflows.length} sample chatflows from local directory ${SAMPLE_WORKFLOWS_DIR}`)
-        } catch (localError) {
-            logger.warn(`[server]: Falling back to GitHub sample workflows: ${getErrorMessage(localError)}`)
-
-            const response = await axios.get(
-                'https://api.github.com/repos/opea-project/GenAIStudio/contents/sample-workflows',
-                axiosConfig
-            )
-
-            const files = response.data.filter((item: any) => item.type === 'file')
-            for (const file of files) {
-                const fileResponse = await axios.get(file.download_url, axiosConfig)
-                const parsedFlowData = fileResponse.data
-                chatflows.push({
-                    userid,
-                    name: file.name.replace('.json', ''),
-                    flowData: JSON.stringify(parsedFlowData),
-                    type: type || 'OPEA',
-                    deployed: false,
-                    isPublic: false
-                })
-            }
-        }
+        const chatflows = await loadLocalSampleChatflows(userid, type)
+        logger.info(`[server]: Loaded ${chatflows.length} sample chatflows from local directory ${SAMPLE_WORKFLOWS_DIR}`)
 
         const insertResponse = await importChatflows(chatflows)
         return insertResponse

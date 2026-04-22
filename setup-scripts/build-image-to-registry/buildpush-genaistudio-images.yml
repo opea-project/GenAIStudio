@@ -10,6 +10,7 @@
         --build-arg http_proxy="{{ http_proxy }}"
         --build-arg https_proxy="{{ http_proxy }}"
         --build-arg no_proxy="{{ no_proxy }}"
+        --build-context sample_workflows="../sample-workflows"
         -t "{{ container_registry }}/{{ item.image_name }}:{{ container_tag }}" .
       args:
         chdir: "{{ item.directory }}"
@@ -20,6 +21,7 @@
       loop:
         - { directory: '../../studio-frontend/', image_name: 'studio-frontend' }
         - { directory: '../../studio-backend/', image_name: 'studio-backend' }
+        - { directory: '../../studio-eval/', image_name: 'studio-eval' }
         - { directory: '../../app-frontend/', image_name: 'app-frontend' }
         - { directory: '../../app-backend/', image_name: 'app-backend' }
       register: build_results
@@ -33,6 +35,7 @@
       loop:
         - { image_name: 'studio-frontend' }
         - { image_name: 'studio-backend' }
+        - { image_name: 'studio-eval' }
         - { image_name: 'app-frontend' }
         - { image_name: 'app-backend' }
 
@@ -42,5 +45,6 @@
       loop:
         - { image_name: 'studio-frontend' }
         - { image_name: 'studio-backend' }
+        - { image_name: 'studio-eval' }
         - { image_name: 'app-frontend' }
         - { image_name: 'app-backend' }

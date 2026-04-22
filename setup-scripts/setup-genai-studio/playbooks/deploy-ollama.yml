@@ -1,0 +1,29 @@
+---
+- name: Deploy Ollama in ollama namespace
+  hosts: localhost
+  vars_files:
+    - ../vars.yml
+  tasks:
+    - name: Check if ollama namespace exists
+      shell: kubectl get namespace ollama --ignore-not-found
+      register: namespace_check
+      changed_when: false
+
+    - name: End playbook if ollama namespace exists
+      meta: end_play
+      when: namespace_check.stdout != ""
+
+    - name: Apply ollama manifest
+      shell: "envsubst '${HTTP_PROXY} ${NO_PROXY}' < ../manifests/ollama-manifest.yaml | kubectl apply -f -"
+      environment:
+        HTTP_PROXY: "{{ http_proxy }}"
+        NO_PROXY: "{{ no_proxy }}"
+
+    - name: Wait for ollama pod to be ready
+      command: kubectl wait --namespace ollama --for=condition=ready pod -l app=ollama --timeout=300s
+
+    - name: Pre-pull nomic-embed-text model
+      shell: kubectl exec -n ollama $(kubectl get pod -n ollama -l app=ollama -o jsonpath="{.items[0].metadata.name}") -- env OLLAMA_HOST=http://127.0.0.1:11434 HTTP_PROXY={{ http_proxy }} HTTPS_PROXY={{ http_proxy }} NO_PROXY={{ no_proxy }} ollama pull nomic-embed-text
+
+    - name: Pre-pull qwen2.5:14b model
+      shell: kubectl exec -n ollama $(kubectl get pod -n ollama -l app=ollama -o jsonpath="{.items[0].metadata.name}") -- env OLLAMA_HOST=http://127.0.0.1:11434 HTTP_PROXY={{ http_proxy }} HTTPS_PROXY={{ http_proxy }} NO_PROXY={{ no_proxy }} ollama pull qwen2.5:14b

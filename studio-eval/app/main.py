@@ -15,6 +15,53 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+def _migrate_eval_datasets_table() -> None:
+    inspector = inspect(engine)
+    if "eval_datasets" not in inspector.get_table_names():
+        return
+
+    columns = inspector.get_columns("eval_datasets")
+    id_col = next((c for c in columns if c["name"] == "id"), None)
+    if id_col and "int" in str(id_col["type"]).lower():
+        logger.info("Detected schema change: migrating eval_datasets table from Integer to UUID id — dropping all tables…")
+        Base.metadata.drop_all(bind=engine)
+        logger.info("Dropped old tables")
+        return
+
+    existing = {c["name"] for c in columns}
+    with engine.begin() as connection:
+        if "status" not in existing:
+            logger.info("Adding missing status column to eval_datasets…")
+            connection.execute(
+                text("ALTER TABLE eval_datasets ADD COLUMN status VARCHAR(50) NOT NULL DEFAULT 'completed'")
+            )
+        if "error" not in existing:
+            logger.info("Adding missing error column to eval_datasets…")
+            connection.execute(
+                text("ALTER TABLE eval_datasets ADD COLUMN error TEXT NULL")
+            )
+        if "completed_contexts" not in existing:
+            logger.info("Adding missing completed_contexts column to eval_datasets…")
+            connection.execute(
+                text("ALTER TABLE eval_datasets ADD COLUMN completed_contexts INT NULL")
+            )
+        if "total_contexts" not in existing:
+            logger.info("Adding missing total_contexts column to eval_datasets…")
+            connection.execute(
+                text("ALTER TABLE eval_datasets ADD COLUMN total_contexts INT NULL")
+            )
+        if "completed_goldens" not in existing:
+            logger.info("Adding missing completed_goldens column to eval_datasets…")
+            connection.execute(
+                text("ALTER TABLE eval_datasets ADD COLUMN completed_goldens INT NULL")
+            )
+        if "target_goldens" not in existing:
+            logger.info("Adding missing target_goldens column to eval_datasets…")
+            connection.execute(
+                text("ALTER TABLE eval_datasets ADD COLUMN target_goldens INT NULL")
+            )
+
+
 def _migrate_eval_runs_table() -> None:
     inspector = inspect(engine)
     if "eval_runs" not in inspector.get_table_names():
@@ -34,6 +81,18 @@ def _migrate_eval_runs_table() -> None:
         with engine.begin() as connection:
             connection.execute(
                 text("ALTER TABLE eval_runs ADD COLUMN configuration_snapshot JSON NULL")
+            )
+
+    with engine.begin() as connection:
+        if "completed_count" not in column_names:
+            logger.info("Adding missing completed_count column to eval_runs…")
+            connection.execute(
+                text("ALTER TABLE eval_runs ADD COLUMN completed_count INT NULL")
+            )
+        if "total_count" not in column_names:
+            logger.info("Adding missing total_count column to eval_runs…")
+            connection.execute(
+                text("ALTER TABLE eval_runs ADD COLUMN total_count INT NULL")
             )
 
 app = FastAPI(
@@ -56,6 +115,7 @@ async def startup() -> None:
     delay = 3
     for attempt in range(1, retries + 1):
         try:
+            _migrate_eval_datasets_table()
             _migrate_eval_runs_table()
             Base.metadata.create_all(bind=engine)
             logger.info("Database tables ready")

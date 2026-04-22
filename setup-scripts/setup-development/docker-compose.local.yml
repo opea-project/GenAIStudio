@@ -9,6 +9,8 @@ services:
     image: studio-frontend:local
     build:
       context: ../../studio-frontend
+      additional_contexts:
+        sample_workflows: ../../sample-workflows
       target: builder
       args:
         http_proxy: ${http_proxy}
@@ -42,7 +44,7 @@ services:
       - DATABASE_PORT=${MYSQL_PORT:-3306}
       - DATABASE_NAME=${MYSQL_FLOWISE_DB:-flowise}
       - DATABASE_USER=${MYSQL_USER:-root}
-      - DATABASE_PASSWORD=${MYSQL_PASSWORD:-password}
+      - DATABASE_PASSWORD=${MYSQL_PASSWORD:-root}
     ulimits:
       nofile:
         soft: 65536
@@ -70,7 +72,7 @@ services:
       - ${HOME}/.kube:/root/.kube:ro
     command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "5000", "--reload"]
     environment:
-      - EVAL_SERVICE_DNS=${EVAL_SERVICE_DNS:-studio-eval:8000}
+      - STUDIO_EVAL_DNS=${STUDIO_EVAL_DNS:-studio-eval:8000}
       - GRAFANA_DNS=${GRAFANA_DNS:-grafana:3000}
       - DISABLE_GRAFANA_DASHBOARD_SYNC=${DISABLE_GRAFANA_DASHBOARD_SYNC:-true}
       - CLICKHOUSE_DNS=${CLICKHOUSE_DNS:-clickhouse:9000}
@@ -141,7 +143,7 @@ services:
       - studio-local
     # Pull models after startup (OLLAMA_HOST must be overridden for docker exec to work):
     #   docker exec -e OLLAMA_HOST=http://127.0.0.1:11434 ollama ollama pull nomic-embed-text
-    #   docker exec -e OLLAMA_HOST=http://127.0.0.1:11434 ollama ollama pull llama3
+    #   docker exec -e OLLAMA_HOST=http://127.0.0.1:11434 ollama ollama pull qwen2.5:14b
     restart: unless-stopped
 
   mysql:
@@ -170,7 +172,7 @@ services:
   # Local equivalent of studio-nginx in studio-manifest.yaml.
   # Routes /?ns=<sandbox-namespace> to app-frontend in the deployed K8s sandbox,
   # and everything else to studio-frontend.
-  # Access the studio via http://localhost:30010 (not localhost:3000) so that
+  # Access the studio via http://localhost:30010 (not localhost:8088) so that
   # the ?ns= routing works correctly when opening sandbox app-frontends.
   local-nginx:
     image: nginx:1.27.1

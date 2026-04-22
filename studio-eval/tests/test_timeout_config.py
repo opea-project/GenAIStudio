@@ -2,6 +2,8 @@ import importlib
 import os
 import sys
 
+from app import compat
+
 
 def _reload_module(module_name: str):
     sys.modules.pop(module_name, None)
@@ -40,3 +42,13 @@ def test_ollama_generate_timeout_can_be_enabled(monkeypatch):
     ollama_service = _reload_module("app.services.ollama_service")
 
     assert ollama_service.OLLAMA_GENERATE_TIMEOUT == 240.0
+
+
+def test_deepeval_network_timeouts_disabled_by_default(monkeypatch):
+    monkeypatch.delenv("DEEPEVAL_TELEMETRY_OPT_OUT", raising=False)
+    monkeypatch.delenv("DEEPEVAL_UPDATE_WARNING_OPT_OUT", raising=False)
+
+    compat.ensure_pydantic_v2_apis()
+
+    assert os.getenv("DEEPEVAL_TELEMETRY_OPT_OUT") == "YES"
+    assert os.getenv("DEEPEVAL_UPDATE_WARNING_OPT_OUT") == "YES"

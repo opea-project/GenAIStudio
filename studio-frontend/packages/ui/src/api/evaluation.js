@@ -43,8 +43,28 @@ const evaluationApi = {
     // Delete an evaluation run
     deleteRun: (runId) => client.delete(`/evaluation/runs/${runId}`),
 
+    // Stop a running/pending evaluation run
+    stopRun: (runId) => client.post(`/evaluation/runs/${runId}/stop`),
+
     // Delete a dataset
     deleteDataset: (datasetId) => client.delete(`/evaluation/datasets/${datasetId}`),
+
+    // Stop a pending/synthesizing dataset job
+    stopDataset: (datasetId) => client.post(`/evaluation/datasets/${datasetId}/stop`),
+
+    // Update dataset metadata (name / description)
+    updateDataset: (datasetId, payload) => client.put(`/evaluation/datasets/${datasetId}`, payload),
+
+    // Update a single entry inside a dataset
+    updateEntry: (datasetId, entryId, payload) =>
+        client.put(`/evaluation/datasets/${datasetId}/entries/${entryId}`, payload),
+
+    // Add one or more entries to an existing dataset
+    addEntries: (datasetId, payload) => client.post(`/evaluation/datasets/${datasetId}/entries`, payload),
+
+    // Delete a single entry from a dataset
+    deleteEntry: (datasetId, entryId) =>
+        client.delete(`/evaluation/datasets/${datasetId}/entries/${entryId}`),
 }
 
 export default evaluationApi

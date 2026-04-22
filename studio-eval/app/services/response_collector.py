@@ -21,7 +21,7 @@ def _parse_timeout(env_name: str, default: str):
     return None if parsed <= 0 else parsed
 
 _APP_BACKEND_PORT = 8899
-_CHAT_PATH = "/v1/chat/completions"
+_CHAT_PATH = "/v1/app-backend"
 _TIMEOUT = _parse_timeout("APP_BACKEND_TIMEOUT", "0")
 _APP_BACKEND_URL_TEMPLATE = os.getenv(
     "APP_BACKEND_URL_TEMPLATE",

@@ -28,7 +28,7 @@ import { useTheme } from '@mui/material/styles'
 import { IconX } from '@tabler/icons-react'
 
 // components
-import FileUploadArea from './FileUploadArea'
+import FileUploadArea from '@/ui-component/file/FileUploadArea'
 
 // API
 import finetuningApi from '@/api/finetuning'

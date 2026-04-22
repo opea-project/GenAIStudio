@@ -169,7 +169,7 @@ const CreateRunModal = ({ open, onClose, onRunCreated }) => {
         ])
             .then(([sbRes, dsRes, mdRes]) => {
                 setSandboxes(sbRes.data?.sandboxes || [])
-                setDatasets(dsRes.data || [])
+                setDatasets((dsRes.data || []).filter((ds) => ds.status === 'completed'))
                 setModels(mdRes.data || [])
             })
             .catch(() => setError('Failed to load options.'))

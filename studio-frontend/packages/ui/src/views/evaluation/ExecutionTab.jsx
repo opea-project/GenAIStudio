@@ -12,6 +12,7 @@ import {
     DialogContent,
     DialogTitle,
     IconButton,
+    LinearProgress,
     Paper,
     Stack,
     Table,
@@ -28,7 +29,7 @@ import { useTheme, styled } from '@mui/material/styles'
 import { tableCellClasses } from '@mui/material/TableCell'
 
 // icons
-import { IconPlus, IconRefresh, IconEye, IconTrash } from '@tabler/icons-react'
+import { IconPlus, IconRefresh, IconEye, IconTrash, IconPlayerStop } from '@tabler/icons-react'
 
 // API
 import evaluationApi from '@/api/evaluation'
@@ -39,8 +40,9 @@ import RunDetailsModal from './RunDetailsModal'
 
 import { StyledButton } from '@/ui-component/button/StyledButton'
 
-const POLL_INTERVAL_MS = 5000
+const POLL_INTERVAL_MS = 30000
 const ACTIVE_STATUSES = ['pending', 'running']
+const CANCELLED_STATUSES = ['stopped', 'cancelled', 'canceled']
 
 const StyledTableCell = styled(TableCell)(({ theme }) => ({
     borderColor: theme.palette.grey[900] + 25,
@@ -67,26 +69,31 @@ const StyledTableRow = styled(TableRow)(() => ({
     }
 }))
 
-const statusColor = (status) => {
-    switch (status) {
-        case 'completed':
-            return 'success'
-        case 'failed':
-            return 'error'
-        case 'running':
-            return 'primary'
-        case 'pending':
-        default:
-            return 'default'
+const GRADE_CONFIG = [
+    { grade: 'A', min: 0.90, color: '#2e7d32', label: 'Excellent',  range: '≥ 0.90' },
+    { grade: 'B', min: 0.75, color: '#558b2f', label: 'Good',       range: '0.75 – 0.89' },
+    { grade: 'C', min: 0.60, color: '#f57c00', label: 'Acceptable', range: '0.60 – 0.74' },
+    { grade: 'D', min: 0.50, color: '#e64a19', label: 'Poor',       range: '0.50 – 0.59' },
+    { grade: 'E', min: 0.40, color: '#c62828', label: 'Very Poor',  range: '0.40 – 0.49' },
+    { grade: 'F', min: -Infinity, color: '#7f0000', label: 'Failed', range: '< 0.40 or no score' },
+]
+
+const getGrade = (avgScore) => {
+    if (avgScore === null || avgScore === undefined) return GRADE_CONFIG[GRADE_CONFIG.length - 1]
+    for (const cfg of GRADE_CONFIG) {
+        if (avgScore >= cfg.min) return cfg
     }
+    return GRADE_CONFIG[GRADE_CONFIG.length - 1]
 }
 
 const effectiveRunStatus = (run) => {
-    if (run.status === 'completed' && run.results?.some((r) => r.passed === false)) {
-        return 'failed'
+    if (CANCELLED_STATUSES.includes(run?.status)) {
+        return 'stopped'
     }
-    return run.status
+    return run?.status
 }
+
+const isCancelledRun = (run) => CANCELLED_STATUSES.includes(run?.status)
 
 const formatDate = (dateStr) => {
     if (!dateStr) return '—'
@@ -130,6 +137,7 @@ const ExecutionTab = ({ isVisible }) => {
     const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
     const [runToDelete, setRunToDelete] = useState(null)
     const [deleting, setDeleting] = useState(false)
+    const [stoppingRuns, setStoppingRuns] = useState(new Set())
 
     // Track interval ids per run_id
     const pollTimersRef = useRef({})
@@ -242,13 +250,36 @@ const ExecutionTab = ({ isVisible }) => {
         setDeleteConfirmOpen(true)
     }
 
+    const handleStopRun = async (e, run) => {
+        e.stopPropagation()
+        const runId = getRunId(run)
+        setStoppingRuns((prev) => new Set(prev).add(runId))
+        try {
+            await evaluationApi.stopRun(runId)
+            setRuns((prev) => prev.map((r) => (getRunId(r) === runId ? { ...r, status: 'stopped' } : r)))
+            stopPolling(runId)
+        } catch (err) {
+            setError(err?.response?.data?.detail || 'Failed to stop run.')
+        } finally {
+            setStoppingRuns((prev) => {
+                const next = new Set(prev)
+                next.delete(runId)
+                return next
+            })
+        }
+    }
+
     const handleConfirmDelete = async () => {
         if (!runToDelete) return
         try {
             setDeleting(true)
-            await evaluationApi.deleteRun(getRunId(runToDelete))
-            setRuns((prev) => prev.filter((r) => getRunId(r) !== getRunId(runToDelete)))
-            stopPolling(getRunId(runToDelete))
+            const runId = getRunId(runToDelete)
+            if (ACTIVE_STATUSES.includes(runToDelete.status)) {
+                await evaluationApi.stopRun(runId).catch(() => {})
+            }
+            await evaluationApi.deleteRun(runId)
+            setRuns((prev) => prev.filter((r) => getRunId(r) !== runId))
+            stopPolling(runId)
             setDeleteConfirmOpen(false)
             setRunToDelete(null)
         } catch (err) {
@@ -282,7 +313,7 @@ const ExecutionTab = ({ isVisible }) => {
         { id: 'dataset_id', label: 'Dataset', sortable: false },
         { id: 'model_name', label: 'Judge Model', sortable: false },
         { id: 'status', label: 'Status' },
-        { id: 'score_summary', label: 'Score Summary', sortable: false },
+        { id: 'eval_score', label: 'Eval Score', sortable: false },
         { id: 'created_at', label: 'Created At' },
         { id: 'actions', label: 'Actions', sortable: false }
     ]
@@ -374,7 +405,7 @@ const ExecutionTab = ({ isVisible }) => {
                                     </StyledTableCell>
                                     <StyledTableCell sx={{ maxWidth: 160 }}>
                                         <Typography variant='body2' sx={{ fontSize: '0.9rem', wordBreak: 'break-word' }}>
-                                            {datasetMap[run.dataset_id] || run.dataset_id || '—'}
+                                            {run.dataset_name_snapshot ?? datasetMap[run.dataset_id] ?? (run.dataset_id ? String(run.dataset_id) : '—')}
                                         </Typography>
                                     </StyledTableCell>
                                     <StyledTableCell sx={{ maxWidth: 160 }}>
@@ -383,31 +414,93 @@ const ExecutionTab = ({ isVisible }) => {
                                         </Typography>
                                     </StyledTableCell>
                                     <StyledTableCell>
-                                        <Chip
-                                            label={effectiveRunStatus(run)}
-                                            color={statusColor(effectiveRunStatus(run))}
-                                            size='small'
-                                            icon={
-                                                ACTIVE_STATUSES.includes(run.status) ? (
-                                                    <CircularProgress size={12} color='inherit' />
-                                                ) : undefined
-                                            }
-                                        />
-                                    </StyledTableCell>
-                                    <StyledTableCell sx={{ minWidth: 140, maxWidth: 'none' }}>
                                         {(() => {
-                                            const metricAvgs = computeMetricAverages(run)
-                                            if (metricAvgs.length === 0) return <Typography variant='body2' color='text.secondary'>N/A</Typography>
+                                            const effStatus = effectiveRunStatus(run)
+                                            const statusLabel = {
+                                                running: 'running',
+                                                pending: 'pending',
+                                                completed: 'completed',
+                                                failed: 'failed',
+                                                stopped: 'cancelled',
+                                            }[effStatus] ?? effStatus
+                                            const statusColor = {
+                                                running: 'primary',
+                                                pending: 'default',
+                                                completed: 'success',
+                                                failed: 'error',
+                                                stopped: 'default',
+                                            }[effStatus] ?? 'default'
                                             return (
-                                                <Stack spacing={0.5}>
-                                                    {metricAvgs.map(({ metric, avg }) => (
-                                                        <Box key={metric} sx={{ fontSize: '0.8rem' }}>
-                                                            <Typography variant='caption' component='div'>
-                                                                <strong>{metric}:</strong>{' '}
-                                                                {avg !== null ? avg.toFixed(3) : 'N/A'}
+                                                <Chip
+                                                    label={statusLabel}
+                                                    color={statusColor}
+                                                    size='small'
+                                                    icon={ACTIVE_STATUSES.includes(run.status) ? <CircularProgress size={10} color='inherit' /> : undefined}
+                                                />
+                                            )
+                                        })()}
+                                    </StyledTableCell>
+                                    <StyledTableCell>
+                                        {(() => {
+                                            if (isCancelledRun(run)) {
+                                                return <Typography variant='body2' color='text.secondary'>N/A</Typography>
+                                            }
+                                            const effStatus = effectiveRunStatus(run)
+                                            if (ACTIVE_STATUSES.includes(effStatus)) {
+                                                const total = run.total_count ?? run.dataset_entries_snapshot?.length ?? 0
+                                                const completed = run.completed_count ?? run.results?.length ?? 0
+                                                const pct = total > 0 ? Math.round((completed / total) * 100) : null
+                                                return (
+                                                    <Box sx={{ width: '100%', minWidth: 80 }}>
+                                                        <LinearProgress
+                                                            variant={pct !== null ? 'determinate' : 'indeterminate'}
+                                                            value={pct ?? undefined}
+                                                            sx={{ borderRadius: 1 }}
+                                                        />
+                                                        {pct !== null && (
+                                                            <Typography variant='caption' color='text.secondary'>
+                                                                {completed}/{total} ({pct}%)
                                                             </Typography>
+                                                        )}
+                                                    </Box>
+                                                )
+                                            }
+                                            const metricAvgs = computeMetricAverages(run)
+                                            const validAvgs = metricAvgs.map((m) => m.avg).filter((a) => a !== null)
+                                            const overallAvg = validAvgs.length > 0
+                                                ? validAvgs.reduce((acc, val) => acc + val, 0) / validAvgs.length
+                                                : null
+                                            const gradeCfg = getGrade(overallAvg)
+                                            return (
+                                                <Stack spacing={1} alignItems='flex-start' sx={{ minWidth: 0, width: '100%' }}>
+                                                    <Tooltip title={`${gradeCfg.label} (${gradeCfg.range})`}>
+                                                        <Box sx={{
+                                                            display: 'inline-flex', alignItems: 'center',
+                                                            px: 1, py: 0.25,
+                                                            borderRadius: '10px',
+                                                            backgroundColor: gradeCfg.color + '18',
+                                                            border: `1.5px solid ${gradeCfg.color}55`,
+                                                            color: gradeCfg.color,
+                                                            fontWeight: 700,
+                                                            fontSize: '0.7rem',
+                                                            userSelect: 'none',
+                                                            whiteSpace: 'nowrap',
+                                                            cursor: 'default',
+                                                        }}>
+                                                            Grade {gradeCfg.grade}
                                                         </Box>
-                                                    ))}
+                                                    </Tooltip>
+                                                    {metricAvgs.length > 0 ? (
+                                                        <Stack spacing={0.25}>
+                                                            {metricAvgs.map(({ metric, avg }) => (
+                                                                <Typography key={metric} variant='caption' component='div' sx={{ whiteSpace: 'nowrap', color: 'text.secondary' }}>
+                                                                    {metric}: <strong style={{ color: 'inherit' }}>{avg !== null ? avg.toFixed(3) : 'N/A'}</strong>
+                                                                </Typography>
+                                                            ))}
+                                                        </Stack>
+                                                    ) : (
+                                                        <Typography variant='body2' color='text.secondary'>N/A</Typography>
+                                                    )}
                                                 </Stack>
                                             )
                                         })()}
@@ -428,6 +521,22 @@ const ExecutionTab = ({ isVisible }) => {
                                                     <IconEye size={16} />
                                                 </IconButton>
                                             </Tooltip>
+                                            {ACTIVE_STATUSES.includes(run.status) && (
+                                                <Tooltip title='Stop Run'>
+                                                    <IconButton
+                                                        size='small'
+                                                        color='error'
+                                                        onClick={(e) => handleStopRun(e, run)}
+                                                        disabled={stoppingRuns.has(getRunId(run))}
+                                                    >
+                                                        {stoppingRuns.has(getRunId(run)) ? (
+                                                            <CircularProgress size={14} color='inherit' />
+                                                        ) : (
+                                                            <IconPlayerStop size={16} />
+                                                        )}
+                                                    </IconButton>
+                                                </Tooltip>
+                                            )}
                                             <Tooltip title='Delete'>
                                                 <IconButton
                                                     size='small'
@@ -465,6 +574,11 @@ const ExecutionTab = ({ isVisible }) => {
                     <Typography>
                         Are you sure you want to delete this evaluation run? This action cannot be undone.
                     </Typography>
+                    {runToDelete && ACTIVE_STATUSES.includes(runToDelete.status) && (
+                        <Typography variant='body2' color='error.main' sx={{ mt: 1 }}>
+                            This run is currently in progress and will be stopped before being deleted.
+                        </Typography>
+                    )}
                     {runToDelete && (
                         <Typography variant='caption' color='textSecondary' sx={{ mt: 1, display: 'block' }}>
                             Run ID: {getRunId(runToDelete).substring(0, 12)}...

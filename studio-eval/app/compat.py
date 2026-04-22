@@ -1,46 +1,85 @@
-"""Compatibility shims for third-party libraries.
+"""Compatibility shims for third-party libraries."""
 
-This service uses Pydantic v1, while some third-party packages imported at
-runtime expect small parts of the Pydantic v2 API surface. Keep the shim local
-and minimal so the rest of the app can continue using explicit Pydantic v1
-syntax.
-"""
+import os
 
-import pydantic
-from pydantic import root_validator, validator
+import pydantic.config
 
 
 def ensure_pydantic_v2_apis() -> None:
-    """Provide a small subset of Pydantic v2 APIs on top of Pydantic v1.
+    """Set DeepEval opt-out env vars and apply third-party compatibility patches.
 
-    DeepEval currently imports ``field_validator`` and ``model_validator`` from
-    ``pydantic``. Those names do not exist in Pydantic v1, so add compatible
-    wrappers before importing DeepEval.
+    DeepEval performs a PyPI version check and telemetry IP lookup at import
+    time.  Default those opt-outs to YES so evaluation and synthesis do not
+    wait on external DeepEval calls unless a deployment explicitly opts back in.
     """
+    os.environ.setdefault("DEEPEVAL_TELEMETRY_OPT_OUT", "YES")
+    os.environ.setdefault("DEEPEVAL_UPDATE_WARNING_OPT_OUT", "YES")
 
-    if not hasattr(pydantic, "field_validator"):
-        def field_validator(*fields, mode="after", **kwargs):
-            pre = mode == "before"
-            return validator(*fields, pre=pre, allow_reuse=True, **kwargs)
+    # DeepEval Synthesizer imports ExtraValues from pydantic.config. This
+    # exists in Pydantic v2 but guard defensively in case of version skew.
+    if not hasattr(pydantic.config, "ExtraValues"):
+        from typing import Literal
+        pydantic.config.ExtraValues = Literal["allow", "ignore", "forbid"]  # type: ignore[attr-defined]
 
-        pydantic.field_validator = field_validator  # type: ignore[attr-defined]
+    # DeepEval imports InvalidCollectionException from chromadb.errors, but
+    # newer chromadb versions expose NotFoundError instead when a collection
+    # is missing. Alias the exact runtime exception so DeepEval's except block
+    # still catches a missing collection and creates it.
+    try:
+        import chromadb.errors as _ce
+        if not hasattr(_ce, "InvalidCollectionException"):
+            if hasattr(_ce, "NotFoundError"):
+                _ce.InvalidCollectionException = _ce.NotFoundError  # type: ignore[attr-defined]
+            else:
+                class InvalidCollectionException(_ce.ChromaError):  # type: ignore[misc]
+                    pass
+                _ce.InvalidCollectionException = InvalidCollectionException  # type: ignore[attr-defined]
+    except ImportError:
+        pass
 
-    if not hasattr(pydantic, "model_validator"):
-        def model_validator(*, mode="after", **kwargs):
-            pre = mode == "before"
 
-            def decorator(func):
-                return root_validator(pre=pre, allow_reuse=True, **kwargs)(func)
+def patch_deepeval_document_chunker() -> None:
+    """Patch DeepEval's DocumentChunker to collapse dot-leaders before chunking.
 
-            return decorator
+    PDF table-of-contents lines like "Chapter 1 ............... 5" produce
+    hundreds of single-dot tokens that overflow the embedding context window.
+    Collapsing runs of 4+ dots down to "..." prevents the overflow and avoids
+    the downstream ChromaDB "Collection does not exist" error that results from
+    a failed chunking call.
+    """
+    import re
 
-        pydantic.model_validator = model_validator  # type: ignore[attr-defined]
+    try:
+        from deepeval.synthesizer.chunking import doc_chunker
+    except ImportError:
+        return
 
-    if not hasattr(pydantic, "ConfigDict"):
-        pydantic.ConfigDict = dict  # type: ignore[attr-defined]
+    Chunker = doc_chunker.DocumentChunker
+    if getattr(Chunker, "_dot_leader_patch_applied", False):
+        return
 
-    if not hasattr(pydantic.BaseModel, "model_dump"):
-        pydantic.BaseModel.model_dump = pydantic.BaseModel.dict  # type: ignore[attr-defined]
+    dot_pattern = re.compile(r"\.{4,}")
 
-    if not hasattr(pydantic.BaseModel, "model_copy"):
-        pydantic.BaseModel.model_copy = pydantic.BaseModel.copy  # type: ignore[attr-defined]
+    original_load = Chunker.load_doc
+    original_aload = Chunker.a_load_doc
+
+    def _process(chunker_instance) -> None:
+        if not chunker_instance.sections:
+            return
+        for section in chunker_instance.sections:
+            section.page_content = dot_pattern.sub("...", section.page_content)
+        chunker_instance.text_token_count = chunker_instance.count_tokens(
+            chunker_instance.sections
+        )
+
+    def patched_load_doc(self, path: str):  # type: ignore[override]
+        original_load(self, path)
+        _process(self)
+
+    async def patched_a_load_doc(self, path: str):  # type: ignore[override]
+        await original_aload(self, path)
+        _process(self)
+
+    Chunker.load_doc = patched_load_doc  # type: ignore[method-assign]
+    Chunker.a_load_doc = patched_a_load_doc  # type: ignore[method-assign]
+    Chunker._dot_leader_patch_applied = True  # type: ignore[attr-defined]

@@ -1,8 +1,11 @@
 import express from 'express'
 import axios from 'axios'
+import multer from 'multer'
 import { Request, Response, NextFunction } from 'express'
+import { parseDatasetUpload } from '../../services/evaluationUploads'
 
 const router: express.Router = express.Router()
+const upload = multer({ storage: multer.memoryStorage() })
 
 const getStudioServerUrl = () => process.env.STUDIO_SERVER_URL || 'http://studio-backend.studio.svc.cluster.local:5000'
 
@@ -29,17 +32,23 @@ const proxy = async (
     targetPath: string,
     req: Request,
     res: Response,
-    next: NextFunction
+    next: NextFunction,
+    options?: {
+        data?: unknown
+        headers?: Record<string, string>
+        timeout?: number
+    }
 ) => {
     try {
         const url = `${getStudioServerUrl()}/${targetPath}`
+        const hasOverrideData = Boolean(options && Object.prototype.hasOwnProperty.call(options, 'data'))
         const response = await axios({
             method,
             url,
-            data: ['post', 'put', 'patch'].includes(method) ? req.body : undefined,
+            data: hasOverrideData ? options?.data : ['post', 'put', 'patch'].includes(method) ? req.body : undefined,
             params: req.query,
-            headers: { 'Content-Type': 'application/json' },
-            timeout: 60_000
+            headers: options?.headers || { 'Content-Type': 'application/json' },
+            timeout: options?.timeout ?? 60_000
         })
         return res.status(response.status).json(response.data)
     } catch (error: unknown) {
@@ -127,16 +136,65 @@ router.get('/datasets/:id', (req: Request, res: Response, next: NextFunction) =>
     proxy('get', `studio-backend/evaluation/datasets/${req.params.id}`, req, res, next)
 )
 
-router.post('/datasets', (req: Request, res: Response, next: NextFunction) =>
-    proxy('post', 'studio-backend/evaluation/datasets', req, res, next)
-)
+router.post('/datasets', upload.single('file'), async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const payload = req.file ? parseDatasetUpload(req.file, req.body as Record<string, unknown>) : req.body
+        return proxy('post', 'studio-backend/evaluation/datasets', req, res, next, { data: payload })
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to process dataset upload.'
+        return res.status(400).json({ message })
+    }
+})
 
-router.post('/datasets/synthesize', (req: Request, res: Response, next: NextFunction) =>
-    proxy('post', 'studio-backend/evaluation/datasets/synthesize', req, res, next)
+router.post('/datasets/synthesize', upload.single('file'), async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ message: 'A source file is required for synthesis.' })
+        }
+        const FormDataLib = require('form-data')
+        const fd = new FormDataLib()
+        fd.append('file', req.file.buffer, {
+            filename: req.file.originalname,
+            contentType: req.file.mimetype || 'application/octet-stream',
+        })
+        // Forward all text fields unchanged
+        for (const [key, value] of Object.entries(req.body as Record<string, unknown>)) {
+            if (value !== undefined && value !== null) {
+                fd.append(key, String(value))
+            }
+        }
+        return proxy('post', 'studio-backend/evaluation/datasets/synthesize', req, res, next, {
+            data: fd,
+            headers: fd.getHeaders(),
+        })
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to process synthesis upload.'
+        return res.status(400).json({ message })
+    }
+})
+
+router.put('/datasets/:id', (req: Request, res: Response, next: NextFunction) =>
+    proxy('put', `studio-backend/evaluation/datasets/${req.params.id}`, req, res, next)
 )
 
 router.delete('/datasets/:id', (req: Request, res: Response, next: NextFunction) =>
     proxy('delete', `studio-backend/evaluation/datasets/${req.params.id}`, req, res, next)
+)
+
+router.post('/datasets/:id/stop', (req: Request, res: Response, next: NextFunction) =>
+    proxy('post', `studio-backend/evaluation/datasets/${req.params.id}/stop`, req, res, next)
+)
+
+router.post('/datasets/:id/entries', (req: Request, res: Response, next: NextFunction) =>
+    proxy('post', `studio-backend/evaluation/datasets/${req.params.id}/entries`, req, res, next)
+)
+
+router.put('/datasets/:id/entries/:entryId', (req: Request, res: Response, next: NextFunction) =>
+    proxy('put', `studio-backend/evaluation/datasets/${req.params.id}/entries/${req.params.entryId}`, req, res, next)
+)
+
+router.delete('/datasets/:id/entries/:entryId', (req: Request, res: Response, next: NextFunction) =>
+    proxy('delete', `studio-backend/evaluation/datasets/${req.params.id}/entries/${req.params.entryId}`, req, res, next)
 )
 
 // ── Runs ──────────────────────────────────────────────────────────────────────
@@ -150,6 +208,10 @@ router.get('/runs/:id', (req: Request, res: Response, next: NextFunction) =>
 
 router.post('/runs', (req: Request, res: Response, next: NextFunction) =>
     proxy('post', 'studio-backend/evaluation/runs', req, res, next)
+)
+
+router.post('/runs/:id/stop', (req: Request, res: Response, next: NextFunction) =>
+    proxy('post', `studio-backend/evaluation/runs/${req.params.id}/stop`, req, res, next)
 )
 
 router.delete('/runs/:id', (req: Request, res: Response, next: NextFunction) =>

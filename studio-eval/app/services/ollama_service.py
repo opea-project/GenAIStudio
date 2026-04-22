@@ -1,9 +1,11 @@
 import json
 import logging
 import os
-from typing import Any
+from typing import Any, List
 
 import httpx
+
+from app.compat import ensure_pydantic_v2_apis
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +26,18 @@ OLLAMA_DNS = os.getenv("OLLAMA_DNS", "ollama.ollama.svc.cluster.local:11434")
 OLLAMA_BASE_URL = f"http://{OLLAMA_DNS}"
 OLLAMA_PULL_TIMEOUT = _parse_timeout("OLLAMA_PULL_TIMEOUT", "600")
 OLLAMA_GENERATE_TIMEOUT = _parse_timeout("OLLAMA_GENERATE_TIMEOUT", "0")
+
+
+def _normalize_generate_timeout(value):
+    if value is None:
+        return OLLAMA_GENERATE_TIMEOUT
+
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError):
+        return OLLAMA_GENERATE_TIMEOUT
+
+    return None if parsed <= 0 else parsed
 
 
 def _schema_to_ollama_format(schema) -> Any:
@@ -124,10 +138,17 @@ async def ensure_model(model_name: str) -> None:
 # OllamaJudge — DeepEvalBaseLLM wrapper
 # ---------------------------------------------------------------------------
 
+ensure_pydantic_v2_apis()
+
 try:
     from deepeval.models import DeepEvalBaseLLM  # deepeval >= 0.21
 except ImportError:
     from deepeval.models.base_model import DeepEvalBaseLLM  # older deepeval
+
+try:
+    from deepeval.models.base_model import DeepEvalBaseEmbeddingModel
+except ImportError:
+    from deepeval.models import DeepEvalBaseEmbeddingModel
 
 
 class OllamaJudge(DeepEvalBaseLLM):
@@ -141,9 +162,10 @@ class OllamaJudge(DeepEvalBaseLLM):
     asked to return JSON via ``"format": "json"``.
     """
 
-    def __init__(self, model_name: str) -> None:
+    def __init__(self, model_name: str, timeout=None) -> None:
         self._model_name = model_name
         self._base_url = OLLAMA_BASE_URL
+        self._timeout = _normalize_generate_timeout(timeout)
 
     # -- DeepEvalBaseLLM contract -------------------------------------------
 
@@ -164,7 +186,7 @@ class OllamaJudge(DeepEvalBaseLLM):
         if schema is not None:
             payload["format"] = _schema_to_ollama_format(schema)
 
-        with httpx.Client(timeout=OLLAMA_GENERATE_TIMEOUT) as client:
+        with httpx.Client(timeout=self._timeout) as client:
             resp = client.post(f"{self._base_url}/api/generate", json=payload)
             resp.raise_for_status()
             response_text = resp.json()["response"]
@@ -185,7 +207,7 @@ class OllamaJudge(DeepEvalBaseLLM):
         if schema is not None:
             payload["format"] = _schema_to_ollama_format(schema)
 
-        async with httpx.AsyncClient(timeout=OLLAMA_GENERATE_TIMEOUT) as client:
+        async with httpx.AsyncClient(timeout=self._timeout) as client:
             resp = await client.post(
                 f"{self._base_url}/api/generate", json=payload
             )
@@ -197,3 +219,67 @@ class OllamaJudge(DeepEvalBaseLLM):
                 return _parse_structured_response(schema, response_text)
             except Exception as exc:
                 raise TypeError("Structured response parsing failed") from exc
+
+
+# ---------------------------------------------------------------------------
+# OllamaEmbeddingModel — DeepEvalBaseEmbeddingModel wrapper
+# ---------------------------------------------------------------------------
+
+
+class OllamaEmbeddingModel(DeepEvalBaseEmbeddingModel):
+    """DeepEval embedding model backed by Ollama's /api/embed endpoint.
+
+    Uses the same OLLAMA_BASE_URL as OllamaJudge so no additional config
+    is required.  Default model is ``nomic-embed-text``.
+    """
+
+    _EMBED_TIMEOUT = 120.0
+
+    def __init__(self, model_name: str = "nomic-embed-text") -> None:
+        self._base_url = OLLAMA_BASE_URL
+        # super().__init__ sets self.model_name and calls self.load_model()
+        super().__init__(model_name)
+
+    # -- DeepEvalBaseEmbeddingModel contract --------------------------------
+
+    def load_model(self):
+        # Ollama is a remote service; nothing to load locally.
+        return self
+
+    def get_model_name(self) -> str:
+        return self.model_name
+
+    # -- Internal HTTP helpers ----------------------------------------------
+
+    def _call_embed(self, texts: List[str]) -> List[List[float]]:
+        with httpx.Client(timeout=self._EMBED_TIMEOUT) as client:
+            resp = client.post(
+                f"{self._base_url}/api/embed",
+                json={"model": self.model_name, "input": texts},
+            )
+            resp.raise_for_status()
+            return resp.json()["embeddings"]
+
+    async def _a_call_embed(self, texts: List[str]) -> List[List[float]]:
+        async with httpx.AsyncClient(timeout=self._EMBED_TIMEOUT) as client:
+            resp = await client.post(
+                f"{self._base_url}/api/embed",
+                json={"model": self.model_name, "input": texts},
+            )
+            resp.raise_for_status()
+            return resp.json()["embeddings"]
+
+    # -- Public embedding interface -----------------------------------------
+
+    def embed_text(self, text: str) -> List[float]:
+        return self._call_embed([text])[0]
+
+    def embed_texts(self, texts: List[str]) -> List[List[float]]:
+        return self._call_embed(texts)
+
+    async def a_embed_text(self, text: str) -> List[float]:
+        result = await self._a_call_embed([text])
+        return result[0]
+
+    async def a_embed_texts(self, texts: List[str]) -> List[List[float]]:
+        return await self._a_call_embed(texts)

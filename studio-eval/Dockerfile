@@ -7,6 +7,8 @@ ARG no_proxy
 ENV http_proxy=${http_proxy}
 ENV https_proxy=${https_proxy}
 ENV no_proxy=${no_proxy}
+ENV DEEPEVAL_TELEMETRY_OPT_OUT=YES
+ENV DEEPEVAL_UPDATE_WARNING_OPT_OUT=YES
 
 WORKDIR /app
 

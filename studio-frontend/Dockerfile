@@ -31,6 +31,7 @@ RUN pnpm install
 
 # Copy source code
 COPY . .
+COPY --from=sample_workflows . ./sample-workflows
 
 # Build the app (separate stage target so dev compose stops here)
 RUN pnpm build
@@ -70,6 +71,7 @@ WORKDIR /usr/src
 COPY --from=pruned /usr/src/package.json /usr/src/pnpm-workspace.yaml ./
 COPY --from=pruned /usr/src/packages ./packages
 COPY --from=pruned /usr/src/node_modules ./node_modules
+COPY --from=pruned /usr/src/sample-workflows ./sample-workflows
 
 EXPOSE 3000
 

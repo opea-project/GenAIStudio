@@ -1,9 +1,15 @@
 fastapi>=0.100.0,<0.200.0
 uvicorn[standard]>=0.23.0
-deepeval
+deepeval==2.5.5
 pandas>=2.0.0
 sqlalchemy>=2.0.0
 pymysql>=1.1.0
 httpx>=0.24.0
-pydantic==1.10.13
+pydantic>=2.0,<3.0
 cryptography>=41.0.0
+python-multipart>=0.0.7
+chromadb==1.5.8
+langchain>=0.2.0,<1.0.0
+langchain-core>=0.2.0,<1.0.0
+langchain-community>=0.2.0,<1.0.0
+pypdf>=3.0.0
