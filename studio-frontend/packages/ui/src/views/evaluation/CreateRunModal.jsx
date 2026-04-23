@@ -34,6 +34,9 @@ import { IconX, IconChevronDown, IconChevronUp } from '@tabler/icons-react'
 import evaluationApi from '@/api/evaluation'
 import chatflowsApi from '@/api/chatflows'
 
+// Components
+import ModelSelect from './ModelSelect'
+
 const METRICS = [
     'AnswerRelevancy',
     'Faithfulness',
@@ -157,6 +160,10 @@ const CreateRunModal = ({ open, onClose, onRunCreated }) => {
     const [systemPrompt, setSystemPrompt] = useState('You are a helpful assistant')
     const [temperature, setTemperature] = useState(0.4)
     const [maxTokens, setMaxTokens] = useState(100)
+
+    const fetchModels = () => {
+        evaluationApi.getModels().then((res) => setModels(res.data || [])).catch(() => {})
+    }
 
     useEffect(() => {
         if (!open) return
@@ -291,20 +298,14 @@ const CreateRunModal = ({ open, onClose, onRunCreated }) => {
                         </FormControl>
 
                         {/* Judge Model */}
-                        <FormControl fullWidth size='small'>
-                            <InputLabel>Judge Model</InputLabel>
-                            <Select
-                                label='Judge Model'
-                                value={judgeModel}
-                                onChange={(e) => setJudgeModel(e.target.value)}
-                            >
-                                {models.map((m) => (
-                                    <MenuItem key={m.id || m.name} value={m.id || m.name}>
-                                        {m.name || m.id}
-                                    </MenuItem>
-                                ))}
-                            </Select>
-                        </FormControl>
+                        <ModelSelect
+                            models={models}
+                            value={judgeModel}
+                            onChange={setJudgeModel}
+                            onModelsRefresh={fetchModels}
+                            disabled={submitting}
+                            label='Judge Model'
+                        />
 
                         {/* Metrics */}
                         <FormControl component='fieldset'>

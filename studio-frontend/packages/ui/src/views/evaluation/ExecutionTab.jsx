@@ -311,7 +311,7 @@ const ExecutionTab = ({ isVisible }) => {
         { id: 'run_id', label: 'Run ID' },
         { id: 'sandbox_id', label: 'Sandbox', sortable: false },
         { id: 'dataset_id', label: 'Dataset', sortable: false },
-        { id: 'model_name', label: 'Judge Model', sortable: false },
+        { id: 'model_name', label: 'Generator Model', sortable: false },
         { id: 'status', label: 'Status' },
         { id: 'eval_score', label: 'Eval Score', sortable: false },
         { id: 'created_at', label: 'Created At' },

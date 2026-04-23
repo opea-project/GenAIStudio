@@ -24,7 +24,7 @@ from app.models.eval_models import (
     SynthesizeFromDocRequest,
 )
 from app.services import dataset_service, eval_service
-from app.services.ollama_service import ensure_model, list_models
+from app.services.ollama_service import ensure_model, get_pull_status, list_models
 
 logger = logging.getLogger(__name__)
 
@@ -278,6 +278,12 @@ async def list_ollama_models():
     except Exception as exc:
         logger.error("Failed to reach Ollama: %s", exc)
         raise HTTPException(status_code=502, detail=f"Failed to reach Ollama: {exc}")
+
+
+@router.get("/models/pull/status")
+async def get_model_pull_status():
+    """Return current pull status for all models that have been requested."""
+    return get_pull_status()
 
 
 @router.post("/models/pull", status_code=202)

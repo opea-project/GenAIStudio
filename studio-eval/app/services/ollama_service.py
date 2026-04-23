@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+from datetime import datetime, timezone
 from typing import Any, List
 
 import httpx
@@ -93,7 +94,7 @@ def _parse_structured_response(schema, raw_response: str) -> Any:
 
 async def list_models() -> list:
     """Return the list of locally available Ollama models (GET /api/tags)."""
-    async with httpx.AsyncClient(timeout=30.0) as client:
+    async with httpx.AsyncClient(timeout=30.0, trust_env=False) as client:
         resp = await client.get(f"{OLLAMA_BASE_URL}/api/tags")
         resp.raise_for_status()
         return resp.json().get("models", [])
@@ -103,26 +104,121 @@ async def is_model_available(model_name: str) -> bool:
     """True if *model_name* is already present in Ollama."""
     try:
         models = await list_models()
-        target_base = model_name.split(":")[0]
+        normalized_target = model_name.strip()
+        target_with_default_tag = (
+            normalized_target
+            if ":" in normalized_target
+            else f"{normalized_target}:latest"
+        )
         for m in models:
-            name = m.get("name", "")
-            if name == model_name or name.split(":")[0] == target_base:
+            name = (m.get("name", "") or "").strip()
+            if name == normalized_target or name == target_with_default_tag:
                 return True
         return False
     except Exception:
         return False
 
 
+# ---------------------------------------------------------------------------
+# Pull status tracker  (in-memory; reset on pod restart)
+# ---------------------------------------------------------------------------
+
+# model_name → pull-status snapshot used by the UI poller
+_pull_status: dict[str, dict] = {}
+
+
+def _utc_timestamp() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def _set_pull_status(model_name: str, **fields) -> None:
+    current = _pull_status.get(model_name, {})
+    _pull_status[model_name] = {
+        **current,
+        **fields,
+        "updated_at": _utc_timestamp(),
+    }
+
+
+def get_pull_status() -> dict[str, dict]:
+    """Return a shallow copy of the current pull status map."""
+    return dict(_pull_status)
+
+
 async def pull_model(model_name: str) -> None:
     """Pull *model_name* from the Ollama registry; blocks until complete."""
     logger.info("Pulling Ollama model: %s", model_name)
-    async with httpx.AsyncClient(timeout=OLLAMA_PULL_TIMEOUT) as client:
-        resp = await client.post(
-            f"{OLLAMA_BASE_URL}/api/pull",
-            json={"name": model_name, "stream": False},
+    _set_pull_status(
+        model_name,
+        status="pulling",
+        detail="Preparing download",
+        error=None,
+        completed=None,
+        total=None,
+        digest=None,
+    )
+
+    try:
+        async with httpx.AsyncClient(timeout=OLLAMA_PULL_TIMEOUT, trust_env=False) as client:
+            async with client.stream(
+                "POST",
+                f"{OLLAMA_BASE_URL}/api/pull",
+                json={"name": model_name, "stream": True},
+            ) as resp:
+                resp.raise_for_status()
+
+                async for line in resp.aiter_lines():
+                    if not line:
+                        continue
+
+                    event = json.loads(line)
+                    detail = event.get("status") or "Pulling model"
+                    completed = event.get("completed")
+                    total = event.get("total")
+                    digest = event.get("digest")
+
+                    _set_pull_status(
+                        model_name,
+                        status="pulling",
+                        detail=detail,
+                        error=None,
+                        completed=completed,
+                        total=total,
+                        digest=digest,
+                    )
+
+                    if event.get("error"):
+                        raise RuntimeError(str(event["error"]))
+
+                    if event.get("status") == "success":
+                        _set_pull_status(
+                            model_name,
+                            status="ready",
+                            detail="Pull complete",
+                            error=None,
+                            completed=completed,
+                            total=total,
+                            digest=digest,
+                        )
+
+        logger.info("Model pulled successfully: %s", model_name)
+        current = _pull_status.get(model_name, {})
+        if current.get("status") != "ready":
+            _set_pull_status(
+                model_name,
+                status="ready",
+                detail=current.get("detail") or "Pull complete",
+                error=None,
+            )
+    except Exception as exc:
+        logger.error("Failed to pull model '%s': %s", model_name, exc)
+        _set_pull_status(
+            model_name,
+            status="error",
+            detail="Pull failed",
+            error=str(exc),
         )
-        resp.raise_for_status()
-    logger.info("Model pulled successfully: %s", model_name)
+        raise
 
 
 async def ensure_model(model_name: str) -> None:
@@ -132,6 +228,15 @@ async def ensure_model(model_name: str) -> None:
         await pull_model(model_name)
     else:
         logger.debug("Model '%s' already available", model_name)
+        _set_pull_status(
+            model_name,
+            status="ready",
+            detail="Model already available",
+            error=None,
+            completed=None,
+            total=None,
+            digest=None,
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -186,7 +291,7 @@ class OllamaJudge(DeepEvalBaseLLM):
         if schema is not None:
             payload["format"] = _schema_to_ollama_format(schema)
 
-        with httpx.Client(timeout=self._timeout) as client:
+        with httpx.Client(timeout=self._timeout, trust_env=False) as client:
             resp = client.post(f"{self._base_url}/api/generate", json=payload)
             resp.raise_for_status()
             response_text = resp.json()["response"]
@@ -207,7 +312,7 @@ class OllamaJudge(DeepEvalBaseLLM):
         if schema is not None:
             payload["format"] = _schema_to_ollama_format(schema)
 
-        async with httpx.AsyncClient(timeout=self._timeout) as client:
+        async with httpx.AsyncClient(timeout=self._timeout, trust_env=False) as client:
             resp = await client.post(
                 f"{self._base_url}/api/generate", json=payload
             )

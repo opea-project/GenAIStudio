@@ -14,12 +14,10 @@ import {
     FormControlLabel,
     FormControl,
     IconButton,
-    InputLabel,
     LinearProgress,
     Menu,
     MenuItem,
     Paper,
-    Select,
     Stack,
     Switch,
     Table,
@@ -43,6 +41,7 @@ import { IconChevronDown, IconEye, IconPlus, IconRefresh, IconTrash, IconWand, I
 import evaluationApi from '@/api/evaluation'
 import DatasetDetailDialog from './DatasetDetailDialog'
 import FileUploadArea from '@/ui-component/file/FileUploadArea'
+import ModelSelect from './ModelSelect'
 
 import { StyledButton } from '@/ui-component/button/StyledButton'
 
@@ -322,6 +321,10 @@ const SynthesizeModal = ({ open, onClose, onCreated, existingDatasetNames }) => 
     const [submitting, setSubmitting] = useState(false)
     const [error, setError] = useState('')
 
+    const fetchModels = () => {
+        evaluationApi.getModels().then((res) => setModels(res.data || [])).catch(() => {})
+    }
+
     useEffect(() => {
         if (!open) return
         setLoadingOptions(true)
@@ -454,16 +457,14 @@ const SynthesizeModal = ({ open, onClose, onCreated, existingDatasetNames }) => 
                             value={description}
                             onChange={(e) => setDescription(e.target.value)}
                         />
-                        <FormControl fullWidth size='small'>
-                            <InputLabel>Judge Model</InputLabel>
-                            <Select label='Judge Model' value={modelName} onChange={(e) => setModelName(e.target.value)}>
-                                {models.map((model) => (
-                                    <MenuItem key={model.id || model.name} value={model.id || model.name}>
-                                        {model.name || model.id}
-                                    </MenuItem>
-                                ))}
-                            </Select>
-                        </FormControl>
+                        <ModelSelect
+                            models={models}
+                            value={modelName}
+                            onChange={setModelName}
+                            onModelsRefresh={fetchModels}
+                            disabled={submitting}
+                            label='Generator Model'
+                        />
                         <TextField
                             label='Total Goldens'
                             size='small'

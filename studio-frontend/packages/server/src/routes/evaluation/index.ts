@@ -72,6 +72,11 @@ router.get('/models', (req: Request, res: Response, next: NextFunction) =>
     proxy('get', 'studio-backend/evaluation/models', req, res, next)
 )
 
+// GET /api/v1/evaluation/models/pull/status → studio-backend/evaluation/models/pull/status
+router.get('/models/pull/status', (req: Request, res: Response, next: NextFunction) =>
+    proxy('get', 'studio-backend/evaluation/models/pull/status', req, res, next)
+)
+
 // POST /api/v1/evaluation/models/pull → studio-backend/evaluation/models/pull
 router.post('/models/pull', (req: Request, res: Response, next: NextFunction) =>
     proxy('post', 'studio-backend/evaluation/models/pull', req, res, next)

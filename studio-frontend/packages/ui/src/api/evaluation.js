@@ -37,6 +37,9 @@ const evaluationApi = {
     // Pull/register a new judge model
     pullModel: (payload) => client.post('/evaluation/models/pull', payload),
 
+    // Get pull progress for all models currently being pulled
+    getPullStatus: () => client.get('/evaluation/models/pull/status'),
+
     // Check files in sandbox Data Management (dataprep)
     getSandboxDataManagementFiles: (payload) => client.post('/evaluation/sandbox-files', payload),
 
