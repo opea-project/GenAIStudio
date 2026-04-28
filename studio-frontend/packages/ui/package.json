@@ -33,7 +33,7 @@
         "@uiw/codemirror-theme-sublime": "^4.21.21",
         "@uiw/codemirror-theme-vscode": "^4.21.21",
         "@uiw/react-codemirror": "^4.21.21",
-        "axios": "1.12.0",
+        "axios": "1.15.0",
         "clsx": "^1.1.1",
         "dompurify": "^3.2.6",
         "dotenv": "^16.0.0",
@@ -45,7 +45,7 @@
         "history": "^5.0.0",
         "html-react-parser": "^3.0.4",
         "keycloak-js": "^26.0.5",
-        "lodash": "^4.17.21",
+        "lodash": "^4.18.1",
         "lowlight": "^3.3.0",
         "moment": "^2.29.3",
         "notistack": "^2.0.4",
@@ -72,7 +72,7 @@
         "showdown": "^2.1.0",
         "socket.io-client": "^4.6.1",
         "tippy.js": "^6.3.7",
-        "uuid": "^9.0.1",
+        "uuid": "^14.0.0",
         "yup": "^0.32.9"
     },
     "scripts": {
@@ -111,7 +111,7 @@
         "rimraf": "^5.0.5",
         "sass": "^1.42.1",
         "typescript": "^5.4.5",
-        "vite": "^5.0.2",
+        "vite": "^6.4.2",
         "vite-plugin-pwa": "^0.17.0",
         "vite-plugin-react-js-support": "^1.0.7"
     }
