@@ -3,3 +3,10 @@ test-results/
 **/report.html
 docker-compose
 **/node_modules/
+
+*.pyc
+
+.DS_Store
+.env.development
+__pycache__/
+*.pyc

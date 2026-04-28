@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 
 // material-ui
 import { Box, Skeleton, Stack, Input, Typography, Alert } from '@mui/material'
@@ -29,12 +30,13 @@ import { baseURL } from '@/store/constant'
 // icons
 import { IconPlus, IconLayoutGrid, IconList, IconSearch } from '@tabler/icons-react'
 
-//keycloak
+// keycloak
 import { useKeycloak } from '../../KeycloakContext'
 
 // ==============================|| OPEAFlows ||============================== //
 
 const Opeaflows = () => {
+    const { t } = useTranslation()
     const keycloak = useKeycloak()
     const navigate = useNavigate()
     const theme = useTheme()
@@ -47,22 +49,22 @@ const Opeaflows = () => {
     const [loginDialogOpen, setLoginDialogOpen] = useState(false)
     const [loginDialogProps, setLoginDialogProps] = useState({})
 
-    console.log ("roles", keycloak?.tokenParsed?.resource_access?.genaistudio?.roles[0])
+    console.log('roles', keycloak?.tokenParsed?.resource_access?.genaistudio?.roles[0])
     let userRole = keycloak?.tokenParsed?.resource_access?.genaistudio?.roles[0]
     let getAllOpeaflowsApi = null
+
     if (keycloak.authenticated) {
         getAllOpeaflowsApi = useApi(chatflowsApi.getAllOpeaflows)
 
         if (userRole === 'admin') {
             getAllOpeaflowsApi = useApi(chatflowsApi.getAllOpeaflows)
-            }
-        else if (userRole === 'user') {
-            getAllOpeaflowsApi = useApi(() => chatflowsApi.getUserOpeaflows(keycloak.tokenParsed.email));
-            console.log("email", keycloak.tokenParsed.email)
-            console.log ("get user opeaflows", getAllOpeaflowsApi)
+        } else if (userRole === 'user') {
+            getAllOpeaflowsApi = useApi(() => chatflowsApi.getUserOpeaflows(keycloak.tokenParsed.email))
+            console.log('email', keycloak.tokenParsed.email)
+            console.log('get user opeaflows', getAllOpeaflowsApi)
         }
     }
-     
+
     const stopSandboxApi = chatflowsApi.stopSandbox
     const updateFlowToServerApi = chatflowsApi.updateChatflow
     const [view, setView] = useState(localStorage.getItem('flowDisplayStyle') || 'list')
@@ -95,23 +97,25 @@ const Opeaflows = () => {
     }
 
     const importSamples = () => {
-        setLoading(true);
-        setImportError(null);
-        chatflowsApi.importSampleChatflowsbyUserId(keycloak.tokenParsed.email)
+        setLoading(true)
+        setImportError(null)
+        chatflowsApi
+            .importSampleChatflowsbyUserId(keycloak.tokenParsed.email)
             .then(() => {
-                getAllOpeaflowsApi.request();
-                setImportError(null);
+                getAllOpeaflowsApi.request()
+                setImportError(null)
             })
             .catch((error) => {
-                setLoading(false);
-                const errorMessage = error?.response?.data?.message || 
-                                    error?.message || 
-                                    'Failed to import sample workflows. Please try again later.';
-                setImportError(errorMessage);
-                console.error('Error importing sample chatflows:', error);
-            });
+                setLoading(false)
+                const errorMessage =
+                    error?.response?.data?.message ||
+                    error?.message ||
+                    'Failed to import sample workflows. Please try again later.'
+                setImportError(errorMessage)
+                console.error('Error importing sample chatflows:', error)
+            })
     }
-    
+
     const goToCanvas = (selectedChatflow) => {
         navigate(`/opeacanvas/${selectedChatflow.id}`)
     }
@@ -124,7 +128,7 @@ const Opeaflows = () => {
 
     useEffect(() => {
         if (getAllOpeaflowsApi.error) {
-            console.log ("error", getAllOpeaflowsApi.error)
+            console.log('error', getAllOpeaflowsApi.error)
             // if (getAllOpeaflowsApi.error?.response?.status === 401) {
             //     setLoginDialogProps({
             //         title: 'Login',
@@ -173,62 +177,69 @@ const Opeaflows = () => {
                 <Stack flexDirection='column' sx={{ gap: 3 }}>
                     {importError && (
                         <Alert severity='error' onClose={() => setImportError(null)} sx={{ mb: 2 }}>
-                            <strong>Import Failed:</strong> {importError}
+                            <strong>{t('opeaflows.importFailed', { defaultValue: 'Import Failed' })}:</strong> {importError}
                         </Alert>
                     )}
-                    <Box>
-                        <Typography 
-                            sx={{
-                                fontSize: '1.5rem',
-                                color: '#1162cc',
-                                fontWeight: 600,
-                                mb: 2,
-                                mt: 1.5
-                            }}
-                            variant='h1'
+
+                    <ViewHeader
+                        onSearchChange={onSearchChange}
+                        search={true}
+                        searchPlaceholder={t('opeaflows.searchPlaceholder')}
+                        title={t('opeaflows.title')}
+                    >
+                        {/* <ToggleButtonGroup
+                            sx={{ borderRadius: 2, maxHeight: 40 }}
+                            value={view}
+                            color='primary'
+                            exclusive
+                            onChange={handleChange}
                         >
-                            Workflows
-                        </Typography>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 2 }}>
-                        <Box sx={{ display: 'flex', gap: 2 }}>
-                            <StyledButton variant='contained' onClick={addNew} startIcon={<IconPlus />} sx={{ borderRadius: 2, height: 40, width: 250 }}>
-                                Create New Workflow
-                            </StyledButton>
-                            <StyledButton variant='contained' onClick={importSamples} startIcon={<IconPlus />} sx={{ borderRadius: 2, height: 40, width: 250 }}>
-                                Import Sample Workflows
-                            </StyledButton>
-                        </Box>
-                        
-                        <Input
-                            size='small'
-                            sx={{
-                                width: '280px',
-                                height: '40px',
-                                borderRadius: 2,
-                                '& .MuiOutlinedInput-notchedOutline': {
-                                    borderRadius: 2
-                                }
-                            }}
-                            placeholder='Search Name or Category'
-                            onChange={onSearchChange}
-                            value={search}
-                            endAdornment={
-                                <Box
-                                    sx={{
-                                        color: theme.palette.grey[400],
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        mr: 1
-                                    }}
-                                >
-                                    <IconSearch style={{ color: 'inherit', width: 16, height: 16 }} />
-                                </Box>
-                            }
-                            type='search'
-                        />
-                        </Box>
+                            <ToggleButton
+                                sx={{
+                                    borderColor: theme.palette.grey[900] + 25,
+                                    borderRadius: 2,
+                                    color: theme?.customization?.isDarkMode ? 'white' : 'inherit'
+                                }}
+                                variant='contained'
+                                value='card'
+                                title='Card View'
+                            >
+                                <IconLayoutGrid />
+                            </ToggleButton>
+                            <ToggleButton
+                                sx={{
+                                    borderColor: theme.palette.grey[900] + 25,
+                                    borderRadius: 2,
+                                    color: theme?.customization?.isDarkMode ? 'white' : 'inherit'
+                                }}
+                                variant='contained'
+                                value='list'
+                                title='List View'
+                            >
+                                <IconList />
+                            </ToggleButton>
+                        </ToggleButtonGroup> */}
+                    </ViewHeader>
+
+                    <Box sx={{ display: 'flex', gap: 2 }}>
+                        <StyledButton
+                            variant='contained'
+                            onClick={addNew}
+                            startIcon={<IconPlus />}
+                            sx={{ borderRadius: 2, height: 40, width: 250 }}
+                        >
+                            {t('opeaflows.createNew')}
+                        </StyledButton>
+                        <StyledButton
+                            variant='contained'
+                            onClick={importSamples}
+                            startIcon={<IconPlus />}
+                            sx={{ borderRadius: 2, height: 40, width: 250 }}
+                        >
+                            {t('opeaflows.importSamples')}
+                        </StyledButton>
                     </Box>
+
                     {!view || view === 'card' ? (
                         <>
                             {isLoading && !getAllOpeaflowsApi.data ? (
@@ -252,13 +263,14 @@ const Opeaflows = () => {
                             isLoading={isLoading}
                             filterFunction={filterFlows}
                             updateFlowsApi={getAllOpeaflowsApi}
-                            updateFlowToServerApi = {updateFlowToServerApi}
+                            updateFlowToServerApi={updateFlowToServerApi}
                             setError={setError}
                             stopSandboxApi={stopSandboxApi}
                             isOpeaCanvas={true}
                             userRole={userRole}
                         />
                     )}
+
                     {!isLoading && (!getAllOpeaflowsApi.data || getAllOpeaflowsApi.data.length === 0) && (
                         <Stack sx={{ alignItems: 'center', justifyContent: 'center' }} flexDirection='column'>
                             <Box sx={{ p: 2, height: 'auto' }}>
@@ -268,7 +280,7 @@ const Opeaflows = () => {
                                     alt='WorkflowEmptySVG'
                                 />
                             </Box>
-                            <div>No Workflows Yet</div>
+                            <div>{t('opeaflows.noWorkflows')}</div>
                         </Stack>
                     )}
                 </Stack>

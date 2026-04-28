@@ -1,46 +1,14 @@
 import PropTypes from 'prop-types'
-import { useSelector, useDispatch } from 'react-redux'
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-
-// material-ui
-import { useTheme } from '@mui/material/styles'
-import { Avatar, Box, ButtonBase, Switch, Typography, IconButton, useMediaQuery } from '@mui/material'
-import { styled } from '@mui/material/styles'
+import { useTheme, styled } from '@mui/material/styles'
+import { Avatar, Box, ButtonBase, Switch, Button, IconButton, useMediaQuery } from '@mui/material'
 import MenuIcon from '@mui/icons-material/Menu'
-
-// project imports
-import LogoSection from '../LogoSection'
-// import ProfileSection from './ProfileSection'
-
-// assets
-// import { IconMenu2 } from '@tabler/icons-react'
-
-// store
-// import { SET_DARKMODE } from '@/store/actions'
-
-// keycloak context
-import LogoutIcon from '@mui/icons-material/Logout';
+import LogoutIcon from '@mui/icons-material/Logout'
 import { useKeycloak } from '../../../KeycloakContext'
+import { useTranslation } from 'react-i18next'
+import LogoSection from '../LogoSection'
+import GuideMenu from './GuideMenu'
 
-const LogoutButton = () => {
-    const keycloak = useKeycloak(); // Access the Keycloak instance
-
-    const handleLogout = () => {
-        keycloak.logout({
-            redirectUri: window.location.origin, // Redirect to the home page or desired URL after logout
-        });
-    };
-
-    return (
-        <ButtonBase onClick={handleLogout} sx={{ borderRadius: '12px', overflow: 'hidden' }}>
-            <LogoutIcon />
-        </ButtonBase>
-    );
-};
-
-// ==============================|| MAIN NAVBAR / HEADER ||============================== //
-
+// MUI 风格化开关（如有夜间模式需求，可保留）
 const MaterialUISwitch = styled(Switch)(({ theme }) => ({
     width: 62,
     height: 34,
@@ -88,54 +56,42 @@ const MaterialUISwitch = styled(Switch)(({ theme }) => ({
     }
 }))
 
-const Header = ({userId, handleLeftDrawerToggle}) => {
-    // console.log ('Header', userId)
+const Header = ({ userId, handleLeftDrawerToggle }) => {
     const theme = useTheme()
     const matchDownMd = useMediaQuery(theme.breakpoints.down('md'))
-    // const navigate = useNavigate()
+    const { i18n } = useTranslation()
+    const keycloak = useKeycloak()
 
-    // const customization = useSelector((state) => state.customization)
+    const handleLanguageChange = (lng) => {
+        i18n.changeLanguage(lng)
+    }
 
-    // const [isDark, setIsDark] = useState(customization.isDarkMode)
-    // const [isDark, setIsDark] = useState(false)
-    // const dispatch = useDispatch()
-
-    // const changeDarkMode = () => {
-    //     dispatch({ type: SET_DARKMODE, isDarkMode: !isDark })
-    //     setIsDark((isDark) => !isDark)
-    //     localStorage.setItem('isDarkMode', !isDark)
-    // }
-
-    // const signOutClicked = () => {
-    //     localStorage.removeItem('username')
-    //     localStorage.removeItem('password')
-    //     navigate('/', { replace: true })
-    //     navigate(0)
-    // }
+    const getAvatarLetters = (uid = '') => {
+        if (!uid || typeof uid !== 'string') return 'U'
+        if (uid.length === 1) return uid[0].toUpperCase()
+        return uid.slice(0, 2).toUpperCase()
+    }
 
     return (
         <>
-            {/* Container for logo and logout button */}
             <Box
                 sx={{
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'space-between', // Space between left and right
-                    width: '100%', // Full width of the parent container
+                    justifyContent: 'space-between',
+                    width: '100%'
                 }}
             >
-                {/* Left Section - Mobile menu + Logo */}
                 <Box
                     sx={{
                         display: 'flex',
                         alignItems: 'center',
                         gap: 2,
                         [theme.breakpoints.down('md')]: {
-                            gap: 1,
-                        },
+                            gap: 1
+                        }
                     }}
                 >
-                    {/* Mobile menu button */}
                     {matchDownMd && handleLeftDrawerToggle && (
                         <IconButton
                             onClick={handleLeftDrawerToggle}
@@ -149,25 +105,21 @@ const Header = ({userId, handleLeftDrawerToggle}) => {
                             <MenuIcon />
                         </IconButton>
                     )}
-                    
-                    {/* Logo - always visible on mobile, hidden on desktop in header */}
-                    <Box component="span" sx={{ display: { xs: 'block', md: 'none' } }}>
+
+                    <Box component='span' sx={{ display: { xs: 'block', md: 'none' } }}>
                         <LogoSection />
                     </Box>
-                    
-                    {/* Desktop logo - hidden on mobile */}
-                    <Box component="span" sx={{ display: { xs: 'none', md: 'block' } }}>
+
+                    <Box component='span' sx={{ display: { xs: 'none', md: 'block' } }}>
                         <LogoSection />
                     </Box>
                 </Box>
 
-                
-                {/* Logout Button */}
                 <Box
                     sx={{
                         display: 'flex',
                         alignItems: 'center',
-                        gap: 2,
+                        gap: 2
                     }}
                 >
                     <Avatar
@@ -177,24 +129,63 @@ const Header = ({userId, handleLeftDrawerToggle}) => {
                             ...theme.typography.mediumAvatar,
                             transition: 'all .2s ease-in-out',
                             background: theme.palette.secondary.light,
-                            color: theme.palette.secondary.dark,
+                            color: theme.palette.secondary.dark
                         }}
                         color='inherit'
                     >
-                        {/* {...stringAvatar(userId)} */}
-                        {userId[0].toUpperCase()}{userId[1].toUpperCase()}
+                        {getAvatarLetters(userId)}
                     </Avatar>
 
-                    <LogoutButton />
+                    <GuideMenu />
+
+                    <Button
+                        size='small'
+                        variant={i18n.language === 'zh' ? 'contained' : 'outlined'}
+                        onClick={() => handleLanguageChange('zh')}
+                        sx={{
+                            minWidth: 68,
+                            height: 35,
+                            fontWeight: 400,
+                            borderRadius: 2,
+                            boxShadow: '0 2px 8px 0 #1d5de780',
+                            mr: 1,
+                            px: 0,
+                            ml: 1
+                        }}
+                    >
+                        中文
+                    </Button>
+
+                    <Button
+                        variant={i18n.language === 'en' ? 'contained' : 'outlined'}
+                        onClick={() => handleLanguageChange('en')}
+                        sx={{
+                            minWidth: 68,
+                            height: 35,
+                            fontWeight: 400,
+                            borderRadius: 2,
+                            boxShadow: '0 2px 8px 0 #1d5de780',
+                            px: 0
+                        }}
+                    >
+                        EN
+                    </Button>
+
+                    <ButtonBase
+                        onClick={() => keycloak.logout({ redirectUri: window.location.origin })}
+                        sx={{ borderRadius: '12px', overflow: 'hidden', ml: 1 }}
+                    >
+                        <LogoutIcon />
+                    </ButtonBase>
                 </Box>
             </Box>
         </>
-
     )
 }
 
 Header.propTypes = {
-    handleLeftDrawerToggle: PropTypes.func
+    handleLeftDrawerToggle: PropTypes.func,
+    userId: PropTypes.string
 }
 
 export default Header
