@@ -44,11 +44,29 @@ export default defineConfig(async ({ mode }) => {
         },
         server: {
             open: true,
-            proxy,
+            // proxy,
             port: process.env.VITE_PORT ?? 8088,
             host: process.env.VITE_HOST ?? '0.0.0.0',
             watch: {
                 usePolling: true
+            },
+            host: process.env.VITE_HOST ?? '0.0.0.0',
+            proxy: {
+                '/api': {
+                    target: 'http://localhost:3000',
+                    changeOrigin: true
+                },
+                '/socket.io': {
+                    target: 'http://localhost:3000',
+                    changeOrigin: true,
+                    ws: true
+                },
+                // 👉 把所有 /auth/** 请求都转给 Keycloak
+                '/auth': {
+                    target: 'http://localhost:8080',
+                    changeOrigin: true,
+                    rewrite: (path) => path.replace(/^\/auth/, '/auth'),
+                }
             }
         }
     }

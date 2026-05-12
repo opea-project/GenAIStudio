@@ -6,3 +6,6 @@ docker-compose
 **/node_modules/
 **.venv/
 **pycache**/
+.DS_Store
+.env.development
+*.pyc

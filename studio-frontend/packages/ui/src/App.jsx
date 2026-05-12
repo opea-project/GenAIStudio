@@ -6,6 +6,7 @@ import themes from '@/themes';
 import NavigationScroll from '@/layout/NavigationScroll';
 import KeycloakProvider from './KeycloakContext'; // Import the updated KeycloakProvider
 
+import './i18n';
 const App = () => {
     const customization = useSelector((state) => state.customization);
 
