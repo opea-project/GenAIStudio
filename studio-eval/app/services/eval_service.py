@@ -100,13 +100,11 @@ def _get_metric_classes() -> dict:
         from deepeval.metrics import (  # noqa: PLC0415
             AnswerRelevancyMetric,
             FaithfulnessMetric,
-            HallucinationMetric,
         )
 
         _METRIC_CLASSES = {
             "AnswerRelevancy": AnswerRelevancyMetric,
             "Faithfulness": FaithfulnessMetric,
-            "Hallucination": HallucinationMetric,
         }
     return _METRIC_CLASSES
 

@@ -6,7 +6,6 @@
 services:
 
   studio-frontend:
-    image: studio-frontend:local
     build:
       context: ../../studio-frontend
       additional_contexts:

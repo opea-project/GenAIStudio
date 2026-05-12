@@ -48,7 +48,10 @@ def _parse_sse_token(payload: str) -> Optional[str]:
     except json.JSONDecodeError:
         return payload if payload else None
     if not isinstance(chunk, dict):
-        return None
+        # Raw token that happens to be a valid JSON literal (e.g. a number
+        # like 1 or 3.40).  Return the original payload text to preserve
+        # exact formatting (e.g. trailing zeros).
+        return payload.strip() if payload.strip() else None
     choices = chunk.get("choices", [])
     if not choices:
         return None
@@ -63,7 +66,11 @@ def _extract_sse_answer(body: str) -> Optional[str]:
         line = raw_line.rstrip("\r")
         if not line or not line.startswith("data:"):
             continue
-        payload = line[6:]  # skip "data: " (preserve leading space in token)
+        # Strip the "data:" prefix.  Per SSE spec, a single space after the
+        # colon is optional and should be ignored if present.
+        payload = line[5:]  # skip "data:"
+        if payload.startswith(" "):
+            payload = payload[1:]  # strip the optional single leading space
         if payload.strip() == "[DONE]":
             break
         token = _parse_sse_token(payload)

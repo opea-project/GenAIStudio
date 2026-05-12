@@ -176,9 +176,9 @@ const RunDetailsModal = ({ open, onClose, runId }) => {
     const [selectedEntry, setSelectedEntry] = useState(null)
     const [drawerOpen, setDrawerOpen] = useState(false)
 
-    const handleOpenDrawer = (result, snapshotEntry) => {
+    const handleOpenDrawer = (result, snapshotEntry, entryNumber) => {
         setEntryTabValue(0)
-        setSelectedEntry({ ...result, _snapshotEntry: snapshotEntry })
+        setSelectedEntry({ ...result, _snapshotEntry: snapshotEntry, _entryNumber: entryNumber })
         setDrawerOpen(true)
     }
 
@@ -591,22 +591,23 @@ const RunDetailsModal = ({ open, onClose, runId }) => {
                                                     </TableHead>
                                                     <TableBody>
                                                         {(() => {
-                                                            return run.results.map((result) => {
+                                                            return run.results.map((result, index) => {
                                                                 const snapshotEntry = snapshotMap[result.entry_id]
                                                                 const orderedMetricEntries = getOrderedMetricEntries(run, result)
                                                                 const failReasons = getResultReasons(run, result)
                                                                 const failReasonText = failReasons.join('\n')
                                                                 const expectedOutput = getExpectedOutput(result, snapshotEntry)
+                                                                const entryNumber = index + 1
                                                                 return (
                                                                     <StyledTableRow 
                                                                         key={result.id}
                                                                         hover
-                                                                        onClick={() => handleOpenDrawer(result, snapshotEntry)}
+                                                                        onClick={() => handleOpenDrawer(result, snapshotEntry, entryNumber)}
                                                                         sx={{ cursor: 'pointer' }}
                                                                     >
                                                                         <StyledTableCell>
                                                                             <Typography variant='caption' sx={{ fontFamily: 'monospace' }}>
-                                                                                #{result.entry_id}
+                                                                                #{entryNumber}
                                                                             </Typography>
                                                                         </StyledTableCell>
                                                                         <StyledTableCell sx={{ position: 'relative', p: 0, overflow: 'hidden' }}>
@@ -724,6 +725,49 @@ const RunDetailsModal = ({ open, onClose, runId }) => {
 
                 <TabPanel value={tabValue} index={1}>
                     <Box sx={{ width: '100%' }}>
+                        <Stack spacing={3}>
+                        {/* Advanced / Request Settings */}
+                        <Box>
+                            <Typography variant='h6' sx={{ mb: 1.5 }}>
+                                Advanced Settings (Request Parameters)
+                            </Typography>
+                            <Paper sx={{ p: 2, bgcolor: theme.palette.mode === 'dark' ? 'grey.900' : 'grey.50' }}>
+                                <Stack spacing={1.5}>
+                                    <Box>
+                                        <Typography variant='caption' color='textSecondary'>
+                                            System Prompt
+                                        </Typography>
+                                        <Typography
+                                            variant='body2'
+                                            sx={{ mt: 0.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'monospace', fontSize: '0.82rem' }}
+                                        >
+                                            {run.system_prompt || '—'}
+                                        </Typography>
+                                    </Box>
+                                    <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+                                        <Box>
+                                            <Typography variant='caption' color='textSecondary'>
+                                                Temperature
+                                            </Typography>
+                                            <Typography variant='body2'>
+                                                {run.temperature !== null && run.temperature !== undefined ? run.temperature : '—'}
+                                            </Typography>
+                                        </Box>
+                                        <Box>
+                                            <Typography variant='caption' color='textSecondary'>
+                                                Max Tokens
+                                            </Typography>
+                                            <Typography variant='body2'>
+                                                {run.max_tokens !== null && run.max_tokens !== undefined ? run.max_tokens : '—'}
+                                            </Typography>
+                                        </Box>
+                                    </Box>
+                                </Stack>
+                            </Paper>
+                        </Box>
+
+                        {/* Sandbox Workflow Configuration */}
+                        <Box>
                         <Typography variant='h6' sx={{ mb: 1.5 }}>
                             Sandbox Workflow Configuration
                         </Typography>
@@ -761,11 +805,9 @@ const RunDetailsModal = ({ open, onClose, runId }) => {
                                                         <Stack spacing={0.25} sx={{ mt: 0.5 }}>
                                                             {displayInputs.map(([key, val]) => (
                                                                 <Box key={key} sx={{ fontSize: '0.8rem' }}>
-                                                                    <Typography variant='caption' component='div'>
+                                                                    <Typography variant='caption' component='div' sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
                                                                         <strong>{paramLabels[key] || key}:</strong>{' '}
-                                                                        {typeof val === 'boolean'
-                                                                            ? String(val)
-                                                                            : truncateText(String(val), 60)}
+                                                                        {String(val)}
                                                                     </Typography>
                                                                 </Box>
                                                             ))}
@@ -823,6 +865,8 @@ const RunDetailsModal = ({ open, onClose, runId }) => {
                                 </Box>
                             </Stack>
                         </Paper>
+                        </Box>
+                        </Stack>
                     </Box>
                 </TabPanel>
             </Box>
@@ -844,7 +888,7 @@ const RunDetailsModal = ({ open, onClose, runId }) => {
             {selectedEntry && (
                 <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
-                        <Typography variant="h6">Entry #{selectedEntry.entry_id} Details</Typography>
+                        <Typography variant="h6">Entry #{selectedEntry._entryNumber ?? selectedEntry.entry_id} Details</Typography>
                         <IconButton onClick={handleCloseDrawer} size="small">
                             <IconX size={20} />
                         </IconButton>

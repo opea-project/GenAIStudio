@@ -5,6 +5,7 @@ import PropTypes from 'prop-types'
 import {
     Box,
     Button,
+    Checkbox,
     Chip,
     CircularProgress,
     Dialog,
@@ -46,7 +47,7 @@ import ModelSelect from './ModelSelect'
 import { StyledButton } from '@/ui-component/button/StyledButton'
 
 const DATASET_UPLOAD_TYPES = ['.json', '.jsonl']
-const SYNTHESIZE_UPLOAD_TYPES = ['.pdf', '.txt', '.docx']
+const SYNTHESIZE_UPLOAD_TYPES = ['.pdf', '.docx']
 
 const DEFAULT_SYNTHESIS_OPTIONS = {
     targetGoldens: 10,
@@ -234,7 +235,7 @@ const NewDatasetModal = ({ open, onClose, onCreated, existingDatasetNames }) => 
             onCreated && onCreated(res.data)
             handleClose()
         } catch (err) {
-            setError(err?.response?.data?.message || 'Failed to create dataset.')
+            setError(err?.response?.data?.message || err?.response?.data?.detail || 'Failed to create dataset.')
         } finally {
             setSubmitting(false)
         }
@@ -255,6 +256,7 @@ const NewDatasetModal = ({ open, onClose, onCreated, existingDatasetNames }) => 
                         acceptedTypes={DATASET_UPLOAD_TYPES}
                         maxSizeMB={25}
                         error={error === missingUploadError ? error : null}
+                        invalidTypeMessage='Only JSON (.json) and JSONL (.jsonl) files are supported for dataset import.'
                         title='Drop your dataset file here or click to browse'
                         subtitle={`Accepted types: ${getAcceptedFileLabel(DATASET_UPLOAD_TYPES)}. JSON can be an array of entries or an object with an entries array.`}
                         buttonLabel={file ? 'Replace File' : 'Choose File'}
@@ -272,7 +274,7 @@ const NewDatasetModal = ({ open, onClose, onCreated, existingDatasetNames }) => 
                         size='small'
                         fullWidth
                         multiline
-                        rows={2}
+                        rows={1}
                         value={description}
                         onChange={(e) => setDescription(e.target.value)}
                     />
@@ -316,6 +318,7 @@ const SynthesizeModal = ({ open, onClose, onCreated, existingDatasetNames }) => 
     const [modelName, setModelName] = useState('')
     const [sourceFile, setSourceFile] = useState(null)
     const [options, setOptions] = useState(DEFAULT_SYNTHESIS_OPTIONS)
+    const [totalGoldensEnabled, setTotalGoldensEnabled] = useState(true)
     const [showAdvanced, setShowAdvanced] = useState(false)
     const [loadingOptions, setLoadingOptions] = useState(false)
     const [submitting, setSubmitting] = useState(false)
@@ -342,6 +345,7 @@ const SynthesizeModal = ({ open, onClose, onCreated, existingDatasetNames }) => 
         setModelName('')
         setSourceFile(null)
         setOptions(DEFAULT_SYNTHESIS_OPTIONS)
+        setTotalGoldensEnabled(true)
         setShowAdvanced(false)
         setError('')
         onClose()
@@ -383,6 +387,12 @@ const SynthesizeModal = ({ open, onClose, onCreated, existingDatasetNames }) => 
             return
         }
 
+        const parsedTargetGoldens = Number(options.targetGoldens)
+        if (totalGoldensEnabled && (!Number.isInteger(parsedTargetGoldens) || parsedTargetGoldens < 1 || parsedTargetGoldens > 200)) {
+            setError('Total Goldens must be an integer between 1 and 200.')
+            return
+        }
+
         setSubmitting(true)
         setError('')
         try {
@@ -391,7 +401,7 @@ const SynthesizeModal = ({ open, onClose, onCreated, existingDatasetNames }) => 
             formData.append('name', datasetName.trim())
             formData.append('model_name', modelName)
             formData.append('embed_model_name', 'nomic-embed-text')
-            formData.append('num_goldens', String(options.targetGoldens))
+            if (totalGoldensEnabled) formData.append('num_goldens', String(parsedTargetGoldens))
             formData.append('max_goldens_per_document', String(options.maxGoldensPerDocument))
             formData.append('max_contexts', String(options.maxContexts))
             formData.append('min_contexts', String(options.minContexts))
@@ -410,7 +420,7 @@ const SynthesizeModal = ({ open, onClose, onCreated, existingDatasetNames }) => 
             onCreated && onCreated(res.data)
             handleClose()
         } catch (err) {
-            setError(err?.response?.data?.message || 'Failed to start synthesis.')
+            setError(err?.response?.data?.message || err?.response?.data?.detail || 'Failed to start synthesis.')
         } finally {
             setSubmitting(false)
         }
@@ -436,6 +446,7 @@ const SynthesizeModal = ({ open, onClose, onCreated, existingDatasetNames }) => 
                             acceptedTypes={SYNTHESIZE_UPLOAD_TYPES}
                             maxSizeMB={50}
                             error={error === missingSrcError ? error : null}
+                            invalidTypeMessage='Only PDF and Word (.docx) files are supported for dataset synthesis.'
                             title='Drop your source document here or click to browse'
                             subtitle={`Accepted types: ${getAcceptedFileLabel(SYNTHESIZE_UPLOAD_TYPES)}. Word uploads require .docx format.`}
                             buttonLabel={sourceFile ? 'Replace File' : 'Choose File'}
@@ -453,7 +464,7 @@ const SynthesizeModal = ({ open, onClose, onCreated, existingDatasetNames }) => 
                             size='small'
                             fullWidth
                             multiline
-                            rows={2}
+                            rows={1}
                             value={description}
                             onChange={(e) => setDescription(e.target.value)}
                         />
@@ -465,16 +476,36 @@ const SynthesizeModal = ({ open, onClose, onCreated, existingDatasetNames }) => 
                             disabled={submitting}
                             label='Generator Model'
                         />
-                        <TextField
-                            label='Total Goldens'
-                            size='small'
-                            fullWidth
-                            type='number'
-                            inputProps={{ min: 1, max: 200 }}
-                            value={options.targetGoldens}
-                            onChange={(e) => updateOption('targetGoldens', Number(e.target.value))}
-                            helperText='The synthesized dataset will contain exactly this many goldens.'
-                        />
+                        <Box>
+                            <FormControlLabel
+                                control={
+                                    <Checkbox
+                                        checked={totalGoldensEnabled}
+                                        onChange={(e) => setTotalGoldensEnabled(e.target.checked)}
+                                        size='small'
+                                    />
+                                }
+                                label='Set Total Goldens'
+                            />
+                            <TextField
+                                label='Total Goldens'
+                                size='small'
+                                fullWidth
+                                type='number'
+                                inputProps={{ min: 1, max: 200 }}
+                                value={options.targetGoldens}
+                                onChange={(e) => {
+                                    const nextValue = e.target.value
+                                    updateOption('targetGoldens', nextValue === '' ? '' : Number(nextValue))
+                                }}
+                                disabled={!totalGoldensEnabled}
+                                helperText={
+                                    totalGoldensEnabled
+                                        ? 'The synthesized dataset will contain exactly this many goldens.'
+                                        : 'Goldens will be up to Max Contexts × Max Goldens Per Document (see Advanced Settings), reduced by quality filtering.'
+                                }
+                            />
+                        </Box>
                         <Stack spacing={1} sx={{ pt: 1 }}>
                             <Button variant='text' onClick={() => setShowAdvanced((open) => !open)} sx={{ alignSelf: 'flex-start', px: 0 }}>
                                 {showAdvanced ? 'Hide Advanced Settings' : 'Show Advanced Settings'}
@@ -923,9 +954,9 @@ const DatasetTab = ({ isVisible }) => {
                                         <Box sx={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-start', gap: 0.5, width: '100%' }}>
                                             <StatusChip status={ds.status || 'completed'} error={ds.error} />
                                             {IN_PROGRESS_STATUSES.has(ds.status) && (() => {
-                                                const total = ds.target_goldens ?? 0
+                                                const total = ds.target_goldens ?? null
                                                 const completed = ds.completed_goldens ?? 0
-                                                const pct = total > 0 ? Math.round((completed / total) * 100) : null
+                                                const pct = total !== null && total > 0 ? Math.round((completed / total) * 100) : null
                                                 return (
                                                     <Box sx={{ width: '100%', minWidth: 80 }}>
                                                         <LinearProgress
@@ -934,11 +965,16 @@ const DatasetTab = ({ isVisible }) => {
                                                             value={pct ?? undefined}
                                                             sx={{ borderRadius: 1 }}
                                                         />
-                                                        {pct !== null && (
-                                                            <Typography variant='caption' color='text.secondary'>
-                                                                {completed}/{total} goldens ({pct}%)
+                                                        <Tooltip
+                                                            title='Target is an upper bound — actual count may be lower due to quality filtering.'
+                                                            placement='bottom-start'
+                                                        >
+                                                            <Typography variant='caption' color='text.secondary' sx={{ cursor: 'default' }}>
+                                                                {pct !== null
+                                                                    ? `${completed}/${total} goldens (${pct}%)`
+                                                                    : `${completed} goldens`}
                                                             </Typography>
-                                                        )}
+                                                        </Tooltip>
                                                     </Box>
                                                 )
                                             })()}

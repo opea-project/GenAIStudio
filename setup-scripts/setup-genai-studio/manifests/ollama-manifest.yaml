@@ -57,6 +57,12 @@ spec:
         env:
         - name: OLLAMA_HOST
           value: "0.0.0.0"
+        - name: OLLAMA_KEEP_ALIVE
+          value: "24h"
+        - name: OLLAMA_MAX_LOADED_MODELS
+          value: "2"
+        - name: OLLAMA_NUM_PARALLEL
+          value: "2"
         - name: HTTP_PROXY
           value: "${HTTP_PROXY}"
         - name: HTTPS_PROXY
@@ -66,10 +72,10 @@ spec:
         resources:
           requests:
             memory: "12Gi"
-            cpu: "2"
+            cpu: "4"
           limits:
             memory: "32Gi"
-            cpu: "8"
+            cpu: "16"
         volumeMounts:
         - name: ollama-models
           mountPath: /root/.ollama

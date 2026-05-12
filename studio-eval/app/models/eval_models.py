@@ -10,7 +10,6 @@ from pydantic import BaseModel, ConfigDict, field_validator
 SUPPORTED_METRICS: Set[str] = {
     "AnswerRelevancy",
     "Faithfulness",
-    "Hallucination",
 }
 
 # ---------------------------------------------------------------------------
@@ -191,7 +190,7 @@ class SynthesizeFromDocRequest(BaseModel):
     description: Optional[str] = None
     model_name: str
     embed_model_name: str = "nomic-embed-text"
-    target_goldens: int = 10
+    target_goldens: Optional[int] = None
     max_goldens_per_context: int = 2
     max_contexts: int = 5
     max_context_length: int = 3
@@ -206,7 +205,7 @@ class SynthesizeFromDocRequest(BaseModel):
     @field_validator("target_goldens")
     @classmethod
     def target_goldens_positive(cls, v):
-        if v < 1:
+        if v is not None and v < 1:
             raise ValueError("target_goldens must be >= 1")
         return v
 

@@ -33,7 +33,6 @@ _cancelled_datasets: set = set()
 _synthesis_tasks: Dict[str, asyncio.Task] = {}
 _synthesis_processes: Dict[str, multiprocessing.Process] = {}
 
-
 def request_dataset_cancellation(dataset_id: str) -> None:
     """Signal the background synthesis job for *dataset_id* to exit at its next checkpoint."""
     _cancelled_datasets.add(dataset_id)
@@ -107,6 +106,21 @@ def _goldens_to_records(goldens: list) -> List[Dict[str, Any]]:
     ]
 
 
+def _update_golden_progress(db: Session, dataset_id: str, completed_goldens: int) -> None:
+    """Persist the current golden count so the UI can poll progress."""
+    try:
+        dataset = db.query(EvalDataset).filter(EvalDataset.id == dataset_id).first()
+        if dataset and dataset.status == "synthesizing":
+            dataset.completed_goldens = completed_goldens
+            db.commit()
+    except Exception:
+        logger.debug("Failed to update golden progress for %s", dataset_id, exc_info=True)
+        try:
+            db.rollback()
+        except Exception:
+            pass
+
+
 def _start_synthesis_process(
     dataset_id: str,
     tmp_path: str,
@@ -146,20 +160,75 @@ async def _wait_for_synthesis_process_result(
     dataset_id: str,
     process: multiprocessing.Process,
     result_queue,
+    db: Optional[Session] = None,
 ) -> Dict[str, Any]:
-    while process.is_alive():
+    """Consume messages from the synthesis child process.
+
+    The child sends:
+    * ``{"type": "progress", "completed_goldens": N, "batch": [...]}``
+      after each context's goldens are generated.
+    * ``{"type": "done"}`` when generation finishes successfully.
+    * ``{"type": "error", "message": "..."}`` on failure.
+
+    Legacy callers that send a single ``{"records": [...]}`` or
+    ``{"error": "..."}`` dict are still supported.
+    """
+    all_records: List[Dict[str, Any]] = []
+
+    while True:
         if dataset_id in _cancelled_datasets:
             raise asyncio.CancelledError()
-        await asyncio.sleep(0.25)
 
+        try:
+            msg = await asyncio.to_thread(result_queue.get, True, 0.25)
+        except Empty:
+            if process.is_alive():
+                continue
+            # Process exited without a message — fall through to drain.
+            break
+
+        msg_type = msg.get("type")
+
+        if msg_type == "progress":
+            batch = msg.get("batch") or []
+            all_records.extend(batch)
+            completed = msg.get("completed_goldens", len(all_records))
+            if db is not None:
+                _update_golden_progress(db, dataset_id, completed)
+            continue
+
+        if msg_type == "done":
+            await asyncio.to_thread(process.join, 1)
+            return {"records": all_records}
+
+        if msg_type == "error":
+            await asyncio.to_thread(process.join, 1)
+            return {"error": msg.get("message", "Unknown error")}
+
+        # Legacy single-shot protocol (no "type" key).
+        await asyncio.to_thread(process.join, 1)
+        return msg
+
+    # Process died — try to drain one last message.
     await asyncio.to_thread(process.join, 1)
 
     try:
-        return await asyncio.to_thread(result_queue.get, True, 1)
-    except Empty as exc:
-        if process.exitcode in (0, None):
-            raise RuntimeError("Synthesis process exited without returning results") from exc
-        raise RuntimeError(f"Synthesis process exited with code {process.exitcode}") from exc
+        msg = await asyncio.to_thread(result_queue.get, True, 1)
+        if msg.get("type") == "error":
+            return {"error": msg.get("message", "Unknown error")}
+        if msg.get("type") == "progress":
+            all_records.extend(msg.get("batch") or [])
+        elif "records" in msg or "error" in msg:
+            return msg
+    except Empty:
+        pass
+
+    if all_records:
+        return {"records": all_records}
+
+    if process.exitcode in (0, None):
+        raise RuntimeError("Synthesis process exited without returning results")
+    raise RuntimeError(f"Synthesis process exited with code {process.exitcode}")
 
 
 # ---------------------------------------------------------------------------
@@ -301,9 +370,13 @@ def _run_synthesizer(payload: SynthesizeRequest, judge: OllamaJudge, contexts: L
 
 
 def _resolve_doc_generation_limits(payload: SynthesizeFromDocRequest) -> tuple[int, int]:
-    target_goldens = max(payload.target_goldens, 1)
     max_contexts = max(payload.max_contexts, 1)
     max_goldens_per_context = max(payload.max_goldens_per_context, 1)
+
+    if payload.target_goldens is None:
+        return max_contexts, max_goldens_per_context
+
+    target_goldens = max(payload.target_goldens, 1)
     best_plan: Optional[tuple[int, int]] = None
     best_total: Optional[int] = None
 
@@ -331,8 +404,14 @@ def _run_synthesizer_from_docs(
     payload: SynthesizeFromDocRequest,
     judge: OllamaJudge,
     embedder: OllamaEmbeddingModel,
+    progress_queue=None,
 ) -> list:
-    """Blocking call to DeepEval Synthesizer.generate_goldens_from_docs — run via asyncio.to_thread."""
+    """Blocking call to DeepEval Synthesizer.generate_goldens_from_docs.
+
+    When *progress_queue* is provided the synthesizer processes one context
+    at a time and pushes a progress message after each context so the parent
+    process can update the DB (and therefore the UI) incrementally.
+    """
     ensure_pydantic_v2_apis()
     from app.compat import patch_deepeval_document_chunker  # noqa: PLC0415
     patch_deepeval_document_chunker()
@@ -343,7 +422,35 @@ def _run_synthesizer_from_docs(
         FiltrationConfig,
     )
 
-    synthesizer = Synthesizer(
+    # When a progress queue is available, subclass the synthesizer so that
+    # ``generate_goldens_from_contexts`` runs one context at a time and
+    # sends each batch through the queue as a small message (avoiding the
+    # pipe-buffer deadlock that occurs when the full result set is sent in
+    # a single ``queue.put``).
+    if progress_queue is not None:
+        class _ProgressSynthesizer(Synthesizer):  # noqa: N801
+            def generate_goldens_from_contexts(self, contexts, *args, **kwargs):
+                all_goldens = []
+                for context in contexts:
+                    batch = super().generate_goldens_from_contexts(
+                        [context], *args, **kwargs
+                    )
+                    all_goldens.extend(batch)
+                    try:
+                        progress_queue.put({
+                            "type": "progress",
+                            "completed_goldens": len(all_goldens),
+                            "batch": _goldens_to_records(batch),
+                        })
+                    except Exception:
+                        pass
+                return all_goldens
+
+        SynthesizerClass = _ProgressSynthesizer
+    else:
+        SynthesizerClass = Synthesizer
+
+    synthesizer = SynthesizerClass(
         model=judge,
         async_mode=payload.async_mode,
         max_concurrent=payload.max_concurrent,
@@ -379,12 +486,17 @@ def _run_synthesizer_from_docs_worker(
     embedder = OllamaEmbeddingModel(model_name=payload.embed_model_name)
 
     try:
-        goldens = _run_synthesizer_from_docs(tmp_path, payload, judge, embedder)
-        result_queue.put({"records": _goldens_to_records(goldens)})
+        # progress_queue=result_queue makes the synthesizer send small
+        # per-context batches instead of one giant payload at the end,
+        # which avoids the pipe-buffer deadlock.
+        _run_synthesizer_from_docs(
+            tmp_path, payload, judge, embedder, progress_queue=result_queue,
+        )
+        result_queue.put({"type": "done"})
     except Exception as exc:
         message = str(exc).strip() or exc.__class__.__name__
         logger.exception("Document synthesis worker failed for %s", tmp_path)
-        result_queue.put({"error": message})
+        result_queue.put({"type": "error", "message": message})
 
 
 async def synthesize_dataset(db: Session, payload: SynthesizeRequest) -> EvalDataset:
@@ -491,7 +603,15 @@ async def run_synthesis_background(
         dataset.status = "synthesizing"
         dataset.total_contexts = 0
         dataset.completed_contexts = 0
-        dataset.target_goldens = payload.target_goldens
+        # When target_goldens is not set by the user, use the computed maximum
+        # (max_contexts × max_goldens_per_context) so the UI progress bar
+        # always has a denominator.  DeepEval may produce fewer goldens than
+        # this estimate (quality filtering), so it is only an upper bound.
+        dataset.target_goldens = (
+            payload.target_goldens
+            if payload.target_goldens is not None
+            else payload.max_contexts * payload.max_goldens_per_context
+        )
         dataset.completed_goldens = 0
         db.commit()
 
@@ -515,7 +635,7 @@ async def run_synthesis_background(
             tmp_path = tmp.name
 
         logger.info(
-            "Background synthesis for dataset %s '%s': embed=%s, file=%s, target=%d",
+            "Background synthesis for dataset %s '%s': embed=%s, file=%s, target=%s",
             dataset_id, payload.name, payload.embed_model_name, tmp_path, payload.target_goldens,
         )
 
@@ -526,7 +646,9 @@ async def run_synthesis_background(
             return
 
         synthesis_process, result_queue = _start_synthesis_process(dataset_id, tmp_path, payload)
-        worker_result = await _wait_for_synthesis_process_result(dataset_id, synthesis_process, result_queue)
+        worker_result = await _wait_for_synthesis_process_result(
+            dataset_id, synthesis_process, result_queue, db=db,
+        )
 
         if worker_result.get("error"):
             raise RuntimeError(worker_result["error"])

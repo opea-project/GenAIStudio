@@ -29,6 +29,7 @@ const FileUploadArea = ({
     acceptedTypes = ['.json', '.jsonl', '.csv'], 
     maxSizeMB = 10, 
     error = null,
+    invalidTypeMessage,
     title = 'Drop your training dataset file here or click to browse',
     subtitle,
     buttonLabel = 'Choose File'
@@ -50,7 +51,7 @@ const FileUploadArea = ({
         // Check file type
         const fileExtension = '.' + file.name.split('.').pop().toLowerCase()
         if (!acceptedTypes.includes(fileExtension)) {
-            errors.push(`File type ${fileExtension} not supported. Accepted types: ${acceptedTypes.join(', ')}`)
+            errors.push(invalidTypeMessage || `File type ${fileExtension} not supported. Accepted types: ${acceptedTypes.join(', ')}`)
         }
 
         // Check file size
@@ -317,6 +318,7 @@ FileUploadArea.propTypes = {
     acceptedTypes: PropTypes.arrayOf(PropTypes.string),
     maxSizeMB: PropTypes.number,
     error: PropTypes.string,
+    invalidTypeMessage: PropTypes.string,
     title: PropTypes.string,
     subtitle: PropTypes.string,
     buttonLabel: PropTypes.string

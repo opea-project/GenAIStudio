@@ -30,6 +30,17 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/eval", tags=["eval"])
 
+ALLOWED_SYNTHESIS_FILE_EXTENSIONS = {".pdf", ".docx"}
+
+def _resolve_synthesis_file_ext(filename: Optional[str]) -> str:
+    file_ext = Path(filename).suffix.lower() if filename else ".pdf"
+    if file_ext not in ALLOWED_SYNTHESIS_FILE_EXTENSIONS:
+        allowed = ", ".join(sorted(ALLOWED_SYNTHESIS_FILE_EXTENSIONS))
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported file type '{file_ext}'. Supported types: {allowed}",
+        )
+    return file_ext
 
 # ---------------------------------------------------------------------------
 # Eval runs
@@ -97,7 +108,7 @@ async def synthesize_dataset(
     model_name: str = Form(...),
     embed_model_name: str = Form("nomic-embed-text"),
     description: Optional[str] = Form(None),
-    num_goldens: int = Form(10),
+    num_goldens: Optional[int] = Form(None),
     max_goldens_per_document: int = Form(2),
     max_contexts: int = Form(5),
     min_contexts: int = Form(1),
@@ -114,7 +125,7 @@ async def synthesize_dataset(
     and synthesize golden Q/A pairs with DeepEval in the background."""
     try:
         file_bytes = await file.read()
-        file_ext = Path(file.filename).suffix.lower() if file.filename else ".pdf"
+        file_ext = _resolve_synthesis_file_ext(file.filename)
 
         payload = SynthesizeFromDocRequest(
             name=name,
@@ -148,11 +159,17 @@ async def synthesize_dataset(
             completed_contexts=0,
             total_contexts=0,
             completed_goldens=0,
-            target_goldens=payload.target_goldens,
+            target_goldens=(
+                payload.target_goldens
+                if payload.target_goldens is not None
+                else payload.max_contexts * payload.max_goldens_per_context
+            ),
             created_at=dataset.created_at,
             updated_at=dataset.updated_at,
             entry_count=0,
         )
+    except HTTPException:
+        raise
     except Exception as exc:
         logger.error("Failed to create synthesis job: %s", exc)
         raise HTTPException(status_code=500, detail=str(exc))

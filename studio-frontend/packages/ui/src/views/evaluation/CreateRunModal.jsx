@@ -39,8 +39,7 @@ import ModelSelect from './ModelSelect'
 
 const METRICS = [
     'AnswerRelevancy',
-    'Faithfulness',
-    'Hallucination'
+    'Faithfulness'
 ]
 
 const sanitizeWorkflowNodes = (nodes = []) =>

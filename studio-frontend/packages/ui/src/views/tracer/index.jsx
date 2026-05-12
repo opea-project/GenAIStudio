@@ -5,11 +5,11 @@ import {
     Box,
     Chip,
     CircularProgress,
-    Divider,
     Drawer,
     IconButton,
     Paper,
     Stack,
+    Tab,
     Table,
     TableBody,
     TableCell,
@@ -17,6 +17,7 @@ import {
     TableHead,
     TablePagination,
     TableRow,
+    Tabs,
     Tooltip,
     Typography
 } from '@mui/material'
@@ -209,6 +210,7 @@ export default function LLMTraces() {
     const [rowsPerPage, setRowsPerPage] = useState(10)
     const [workflowName, setWorkflowName] = useState('')
     const [isLoadingTraces, setIsLoadingTraces] = useState(true)
+    const [selectedPayloadTab, setSelectedPayloadTab] = useState(0)
     const [isLoadingTraceDetails, setIsLoadingTraceDetails] = useState(false)
     const [traceError, setTraceError] = useState(null)
     const [traceDetailsError, setTraceDetailsError] = useState(null)
@@ -344,7 +346,8 @@ export default function LLMTraces() {
         return () => {
             isActive = false
         }
-    }, [paginatedTraceList, traceSummaryMap])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [page, rowsPerPage, searchValue, traceList])
 
     useEffect(() => {
         if (!selectedTraceId) {
@@ -439,15 +442,6 @@ export default function LLMTraces() {
                         Refresh
                     </StyledButton>
                 </ViewHeader>
-
-                <Paper sx={{ p: 2, bgcolor: theme.palette.mode === 'dark' ? 'grey.900' : 'grey.50' }}>
-                    <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', lg: 'repeat(4, 1fr)' }, gap: 2 }}>
-                        <MetadataField label='Workflow' value={workflowName || '—'} />
-                        <MetadataField label='Namespace' value={ns || '—'} monospace />
-                        <MetadataField label='Total Traces' value={String(traceList.length)} />
-                        <MetadataField label='Selected Trace' value={selectedTraceId || '—'} monospace />
-                    </Box>
-                </Paper>
 
                 {traceError && <Typography color='error'>{traceError}</Typography>}
 
@@ -582,171 +576,231 @@ export default function LLMTraces() {
                 sx={{ zIndex: (currentTheme) => currentTheme.zIndex.modal + 10 }}
                 PaperProps={{
                     sx: {
-                        width: { xs: '100%', sm: 680, md: 860 },
-                        p: 3,
-                        bgcolor: theme.palette.mode === 'dark' ? 'grey.900' : 'background.paper'
+                        width: { xs: '100%', sm: '85vw', md: '80vw' },
+                        p: 0,
+                        bgcolor: theme.palette.mode === 'dark' ? 'grey.900' : 'background.paper',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        overflow: 'hidden'
                     }
                 }}
             >
                 {selectedTraceId && (
-                    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-                            <Typography variant='h5'>Trace Details</Typography>
-                            <IconButton size='small' onClick={() => setSelectedTraceId(null)}>
-                                <IconX size={18} />
-                            </IconButton>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+                        {/* Drawer Header */}
+                        <Box
+                            sx={{
+                                px: 3,
+                                py: 2,
+                                borderBottom: 1,
+                                borderColor: 'divider',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                flexShrink: 0
+                            }}
+                        >
+                            <Box>
+                                <Typography variant='h5'>Trace Details</Typography>
+                                <Typography variant='caption' sx={{ fontFamily: 'monospace', color: 'text.secondary', mt: 0.25, display: 'block' }}>
+                                    ID: {selectedTraceId}
+                                </Typography>
+                            </Box>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                {selectedTraceSummary && (
+                                    <Stack direction='row' spacing={1} sx={{ mr: 1 }}>
+                                        <Chip label={`${selectedTraceSummary.totalSpans} spans`} size='small' variant='outlined' />
+                                        <Chip label={formatDuration(selectedTraceSummary.durationNs)} size='small' variant='outlined' />
+                                        <Chip label={selectedTraceSummary.statusLabel} color={selectedTraceSummary.statusColor} size='small' />
+                                    </Stack>
+                                )}
+                                <IconButton size='small' onClick={() => setSelectedTraceId(null)}>
+                                    <IconX size={18} />
+                                </IconButton>
+                            </Box>
                         </Box>
 
-                        <Divider sx={{ mb: 3 }} />
-
-                        <Box sx={{ flexGrow: 1, overflowY: 'auto', pr: 1 }}>
-                            {isLoadingTraceDetails ? (
-                                <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
-                                    <CircularProgress />
-                                </Box>
-                            ) : traceDetailsError ? (
+                        {/* Drawer Body */}
+                        {isLoadingTraceDetails ? (
+                            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 1 }}>
+                                <CircularProgress />
+                            </Box>
+                        ) : traceDetailsError ? (
+                            <Box sx={{ p: 3 }}>
                                 <Typography color='error'>{traceDetailsError}</Typography>
-                            ) : (
-                                <Stack spacing={3}>
-                                    <Box>
-                                        <Typography variant='h6' sx={{ mb: 2 }}>
-                                            Trace Information
-                                        </Typography>
-                                        <Paper sx={{ p: 2, bgcolor: theme.palette.mode === 'dark' ? 'grey.900' : 'grey.50' }}>
-                                            <Stack spacing={2}>
-                                                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
-                                                    <MetadataField label='Trace ID' value={selectedTraceId} monospace />
-                                                    <MetadataField label='Workflow' value={workflowName || '—'} />
-                                                    <MetadataField label='Namespace' value={ns || '—'} monospace />
-                                                    <MetadataField label='Status' value={selectedTraceSummary?.statusLabel || 'Captured'} />
-                                                    <MetadataField label='Started At' value={formatDate(selectedTrace?.start)} />
-                                                    <MetadataField label='Ended At' value={formatDate(selectedTrace?.end)} />
-                                                    <MetadataField label='Root Spans' value={String(selectedTraceSummary?.rootSpanCount || 0)} />
-                                                    <MetadataField label='Total Spans' value={String(selectedTraceSummary?.totalSpans || 0)} />
-                                                    <MetadataField label='LLM Payloads' value={String(selectedTraceSummary?.llmCalls || 0)} />
-                                                    <MetadataField label='Trace Duration' value={formatDuration(selectedTraceSummary?.durationNs)} />
-                                                </Box>
+                            </Box>
+                        ) : (
+                            <Box sx={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+                                {/* Left Panel: Span List */}
+                                <Box
+                                    sx={{
+                                        width: '40%',
+                                        borderRight: 1,
+                                        borderColor: 'divider',
+                                        overflowY: 'auto',
+                                        p: 2,
+                                        bgcolor: theme.palette.mode === 'dark' ? 'grey.900' : 'grey.50'
+                                    }}
+                                >
+                                    <Typography
+                                        variant='caption'
+                                        sx={{
+                                            fontWeight: 700,
+                                            color: 'text.secondary',
+                                            textTransform: 'uppercase',
+                                            letterSpacing: 1,
+                                            pl: 1,
+                                            mb: 1.5,
+                                            display: 'block'
+                                        }}
+                                    >
+                                        Execution Spans ({selectedTraceSpans.length})
+                                    </Typography>
+                                    <Stack spacing={1}>
+                                        {selectedTraceSpans.length === 0 ? (
+                                            <Typography variant='body2' color='text.secondary' sx={{ pl: 1 }}>
+                                                No spans available for this trace.
+                                            </Typography>
+                                        ) : (
+                                            selectedTraceSpans.map((span) => {
+                                                const spanStatus = getStatusPresentation(span.status_code)
+                                                const isSelected = selectedSpan?.span_id === span.span_id
+                                                const hasPayload = Boolean(span.llm_input || span.llm_output)
 
-                                                {selectedTraceSummary?.services?.length > 0 && (
-                                                    <>
-                                                        <Divider />
-                                                        <Box>
-                                                            <Typography variant='caption' color='text.secondary'>
-                                                                Services
+                                                return (
+                                                    <Box
+                                                        key={span.span_id}
+                                                        onClick={() => { setSelectedSpan(span); setSelectedPayloadTab(0) }}
+                                                        sx={{
+                                                            ml: span.depth * 2.5,
+                                                            p: 1.5,
+                                                            borderRadius: 1.5,
+                                                            cursor: 'pointer',
+                                                            border: '1px solid',
+                                                            borderColor: isSelected ? 'primary.main' : 'transparent',
+                                                            borderLeft: isSelected ? '3px solid' : '1px solid',
+                                                            borderLeftColor: isSelected ? 'primary.main' : 'transparent',
+                                                            bgcolor: isSelected
+                                                                ? theme.palette.mode === 'dark'
+                                                                    ? 'primary.dark'
+                                                                    : 'primary.50'
+                                                                : theme.palette.mode === 'dark'
+                                                                    ? 'grey.800'
+                                                                    : 'background.paper',
+                                                            '&:hover': {
+                                                                bgcolor: isSelected
+                                                                    ? undefined
+                                                                    : theme.palette.mode === 'dark'
+                                                                        ? 'grey.700'
+                                                                        : 'grey.100'
+                                                            },
+                                                            transition: 'background-color 0.15s, border-color 0.15s'
+                                                        }}
+                                                    >
+                                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 1 }}>
+                                                            <Typography
+                                                                variant='body2'
+                                                                sx={{
+                                                                    fontWeight: isSelected || span.depth === 0 ? 600 : 500,
+                                                                    color: isSelected ? 'primary.main' : 'text.primary',
+                                                                    wordBreak: 'break-word'
+                                                                }}
+                                                            >
+                                                                {span.span_name}
                                                             </Typography>
-                                                            <Stack direction='row' spacing={0.5} sx={{ mt: 0.75, flexWrap: 'wrap' }}>
-                                                                {selectedTraceSummary.services.map((serviceName) => (
-                                                                    <Chip key={serviceName} label={serviceName} size='small' variant='outlined' />
-                                                                ))}
-                                                            </Stack>
+                                                            <Typography variant='caption' sx={{ fontFamily: 'monospace', color: 'text.secondary', flexShrink: 0 }}>
+                                                                {formatDuration(span.duration)}
+                                                            </Typography>
                                                         </Box>
-                                                    </>
-                                                )}
-                                            </Stack>
-                                        </Paper>
-                                    </Box>
-
-                                    <Box>
-                                        <Typography variant='h6' sx={{ mb: 2 }}>
-                                            Span Execution Details ({selectedTraceSpans.length} spans)
-                                        </Typography>
-                                        {selectedTraceSpans.length > 0 ? (
-                                            <TableContainer component={Paper}>
-                                                <Table size='small' sx={{ tableLayout: 'fixed' }}>
-                                                    <TableHead>
-                                                        <TableRow sx={{ bgcolor: theme.palette.mode === 'dark' ? 'grey.800' : 'grey.100' }}>
-                                                            <StyledTableCell sx={{ width: '34%' }}>Span</StyledTableCell>
-                                                            <StyledTableCell sx={{ width: '18%' }}>Service</StyledTableCell>
-                                                            <StyledTableCell sx={{ width: '12%' }}>Kind</StyledTableCell>
-                                                            <StyledTableCell sx={{ width: '12%' }}>Duration</StyledTableCell>
-                                                            <StyledTableCell sx={{ width: '12%' }}>Status</StyledTableCell>
-                                                            <StyledTableCell sx={{ width: '12%' }}>Payloads</StyledTableCell>
-                                                        </TableRow>
-                                                    </TableHead>
-                                                    <TableBody>
-                                                        {selectedTraceSpans.map((span) => {
-                                                            const spanStatus = getStatusPresentation(span.status_code)
-                                                            const isSelected = selectedSpan?.span_id === span.span_id
-
-                                                            return (
-                                                                <StyledTableRow
-                                                                    key={span.span_id}
-                                                                    hover
-                                                                    onClick={() => setSelectedSpan(span)}
-                                                                    sx={{
-                                                                        cursor: 'pointer',
-                                                                        bgcolor: isSelected
-                                                                            ? theme.palette.mode === 'dark'
-                                                                                ? 'grey.800'
-                                                                                : 'grey.100'
-                                                                            : 'inherit'
-                                                                    }}
-                                                                >
-                                                                    <StyledTableCell>
-                                                                        <Box sx={{ pl: span.depth * 2 }}>
-                                                                            <Typography variant='caption' sx={{ fontFamily: 'monospace', color: 'text.secondary' }}>
-                                                                                #{span.span_id.slice(0, 8)}
-                                                                            </Typography>
-                                                                            <Typography variant='body2' sx={{ fontWeight: span.depth === 0 ? 600 : 500, wordBreak: 'break-word' }}>
-                                                                                {span.span_name}
-                                                                            </Typography>
-                                                                        </Box>
-                                                                    </StyledTableCell>
-                                                                    <StyledTableCell>
-                                                                        <Typography variant='body2' sx={{ wordBreak: 'break-word' }}>
-                                                                            {span.service_name || '—'}
-                                                                        </Typography>
-                                                                    </StyledTableCell>
-                                                                    <StyledTableCell>{span.span_kind || '—'}</StyledTableCell>
-                                                                    <StyledTableCell>{formatDuration(span.duration)}</StyledTableCell>
-                                                                    <StyledTableCell>
-                                                                        <Chip label={spanStatus.label} color={spanStatus.color} size='small' />
-                                                                    </StyledTableCell>
-                                                                    <StyledTableCell>
-                                                                        {span.llm_input || span.llm_output ? <Chip label='Available' size='small' variant='outlined' /> : '—'}
-                                                                    </StyledTableCell>
-                                                                </StyledTableRow>
-                                                            )
-                                                        })}
-                                                    </TableBody>
-                                                </Table>
-                                            </TableContainer>
-                                        ) : (
-                                            <Typography color='text.secondary'>No spans available for this trace.</Typography>
-                                        )}
-                                    </Box>
-
-                                    <Box>
-                                        <Typography variant='h6' sx={{ mb: 2 }}>
-                                            Span Details
-                                        </Typography>
-
-                                        {selectedSpan ? (
-                                            <Stack spacing={3}>
-                                                <Paper sx={{ p: 2, bgcolor: theme.palette.mode === 'dark' ? 'grey.900' : 'grey.50' }}>
-                                                    <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
-                                                        <MetadataField label='Span Name' value={selectedSpan.span_name} />
-                                                        <MetadataField label='Span ID' value={selectedSpan.span_id} monospace />
-                                                        <MetadataField label='Parent Span ID' value={selectedSpan.parent_span_id || '—'} monospace />
-                                                        <MetadataField label='Timestamp' value={formatDate(selectedSpan.timestamp)} />
-                                                        <MetadataField label='Duration' value={formatDuration(selectedSpan.duration)} />
-                                                        <MetadataField label='Service' value={selectedSpan.service_name || '—'} />
-                                                        <MetadataField label='Scope' value={selectedSpan.scope_name || '—'} />
-                                                        <MetadataField label='Status Message' value={selectedSpan.status_message || '—'} />
+                                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mt: 1, flexWrap: 'wrap' }}>
+                                                            <Chip label={spanStatus.label} color={spanStatus.color} size='small' />
+                                                            {span.service_name && (
+                                                                <Typography variant='caption' color='text.secondary'>
+                                                                    {span.service_name}
+                                                                </Typography>
+                                                            )}
+                                                            {hasPayload && (
+                                                                <Chip label='LLM' size='small' variant='outlined' color='info' sx={{ height: 18, fontSize: '0.65rem' }} />
+                                                            )}
+                                                        </Box>
                                                     </Box>
-                                                </Paper>
-
-                                                <DetailSection title='LLM Input' value={formatPayload(selectedSpan.llm_input)} theme={theme} />
-                                                <DetailSection title='LLM Output' value={formatPayload(selectedSpan.llm_output)} theme={theme} />
-                                                <DetailSection title='Resource Attributes' value={formatPayload(selectedSpan.resource_attributes)} theme={theme} />
-                                            </Stack>
-                                        ) : (
-                                            <Typography color='text.secondary'>Select a span to inspect its details.</Typography>
+                                                )
+                                            })
                                         )}
-                                    </Box>
-                                </Stack>
-                            )}
-                        </Box>
+                                    </Stack>
+                                </Box>
+
+                                {/* Right Panel: Span Details */}
+                                <Box
+                                    sx={{
+                                        width: '60%',
+                                        overflowY: 'auto',
+                                        p: 3,
+                                        bgcolor: theme.palette.mode === 'dark' ? 'grey.950' : 'background.default'
+                                    }}
+                                >
+                                    {selectedSpan ? (
+                                        <Stack spacing={3}>
+                                            {/* Span Metadata */}
+                                            <Box
+                                                sx={{
+                                                    display: 'grid',
+                                                    gridTemplateColumns: '1fr 1fr',
+                                                    gap: 2,
+                                                    pb: 2.5,
+                                                    borderBottom: 1,
+                                                    borderColor: 'divider'
+                                                }}
+                                            >
+                                                <MetadataField label='Span Name' value={selectedSpan.span_name} />
+                                                <MetadataField label='Span ID' value={selectedSpan.span_id} monospace />
+                                                <MetadataField label='Timestamp' value={formatDate(selectedSpan.timestamp)} />
+                                                <MetadataField label='Duration' value={formatDuration(selectedSpan.duration)} />
+                                                <MetadataField label='Service' value={selectedSpan.service_name || '—'} />
+                                                <MetadataField label='Scope' value={selectedSpan.scope_name || '—'} />
+                                                <MetadataField label='Parent Span ID' value={selectedSpan.parent_span_id || '—'} monospace />
+                                                <MetadataField label='Status Message' value={selectedSpan.status_message || '—'} />
+                                            </Box>
+
+                                            <Box sx={{ border: 1, borderColor: 'divider', borderRadius: 1, overflow: 'hidden' }}>
+                                                <Tabs
+                                                    value={selectedPayloadTab}
+                                                    onChange={(_e, val) => setSelectedPayloadTab(val)}
+                                                    variant='fullWidth'
+                                                    sx={{ borderBottom: 1, borderColor: 'divider', minHeight: 40 }}
+                                                    TabIndicatorProps={{ style: { height: 2 } }}
+                                                >
+                                                    <Tab label='LLM Input' sx={{ minHeight: 40, fontSize: '0.8rem', textTransform: 'none' }} />
+                                                    <Tab label='LLM Output' sx={{ minHeight: 40, fontSize: '0.8rem', textTransform: 'none' }} />
+                                                    <Tab label='Resource Attributes' sx={{ minHeight: 40, fontSize: '0.8rem', textTransform: 'none' }} />
+                                                </Tabs>
+                                                <Box
+                                                    sx={{
+                                                        p: 2,
+                                                        bgcolor: theme.palette.mode === 'dark' ? 'grey.800' : 'grey.50',
+                                                        maxHeight: 340,
+                                                        overflowY: 'auto'
+                                                    }}
+                                                >
+                                                    <Typography
+                                                        variant='body2'
+                                                        sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'monospace', fontSize: '0.8rem' }}
+                                                    >
+                                                        {selectedPayloadTab === 0 && (formatPayload(selectedSpan.llm_input) || '—')}
+                                                        {selectedPayloadTab === 1 && (formatPayload(selectedSpan.llm_output) || '—')}
+                                                        {selectedPayloadTab === 2 && (formatPayload(selectedSpan.resource_attributes) || '—')}
+                                                    </Typography>
+                                                </Box>
+                                            </Box>
+                                        </Stack>
+                                    ) : (
+                                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+                                            <Typography color='text.secondary'>Select a span to inspect its details.</Typography>
+                                        </Box>
+                                    )}
+                                </Box>
+                            </Box>
+                        )}
                     </Box>
                 )}
             </Drawer>
