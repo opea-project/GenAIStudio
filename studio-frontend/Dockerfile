@@ -58,7 +58,7 @@ ENV no_proxy=${no_proxy}
 # Install only runtime dependencies with patched npm
 RUN apk update && apk upgrade && \
     apk add --no-cache gcompat chromium && \
-    npm install -g npm@latest pnpm@latest && \
+    npm install -g pnpm@9 && \
     rm -rf /var/cache/apk/*
 
 ENV PUPPETEER_SKIP_DOWNLOAD=true
