@@ -1,8 +1,10 @@
 import PropTypes from 'prop-types'
+import { useState } from 'react'
 import { useTheme, styled } from '@mui/material/styles'
-import { Avatar, Box, ButtonBase, Switch, Button, IconButton, useMediaQuery } from '@mui/material'
+import { Avatar, Box, ButtonBase, Switch, Button, IconButton, useMediaQuery, Menu, MenuItem } from '@mui/material'
 import MenuIcon from '@mui/icons-material/Menu'
 import LogoutIcon from '@mui/icons-material/Logout'
+import LanguageIcon from '@mui/icons-material/Language'
 import { useKeycloak } from '../../../KeycloakContext'
 import { useTranslation } from 'react-i18next'
 import LogoSection from '../LogoSection'
@@ -61,9 +63,25 @@ const Header = ({ userId, handleLeftDrawerToggle }) => {
     const matchDownMd = useMediaQuery(theme.breakpoints.down('md'))
     const { i18n } = useTranslation()
     const keycloak = useKeycloak()
+    const isChinese = i18n.language?.toLowerCase().startsWith('zh')
+    const selectedLanguage = isChinese ? 'zh' : 'en'
+
+    const [anchorEl, setAnchorEl] = useState(null)
+    const handleLanguageMenuOpen = (event) => {
+        setAnchorEl(event.currentTarget)
+    }
+    const handleLanguageMenuClose = () => {
+        setAnchorEl(null)
+    }
 
     const handleLanguageChange = (lng) => {
+        try {
+            window.localStorage.setItem('preferredLanguage', lng)
+        } catch (error) {
+            // Ignore storage errors and still change language in-memory.
+        }
         i18n.changeLanguage(lng)
+        handleLanguageMenuClose()
     }
 
     const getAvatarLetters = (uid = '') => {
@@ -138,38 +156,34 @@ const Header = ({ userId, handleLeftDrawerToggle }) => {
 
                     <GuideMenu />
 
-                    <Button
-                        size='small'
-                        variant={i18n.language === 'zh' ? 'contained' : 'outlined'}
-                        onClick={() => handleLanguageChange('zh')}
+                    <IconButton
+                        color='inherit'
+                        onClick={handleLanguageMenuOpen}
                         sx={{
-                            minWidth: 68,
-                            height: 35,
-                            fontWeight: 400,
-                            borderRadius: 2,
-                            boxShadow: '0 2px 8px 0 #1d5de780',
-                            mr: 1,
-                            px: 0,
-                            ml: 1
+                            ml: 1,
+                            background: theme.palette.secondary.light,
+                            color: theme.palette.secondary.dark,
+                            borderRadius: '12px',
+                            '&:hover': {
+                                background: theme.palette.secondary.dark,
+                                color: theme.palette.secondary.light
+                            }
                         }}
                     >
-                        中文
-                    </Button>
-
-                    <Button
-                        variant={i18n.language === 'en' ? 'contained' : 'outlined'}
-                        onClick={() => handleLanguageChange('en')}
-                        sx={{
-                            minWidth: 68,
-                            height: 35,
-                            fontWeight: 400,
-                            borderRadius: 2,
-                            boxShadow: '0 2px 8px 0 #1d5de780',
-                            px: 0
-                        }}
+                        <LanguageIcon />
+                    </IconButton>
+                    <Menu
+                        anchorEl={anchorEl}
+                        open={Boolean(anchorEl)}
+                        onClose={handleLanguageMenuClose}
                     >
-                        EN
-                    </Button>
+                        <MenuItem onClick={() => handleLanguageChange('en')} selected={selectedLanguage === 'en'}>
+                            English
+                        </MenuItem>
+                        <MenuItem onClick={() => handleLanguageChange('zh')} selected={selectedLanguage === 'zh'}>
+                            中文
+                        </MenuItem>
+                    </Menu>
 
                     <ButtonBase
                         onClick={() => keycloak.logout({ redirectUri: window.location.origin })}

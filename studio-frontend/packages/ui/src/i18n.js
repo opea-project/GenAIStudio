@@ -8,11 +8,22 @@ const resources = {
   zh: { translation: zh }
 };
 
+const getInitialLanguage = () => {
+  if (typeof window === 'undefined') return 'en';
+
+  try {
+    const preferredLanguage = window.localStorage.getItem('preferredLanguage') || '';
+    return preferredLanguage.toLowerCase().startsWith('zh') ? 'zh' : 'en';
+  } catch (error) {
+    return 'en';
+  }
+};
+
 i18n
   .use(initReactI18next)
   .init({
     resources,
-    lng: 'zh', // 默认中文
+    lng: getInitialLanguage(),
     fallbackLng: 'en',
     interpolation: {
       escapeValue: false
