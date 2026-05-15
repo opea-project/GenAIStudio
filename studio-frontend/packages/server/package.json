@@ -38,7 +38,7 @@
         "@types/uuid": "^9.0.7",
         "archiver": "^6.0.1",
         "async-mutex": "^0.4.0",
-        "axios": "1.12.0",
+        "axios": "1.15.2",
         "content-disposition": "0.5.4",
         "cors": "^2.8.5",
         "crypto-js": "^4.1.1",
