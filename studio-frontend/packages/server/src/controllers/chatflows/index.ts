@@ -7,36 +7,6 @@ import { InternalFlowiseError } from '../../errors/internalFlowiseError'
 import { ChatflowType } from '../../Interface'
 import chatflowsService from '../../services/chatflows'
 
-const checkIfChatflowIsValidForStreaming = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-        if (typeof req.params === 'undefined' || !req.params.id) {
-            throw new InternalFlowiseError(
-                StatusCodes.PRECONDITION_FAILED,
-                `Error: chatflowsRouter.checkIfChatflowIsValidForStreaming - id not provided!`
-            )
-        }
-        const apiResponse = await chatflowsService.checkIfChatflowIsValidForStreaming(req.params.id)
-        return res.json(apiResponse)
-    } catch (error) {
-        next(error)
-    }
-}
-
-const checkIfChatflowIsValidForUploads = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-        if (typeof req.params === 'undefined' || !req.params.id) {
-            throw new InternalFlowiseError(
-                StatusCodes.PRECONDITION_FAILED,
-                `Error: chatflowsRouter.checkIfChatflowIsValidForUploads - id not provided!`
-            )
-        }
-        const apiResponse = await chatflowsService.checkIfChatflowIsValidForUploads(req.params.id)
-        return res.json(apiResponse)
-    } catch (error) {
-        next(error)
-    }
-}
-
 const deleteChatflow = async (req: Request, res: Response, next: NextFunction) => {
     try {
         if (typeof req.params === 'undefined' || !req.params.id) {
@@ -167,21 +137,6 @@ const getSinglePublicChatflow = async (req: Request, res: Response, next: NextFu
             )
         }
         const apiResponse = await chatflowsService.getSinglePublicChatflow(req.params.id)
-        return res.json(apiResponse)
-    } catch (error) {
-        next(error)
-    }
-}
-
-const getSinglePublicChatbotConfig = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-        if (typeof req.params === 'undefined' || !req.params.id) {
-            throw new InternalFlowiseError(
-                StatusCodes.PRECONDITION_FAILED,
-                `Error: chatflowsRouter.getSinglePublicChatbotConfig - id not provided!`
-            )
-        }
-        const apiResponse = await chatflowsService.getSinglePublicChatbotConfig(req.params.id)
         return res.json(apiResponse)
     } catch (error) {
         next(error)
@@ -350,8 +305,6 @@ const oneClickDeployment = async (req: Request, res: Response, next: NextFunctio
 }
 
 export default {
-    checkIfChatflowIsValidForStreaming,
-    checkIfChatflowIsValidForUploads,
     deleteChatflow,
     getAllChatflows,
     getAllChatflowsbyUserId,
@@ -362,7 +315,6 @@ export default {
     importChatflows,
     updateChatflow,
     getSinglePublicChatflow,
-    getSinglePublicChatbotConfig,
     deployChatflowSandbox,
     stopChatflowSandbox,
     buildDeploymentPackage,

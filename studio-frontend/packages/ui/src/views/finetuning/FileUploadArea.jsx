@@ -28,7 +28,10 @@ const FileUploadArea = ({
     onFileUpload, 
     acceptedTypes = ['.json', '.jsonl', '.csv'], 
     maxSizeMB = 10, 
-    error = null 
+    error = null,
+    title = 'Drop your training dataset file here or click to browse',
+    subtitle,
+    buttonLabel = 'Choose File'
 }) => {
     const theme = useTheme()
     const fileInputRef = useRef(null)
@@ -168,6 +171,8 @@ const FileUploadArea = ({
         return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
     }
 
+    const helperText = subtitle || `Supported formats: ${acceptedTypes.join(', ')} (Max filesize: ${maxSizeMB}MB)`
+
     return (
         <Box>
             <input
@@ -218,15 +223,15 @@ const FileUploadArea = ({
                         
                         <Stack spacing={0.5} alignItems="center">
                             <Typography variant="h6">
-                                Drop your training dataset file here or click to browse
+                                {title}
                             </Typography>
                             <Typography variant="body2" color="textSecondary">
-                                Supported formats: {acceptedTypes.join(', ')} (Max filesize: {maxSizeMB}MB)
+                                {helperText}
                             </Typography>
                         </Stack>
 
                         <Button variant="outlined" startIcon={<IconUpload />}>
-                            Choose File
+                            {buttonLabel}
                         </Button>
                     </Stack>
                 </Paper>
@@ -311,7 +316,10 @@ FileUploadArea.propTypes = {
     onFileUpload: PropTypes.func.isRequired,
     acceptedTypes: PropTypes.arrayOf(PropTypes.string),
     maxSizeMB: PropTypes.number,
-    error: PropTypes.string
+    error: PropTypes.string,
+    title: PropTypes.string,
+    subtitle: PropTypes.string,
+    buttonLabel: PropTypes.string
 }
 
 export default FileUploadArea

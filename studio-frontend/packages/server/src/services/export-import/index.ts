@@ -2,21 +2,18 @@ import { StatusCodes } from 'http-status-codes'
 import { ChatFlow } from '../../database/entities/ChatFlow'
 import { Tool } from '../../database/entities/Tool'
 import { Variable } from '../../database/entities/Variable'
-import { Assistant } from '../../database/entities/Assistant'
 import { InternalFlowiseError } from '../../errors/internalFlowiseError'
 import { getErrorMessage } from '../../errors/utils'
 import { getRunningExpressApp } from '../../utils/getRunningExpressApp'
 import chatflowService from '../chatflows'
 import toolsService from '../tools'
 import variableService from '../variables'
-import assistantService from '../assistants'
 
 type ExportInput = {
     tool: boolean
     chatflow: boolean
     agentflow: boolean
     variable: boolean
-    assistant: boolean
 }
 
 type ExportData = {
@@ -24,7 +21,6 @@ type ExportData = {
     ChatFlow: ChatFlow[]
     AgentFlow: ChatFlow[]
     Variable: Variable[]
-    Assistant: Assistant[]
 }
 
 const convertExportInput = (body: any): ExportInput => {
@@ -62,16 +58,12 @@ const exportData = async (exportInput: ExportInput): Promise<{ FileDefaultName: 
         let allVars: Variable[] = []
         if (exportInput.variable === true) allVars = await variableService.getAllVariables()
 
-        let allAssistants: Assistant[] = []
-        if (exportInput.assistant === true) allAssistants = await assistantService.getAllAssistants()
-
         return {
             FileDefaultName,
             Tool: allTool,
             ChatFlow: allChatflow,
             AgentFlow: allMultiAgent,
-            Variable: allVars,
-            Assistant: allAssistants
+            Variable: allVars
         }
     } catch (error) {
         throw new InternalFlowiseError(
@@ -96,7 +88,6 @@ const importData = async (importData: ExportData) => {
             // step 3 - importAgentlows
             if (importData.AgentFlow.length > 0) await chatflowService.importChatflows(importData.AgentFlow)
             if (importData.Variable.length > 0) await variableService.importVariables(importData.Variable)
-            if (importData.Assistant.length > 0) await assistantService.importAssistants(importData.Assistant)
             queryRunner.commitTransaction()
         } catch (error) {
             queryRunner.rollbackTransaction()

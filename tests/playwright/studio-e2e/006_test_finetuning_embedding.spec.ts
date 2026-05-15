@@ -62,7 +62,8 @@ test('006_test_finetuning_embedding', async ({ browser, baseURL }) => {
     await expect(page.locator('div').filter({ hasText: 'Fine-tuning JobsCreate New' }).nth(3)).toContainText('embedding');
     await waitForStatusText(page, 'td.MuiTableCell-root div.MuiChip-root', 'succeeded', 20, 60000);
 
-    await page.locator('button').nth(5).click();
+    await page.locator('tbody tr').first().getByRole('button').nth(2).click();
     await page.getByRole('menuitem', { name: 'Delete Job' }).click();
-    await page.getByRole('button', { name: 'Delete', exact: true }).click();
+    await page.getByRole('button', { name: 'Delete' }).click();
+    await page.waitForTimeout(5000);
 });

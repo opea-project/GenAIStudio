@@ -16,22 +16,48 @@ import {
     IReactFlowEdge,
     IReactFlowNode,
     IVariableDict,
-    IncomingInput
+    IncomingInput,
+    ICommonObject,
+    IMessage,
+    IFileUpload
 } from '../Interface'
 import { cloneDeep, get, isEqual } from 'lodash'
-import {
-    convertChatHistoryToText,
-    getInputVariables,
-    handleEscapeCharacters,
-    getEncryptionKeyPath,
-    ICommonObject,
-    IDatabaseEntity,
-    IMessage,
-    FlowiseMemory,
-    IFileUpload
-} from 'flowise-components'
 import { randomBytes } from 'crypto'
 import { AES, enc } from 'crypto-js'
+
+// Local stubs for flowise-components utilities
+export type IDatabaseEntity = { [key: string]: any }
+
+export interface FlowiseMemory {
+    getChatMessages(sessionId: string, returnBaseMessages?: boolean, prependMessages?: IMessage[]): Promise<IMessage[]>
+    clearChatMessages(sessionId: string): Promise<void>
+}
+
+export const handleEscapeCharacters = (input: string, toEscape: boolean): string => {
+    if (toEscape) {
+        return input.replace(/\n/g, 'FLOWISE_NEWLINE').replace(/\t/g, 'FLOWISE_TAB')
+    } else {
+        return input.replace(/FLOWISE_NEWLINE/g, '\n').replace(/FLOWISE_TAB/g, '\t')
+    }
+}
+
+export const convertChatHistoryToText = (chatHistory: IMessage[]): string => {
+    return chatHistory.map((msg) => `${msg.role ?? msg.type}: ${msg.content ?? msg.message}`).join('\n')
+}
+
+export const getInputVariables = (paramValue: string): string[] => {
+    if (typeof paramValue !== 'string') return []
+    const matches = paramValue.match(/\{\{(.*?)\}\}/g) || []
+    return matches.map((m) => m.slice(2, -2).trim())
+}
+
+export const getEncryptionKeyPath = (): string => {
+    if (process.env.SECRETKEY_PATH) {
+        return require('path').join(process.env.SECRETKEY_PATH, 'encryption.key')
+    }
+    const home = process.env[process.platform === 'win32' ? 'USERPROFILE' : 'HOME'] ?? process.cwd()
+    return require('path').join(home, '.flowise', 'encryption.key')
+}
 
 import { ChatFlow } from '../database/entities/ChatFlow'
 import { ChatMessage } from '../database/entities/ChatMessage'
@@ -39,7 +65,6 @@ import { Credential } from '../database/entities/Credential'
 import { Tool } from '../database/entities/Tool'
 import { Assistant } from '../database/entities/Assistant'
 import { DataSource } from 'typeorm'
-import { CachePool } from '../CachePool'
 import { Variable } from '../database/entities/Variable'
 import { DocumentStore } from '../database/entities/DocumentStore'
 import { DocumentStoreFileChunk } from '../database/entities/DocumentStoreFileChunk'
@@ -430,7 +455,6 @@ type BuildFlowParams = {
     chatflowid: string
     appDataSource: DataSource
     overrideConfig?: ICommonObject
-    cachePool?: CachePool
     isUpsert?: boolean
     stopNodeId?: string
     uploads?: IFileUpload[]
@@ -455,7 +479,6 @@ export const buildFlow = async ({
     chatflowid,
     appDataSource,
     overrideConfig,
-    cachePool,
     isUpsert,
     stopNodeId,
     uploads,
@@ -525,7 +548,6 @@ export const buildFlow = async ({
                     logger,
                     appDataSource,
                     databaseEntities,
-                    cachePool,
                     dynamicVariables,
                     uploads,
                     baseURL
@@ -549,7 +571,6 @@ export const buildFlow = async ({
                     logger,
                     appDataSource,
                     databaseEntities,
-                    cachePool,
                     isUpsert,
                     dynamicVariables,
                     uploads,
@@ -1116,7 +1137,7 @@ export const findAvailableConfigs = (reactFlowNodes: IReactFlowNode[], component
                 obj = {
                     node: flowNode.data.label,
                     nodeId: flowNode.data.id,
-                    label: inputParam.label,
+                    label: inputParam.label ?? '',
                     name: 'files',
                     type: inputParam.fileType ?? inputParam.type
                 }
@@ -1124,7 +1145,7 @@ export const findAvailableConfigs = (reactFlowNodes: IReactFlowNode[], component
                 obj = {
                     node: flowNode.data.label,
                     nodeId: flowNode.data.id,
-                    label: inputParam.label,
+                    label: inputParam.label ?? '',
                     name: inputParam.name,
                     type: inputParam.options
                         ? inputParam.options
@@ -1143,9 +1164,9 @@ export const findAvailableConfigs = (reactFlowNodes: IReactFlowNode[], component
                             obj = {
                                 node: flowNode.data.label,
                                 nodeId: flowNode.data.id,
-                                label: input.label,
+                                label: input.label ?? '',
                                 name: input.name,
-                                type: input.type === 'password' ? 'string' : input.type
+                                type: input.type === 'password' ? 'string' : input.type ?? ''
                             }
                             configs.push(obj)
                         }
@@ -1156,7 +1177,7 @@ export const findAvailableConfigs = (reactFlowNodes: IReactFlowNode[], component
                 obj = {
                     node: flowNode.data.label,
                     nodeId: flowNode.data.id,
-                    label: inputParam.label,
+                    label: inputParam.label ?? '',
                     name: inputParam.name,
                     type: inputParam.type === 'password' ? 'string' : inputParam.type
                 }

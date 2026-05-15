@@ -1,6 +1,7 @@
 {
     "ignore": ["**/*.spec.ts", ".git", "node_modules"],
-    "watch": ["commands", "index.ts", "src", "../components/nodes", "../components/src"],
-    "exec": "pnpm start",
-    "ext": "ts"
+    "watch": ["src"],
+    "exec": "pnpm build && pnpm start",
+    "ext": "ts",
+    "legacyWatch": true
 }

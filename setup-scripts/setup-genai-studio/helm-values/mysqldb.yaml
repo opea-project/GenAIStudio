@@ -42,6 +42,7 @@ initdbScripts:
     -- Create databases for GenAIStudio
     CREATE DATABASE IF NOT EXISTS keycloak;
     CREATE DATABASE IF NOT EXISTS studio;
+    CREATE DATABASE IF NOT EXISTS eval;
 
     -- Create the Chinook database
     CREATE DATABASE IF NOT EXISTS Chinook;

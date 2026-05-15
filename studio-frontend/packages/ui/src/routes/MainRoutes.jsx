@@ -10,6 +10,9 @@ const Opeaflows = Loadable(lazy(() => import('@/views/opeaflows')))
 // finetuning routing
 const Finetuning = Loadable(lazy(() => import('@/views/finetuning')))
 
+// evaluation routing
+const Evaluation = Loadable(lazy(() => import('@/views/evaluation')))
+
 // tracer routing
 const Tracer = Loadable(lazy(() => import('@/views/tracer')))
 
@@ -65,6 +68,10 @@ const MainRoutes = {
         {
             path: '/finetuning',
             element: <Finetuning />
+        },
+        {
+            path: '/evaluation',
+            element: <Evaluation />
         },
         {
             path:'/tracer/:ns',

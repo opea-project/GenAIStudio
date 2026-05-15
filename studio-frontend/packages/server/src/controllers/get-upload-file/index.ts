@@ -1,9 +1,19 @@
 import { Request, Response, NextFunction } from 'express'
 import fs from 'fs'
+import path from 'path'
 import contentDisposition from 'content-disposition'
-import { streamStorageFile } from 'flowise-components'
 import { StatusCodes } from 'http-status-codes'
 import { InternalFlowiseError } from '../../errors/internalFlowiseError'
+
+const getStoragePath = (): string => {
+    return process.env.BLOB_STORAGE_PATH
+        ? path.join(process.env.BLOB_STORAGE_PATH)
+        : path.join(getUserHome(), '.flowise', 'storage')
+}
+
+const getUserHome = (): string => {
+    return process.env.HOME || process.cwd()
+}
 
 interface AuthenticatedRequest extends Request {
     user?: {
@@ -19,17 +29,13 @@ const streamUploadedFile = async (req: Request, res: Response, next: NextFunctio
         const chatflowId = req.query.chatflowId as string
         const chatId = req.query.chatId as string
         const fileName = req.query.fileName as string
-        const orgId = (req as AuthenticatedRequest).user?.activeOrganizationId || ''
-        res.setHeader('Content-Disposition', contentDisposition(fileName))
-        const fileStream = await streamStorageFile(chatflowId, chatId, fileName, orgId)
-
-        if (!fileStream) throw new InternalFlowiseError(StatusCodes.INTERNAL_SERVER_ERROR, `Error: streamStorageFile`)
-
-        if (fileStream instanceof fs.ReadStream && fileStream?.pipe) {
-            fileStream.pipe(res)
-        } else {
-            res.send(fileStream)
+        const filePath = path.join(getStoragePath(), chatflowId, chatId, fileName)
+        if (!fs.existsSync(filePath)) {
+            throw new InternalFlowiseError(StatusCodes.NOT_FOUND, `File not found`)
         }
+        res.setHeader('Content-Disposition', contentDisposition(fileName))
+        const fileStream = fs.createReadStream(filePath)
+        fileStream.pipe(res)
     } catch (error) {
         next(error)
     }

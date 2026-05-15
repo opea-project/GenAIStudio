@@ -1,5 +1,6 @@
-import { removeFolderFromStorage } from 'flowise-components'
 import { StatusCodes } from 'http-status-codes'
+import fs from 'fs/promises'
+import path from 'path'
 import { ChatflowType, IReactFlowObject } from '../../Interface'
 import { ChatFlow } from '../../database/entities/ChatFlow'
 import { ChatMessage } from '../../database/entities/ChatMessage'
@@ -7,92 +8,36 @@ import { ChatMessageFeedback } from '../../database/entities/ChatMessageFeedback
 import { UpsertHistory } from '../../database/entities/UpsertHistory'
 import { InternalFlowiseError } from '../../errors/internalFlowiseError'
 import { getErrorMessage } from '../../errors/utils'
-import documentStoreService from '../../services/documentstore'
-import { constructGraphs, getAppVersion, getEndingNodes, getTelemetryFlowObj, isFlowValidForStream } from '../../utils'
-import { containsBase64File, updateFlowDataWithFilePaths } from '../../utils/fileRepository'
+import { getAppVersion } from '../../utils'
 import { getRunningExpressApp } from '../../utils/getRunningExpressApp'
-import { utilGetUploadsConfig } from '../../utils/getUploadsConfig'
 import logger from '../../utils/logger'
-import axios, { AxiosRequestConfig } from 'axios'
-import { HttpsProxyAgent } from 'https-proxy-agent'
+import axios from 'axios'
 
-// Configure github axios to support HTTP_PROXY/HTTPS_PROXY environment variables
-const getGithubAxiosConfig = (): AxiosRequestConfig => {
-    const http_proxy = process.env.http_proxy || process.env.HTTP_PROXY
-    const agent = (http_proxy && http_proxy.trim() !== "") ? new HttpsProxyAgent(http_proxy) : undefined
+const SAMPLE_WORKFLOWS_DIR = process.env.SAMPLE_WORKFLOWS_DIR || path.resolve(process.cwd(), '..', '..', 'sample-workflows')
 
-    return {
-        headers: {
-            Accept: 'application/vnd.github.v3+json',
-        },
-        proxy: false,
-        ...(agent && {
-            httpAgent: agent,
-            httpsAgent: agent,
-        }),
-    }
-}
+const getStudioServerUrl = () => process.env.STUDIO_SERVER_URL || 'http://studio-backend.studio.svc.cluster.local:5000'
 
-const STUDIO_SERVER_URL = process.env.STUDIO_SERVER_URL || 'http://studio-backend.studio.svc.cluster.local:5000'
+const loadLocalSampleChatflows = async (userid: string, type?: ChatflowType): Promise<Partial<ChatFlow>[]> => {
+    const files = (await fs.readdir(SAMPLE_WORKFLOWS_DIR))
+        .filter((fileName) => fileName.endsWith('.json'))
+        .sort()
 
-// Check if chatflow valid for streaming
-const checkIfChatflowIsValidForStreaming = async (chatflowId: string): Promise<any> => {
-    try {
-        const appServer = getRunningExpressApp()
-        //**
-        const chatflow = await appServer.AppDataSource.getRepository(ChatFlow).findOneBy({
-            id: chatflowId
+    const chatflows: Partial<ChatFlow>[] = []
+
+    for (const fileName of files) {
+        const filePath = path.join(SAMPLE_WORKFLOWS_DIR, fileName)
+        const parsedFlowData = JSON.parse(await fs.readFile(filePath, 'utf8'))
+        chatflows.push({
+            userid,
+            name: fileName.replace('.json', ''),
+            flowData: JSON.stringify(parsedFlowData),
+            type: type || 'OPEA',
+            deployed: false,
+            isPublic: false
         })
-        if (!chatflow) {
-            throw new InternalFlowiseError(StatusCodes.NOT_FOUND, `Chatflow ${chatflowId} not found`)
-        }
-
-        /*** Get Ending Node with Directed Graph  ***/
-        const flowData = chatflow.flowData
-        const parsedFlowData: IReactFlowObject = JSON.parse(flowData)
-        const nodes = parsedFlowData.nodes
-        const edges = parsedFlowData.edges
-        const { graph, nodeDependencies } = constructGraphs(nodes, edges)
-
-        const endingNodes = getEndingNodes(nodeDependencies, graph, nodes)
-
-        let isStreaming = false
-        for (const endingNode of endingNodes) {
-            const endingNodeData = endingNode.data
-            const isEndingNode = endingNodeData?.outputs?.output === 'EndingNode'
-            // Once custom function ending node exists, flow is always unavailable to stream
-            if (isEndingNode) {
-                return { isStreaming: false }
-            }
-            isStreaming = isFlowValidForStream(nodes, endingNodeData)
-        }
-
-        // If it is a Multi/Sequential Agents, always enable streaming
-        if (endingNodes.filter((node) => node.data.category === 'Multi Agents' || node.data.category === 'Sequential Agents').length > 0) {
-            return { isStreaming: true }
-        }
-
-        const dbResponse = { isStreaming: isStreaming }
-        return dbResponse
-    } catch (error) {
-        throw new InternalFlowiseError(
-            StatusCodes.INTERNAL_SERVER_ERROR,
-            `Error: chatflowsService.checkIfChatflowIsValidForStreaming - ${getErrorMessage(error)}`
-        )
     }
-}
 
-// Check if chatflow valid for uploads
-const checkIfChatflowIsValidForUploads = async (chatflowId: string): Promise<any> => {
-    try {
-        const dbResponse = await utilGetUploadsConfig(chatflowId)
-        return dbResponse
-    } catch (error) {
-        throw new InternalFlowiseError(
-            StatusCodes.INTERNAL_SERVER_ERROR,
-            `Error: chatflowsService.checkIfChatflowIsValidForUploads - ${getErrorMessage(error)}`
-        )
-    }
+    return chatflows
 }
 
 const deleteChatflow = async (chatflowId: string): Promise<any> => {
@@ -105,10 +50,6 @@ const deleteChatflow = async (chatflowId: string): Promise<any> => {
         }
         const dbResponse = await appServer.AppDataSource.getRepository(ChatFlow).delete({ id: chatflowId })
         try {
-            // Delete all uploads corresponding to this chatflow
-            await removeFolderFromStorage(chatflowId)
-            await documentStoreService.updateDocumentStoreUsage(chatflowId, undefined)
-
             // Delete all chat messages
             await appServer.AppDataSource.getRepository(ChatMessage).delete({ chatflowid: chatflowId })
 
@@ -178,40 +119,17 @@ const getAllChatflowsbyUserId = async (userid: string, type?: ChatflowType): Pro
 
 const importSampleChatflowsbyUserId = async (userid: string, type?: ChatflowType): Promise<ChatFlow[]> => {
     try {
-        const axiosConfig = getGithubAxiosConfig()
-        
-        console.log('Importing sample chatflows for user:', userid);
+        console.log('Importing sample chatflows for user:', userid)
+        const chatflows = await loadLocalSampleChatflows(userid, type)
+        logger.info(`[server]: Loaded ${chatflows.length} sample chatflows from local directory ${SAMPLE_WORKFLOWS_DIR}`)
 
-        const response = await axios.get(
-            'https://api.github.com/repos/opea-project/GenAIStudio/contents/sample-workflows',
-            axiosConfig
-        );
-
-        console.log('Response from GitHub:', response.data);
-
-        const files = response.data.filter((item: any) => item.type === 'file');
-
-        const chatflows: Partial<ChatFlow>[] = [];
-        for (const file of files) {
-            const fileResponse = await axios.get(file.download_url, axiosConfig);
-            const parsedFlowData = fileResponse.data;
-            const newChatflow: Partial<ChatFlow> = {
-                userid: userid,
-                name: file.name.replace('.json', ''),
-                flowData: JSON.stringify(parsedFlowData),
-                type: 'OPEA',
-                deployed: false,
-                isPublic: false
-            };
-            chatflows.push(newChatflow);
-        }
-        const insertResponse = await importChatflows(chatflows);
-        return insertResponse;
+        const insertResponse = await importChatflows(chatflows)
+        return insertResponse
     } catch (error) {
         throw new InternalFlowiseError(
             StatusCodes.INTERNAL_SERVER_ERROR,
             `Error: chatflowsService.importSampleChatflowsbyUserId - ${getErrorMessage(error)}`
-        );
+        )
     }
 }
 
@@ -260,30 +178,8 @@ const getChatflowById = async (chatflowId: string): Promise<any> => {
 const saveChatflow = async (newChatFlow: ChatFlow): Promise<any> => {
     try {
         const appServer = getRunningExpressApp()
-        let dbResponse: ChatFlow
-        if (containsBase64File(newChatFlow)) {
-            // we need a 2-step process, as we need to save the chatflow first and then update the file paths
-            // this is because we need the chatflow id to create the file paths
-
-            // step 1 - save with empty flowData
-            const incomingFlowData = newChatFlow.flowData
-            newChatFlow.flowData = JSON.stringify({})
-            const chatflow = appServer.AppDataSource.getRepository(ChatFlow).create(newChatFlow)
-            const step1Results = await appServer.AppDataSource.getRepository(ChatFlow).save(chatflow)
-
-            // step 2 - convert base64 to file paths and update the chatflow
-            step1Results.flowData = await updateFlowDataWithFilePaths(step1Results.id, incomingFlowData)
-            await _checkAndUpdateDocumentStoreUsage(step1Results)
-            dbResponse = await appServer.AppDataSource.getRepository(ChatFlow).save(step1Results)
-        } else {
-            const chatflow = appServer.AppDataSource.getRepository(ChatFlow).create(newChatFlow)
-            dbResponse = await appServer.AppDataSource.getRepository(ChatFlow).save(chatflow)
-        }
-        await appServer.telemetry.sendTelemetry('chatflow_created', {
-            version: await getAppVersion(),
-            chatflowId: dbResponse.id,
-            flowGraph: getTelemetryFlowObj(JSON.parse(dbResponse.flowData)?.nodes, JSON.parse(dbResponse.flowData)?.edges)
-        })
+        const chatflow = appServer.AppDataSource.getRepository(ChatFlow).create(newChatFlow)
+        const dbResponse = await appServer.AppDataSource.getRepository(ChatFlow).save(chatflow)
         return dbResponse
     } catch (error) {
         throw new InternalFlowiseError(
@@ -349,17 +245,9 @@ const importChatflows = async (newChatflows: Partial<ChatFlow>[]): Promise<any> 
 const updateChatflow = async (chatflow: ChatFlow, updateChatFlow: ChatFlow): Promise<any> => {
     try {
         const appServer = getRunningExpressApp()
-        if (updateChatFlow.flowData && containsBase64File(updateChatFlow)) {
-            updateChatFlow.flowData = await updateFlowDataWithFilePaths(chatflow.id, updateChatFlow.flowData)
-        }
         const newDbChatflow = appServer.AppDataSource.getRepository(ChatFlow).merge(chatflow, updateChatFlow)
-        await _checkAndUpdateDocumentStoreUsage(newDbChatflow)
         const dbResponse = await appServer.AppDataSource.getRepository(ChatFlow).save(newDbChatflow)
-
-        // chatFlowPool is initialized only when a flow is opened
-        // if the user attempts to rename/update category without opening any flow, chatFlowPool will be undefined
         if (appServer.chatflowPool) {
-            // Update chatflowpool inSync to false, to build flow from scratch again because data has been changed
             appServer.chatflowPool.updateInSync(chatflow.id, false)
         }
         return dbResponse
@@ -407,13 +295,9 @@ const getSinglePublicChatbotConfig = async (chatflowId: string): Promise<any> =>
         if (!dbResponse) {
             throw new InternalFlowiseError(StatusCodes.NOT_FOUND, `Chatflow ${chatflowId} not found`)
         }
-        const uploadsConfig = await utilGetUploadsConfig(chatflowId)
-        // even if chatbotConfig is not set but uploads are enabled
-        // send uploadsConfig to the chatbot
-        if (dbResponse.chatbotConfig || uploadsConfig) {
+        if (dbResponse.chatbotConfig) {
             try {
-                const parsedConfig = dbResponse.chatbotConfig ? JSON.parse(dbResponse.chatbotConfig) : {}
-                return { ...parsedConfig, uploads: uploadsConfig }
+                return JSON.parse(dbResponse.chatbotConfig)
             } catch (e) {
                 throw new InternalFlowiseError(StatusCodes.INTERNAL_SERVER_ERROR, `Error parsing Chatbot Config for Chatflow ${chatflowId}`)
             }
@@ -451,7 +335,7 @@ const deployChatflowSandboxService = async (chatflowId: string) => {
     console.log('deployChatflowSandboxService', chatflowId)
     try {
         const chatflow = await generatePipelineJson(chatflowId)
-        const studioServerUrl = STUDIO_SERVER_URL
+        const studioServerUrl = getStudioServerUrl()
         const deploySandboxEndpoint = 'studio-backend/deploy-sandbox'
         console.log('chatflow', JSON.stringify(chatflow))
         console.log('studioServerUrl', studioServerUrl)
@@ -475,7 +359,7 @@ const deployChatflowSandboxService = async (chatflowId: string) => {
 const stopChatflowSandboxService = async (chatflowId: string) => {
     console.log('stopChatflowSandboxService', chatflowId)
     try {
-        const studioServerUrl = STUDIO_SERVER_URL
+        const studioServerUrl = getStudioServerUrl()
         const deleteSandboxEndpoint = 'studio-backend/delete-sandbox'
         console.log('studioServerUrl', studioServerUrl)
         console.log('deleteSandboxEndpoint', deleteSandboxEndpoint)
@@ -499,7 +383,7 @@ const buildDeploymentPackageService = async (chatflowId: string, deploymentConfi
     console.log('buildDeploymentPackageService', chatflowId, deploymentConfig)
     try {
         const chatflow = await generatePipelineJson(chatflowId)
-        const studioServerUrl = STUDIO_SERVER_URL
+        const studioServerUrl = getStudioServerUrl()
         const buildDeploymentPackageEndpoint = 'studio-backend/download-zip'
         console.log('chatflow', JSON.stringify(chatflow))
         console.log('studioServerUrl', studioServerUrl)
@@ -525,7 +409,7 @@ const oneClickDeploymentService = async (chatflowId: string, deploymentConfig: R
     console.log('oneClickDeploymentService', chatflowId, deploymentConfig)
     try {
         const chatflow = await generatePipelineJson(chatflowId)
-        const studioServerUrl = STUDIO_SERVER_URL
+        const studioServerUrl = getStudioServerUrl()
         const endpoint = 'studio-backend/click-deployment'
         // console.log('chatflow', JSON.stringify(chatflow))
         // console.log('studioServerUrl', studioServerUrl)
@@ -608,21 +492,7 @@ const updateDeploymentStatus = async (chatflowId: string, status: string, messag
     }
 }
 
-const _checkAndUpdateDocumentStoreUsage = async (chatflow: ChatFlow) => {
-    const parsedFlowData: IReactFlowObject = JSON.parse(chatflow.flowData)
-    const nodes = parsedFlowData.nodes
-    // from the nodes array find if there is a node with name == documentStore)
-    const node = nodes.length > 0 && nodes.find((node) => node.data.name === 'documentStore')
-    if (!node || !node.data || !node.data.inputs || node.data.inputs['selectedStore'] === undefined) {
-        await documentStoreService.updateDocumentStoreUsage(chatflow.id, undefined)
-    } else {
-        await documentStoreService.updateDocumentStoreUsage(chatflow.id, node.data.inputs['selectedStore'])
-    }
-}
-
 export default {
-    checkIfChatflowIsValidForStreaming,
-    checkIfChatflowIsValidForUploads,
     deleteChatflow,
     getAllChatflows,
     getAllChatflowsbyUserId,
@@ -636,7 +506,6 @@ export default {
     deployChatflowSandboxService,
     stopChatflowSandboxService,
     buildDeploymentPackageService,
-    getSinglePublicChatbotConfig,
     oneClickDeploymentService,
     updateDeploymentStatus
 }

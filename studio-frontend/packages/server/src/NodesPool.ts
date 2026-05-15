@@ -1,9 +1,6 @@
-import { IComponentNodes, IComponentCredentials } from './Interface'
+import { IComponentNodes, IComponentCredentials, ICommonObject } from './Interface'
 import path from 'path'
-import { Dirent } from 'fs'
-import { getNodeModulesPackagePath } from './utils'
 import { promises } from 'fs'
-import { ICommonObject } from 'flowise-components'
 import logger from './utils/logger'
 import { appConfig } from './AppConfig'
 
@@ -24,9 +21,7 @@ export class NodesPool {
      * Initialize nodes
      */
     private async initializeNodes() {
-        // const packagePath = getNodeModulesPackagePath('flowise-components')
-        // const nodesPath = path.join(packagePath, 'dist', 'nodes')
-        const nodesPath = '../src/nodes'
+        const nodesPath = path.join(__dirname, '..', 'src', 'nodes')
         const nodeFiles = await this.getFiles(nodesPath)
         // const nodeFiles: Array<string> =[]
         return Promise.all(
@@ -83,21 +78,8 @@ export class NodesPool {
      * Initialize credentials
      */
     private async initializeCredentials() {
-        const packagePath = getNodeModulesPackagePath('flowise-components')
-        const nodesPath = path.join(packagePath, 'dist', 'credentials')
-        const nodeFiles = await this.getFiles(nodesPath)
-        return Promise.all(
-            nodeFiles.map(async (file) => {
-                if (file.endsWith('.credential.js')) {
-                    const credentialModule = await require(file)
-                    if (credentialModule.credClass) {
-                        const newCredInstance = new credentialModule.credClass()
-                        newCredInstance.icon = this.credentialIconPath[newCredInstance.name] ?? ''
-                        this.componentCredentials[newCredInstance.name] = newCredInstance
-                    }
-                }
-            })
-        )
+        // flowise-components removed — credentials loaded from node icons only
+        return
     }
 
     /**

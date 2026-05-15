@@ -1,5 +1,13 @@
 import { Request, Response, NextFunction } from 'express'
-import { getStoragePath } from 'flowise-components'
+import path from 'path'
+
+const getUserHome = (): string => process.env.HOME || process.cwd()
+
+const getStoragePath = (): string => {
+    return process.env.BLOB_STORAGE_PATH
+        ? path.join(process.env.BLOB_STORAGE_PATH)
+        : path.join(getUserHome(), '.flowise', 'storage')
+}
 
 const getPathForUploads = async (req: Request, res: Response, next: NextFunction) => {
     try {

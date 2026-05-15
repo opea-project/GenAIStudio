@@ -1,12 +1,11 @@
 test-results/
 **.log
 **/report.html
+.env
 docker-compose
 **/node_modules/
-
-*.pyc
-
+**.venv/
+**pycache**/
 .DS_Store
 .env.development
-__pycache__/
 *.pyc

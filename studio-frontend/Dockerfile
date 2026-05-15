@@ -31,11 +31,15 @@ RUN pnpm install
 
 # Copy source code
 COPY . .
+COPY --from=sample_workflows . ./sample-workflows
 
-# Build the app and clean up
-RUN pnpm build && \
-    # Prune to production dependencies only
-    pnpm prune --prod && \
+# Build the app (separate stage target so dev compose stops here)
+RUN pnpm build
+
+FROM builder AS pruned
+
+# Prune to production dependencies only
+RUN pnpm prune --prod && \
     rm -rf node_modules/.cache && \
     rm -rf packages/*/node_modules/.cache
 
@@ -54,7 +58,7 @@ ENV no_proxy=${no_proxy}
 # Install only runtime dependencies with patched npm
 RUN apk update && apk upgrade && \
     apk add --no-cache gcompat chromium && \
-    npm install -g npm@latest pnpm@latest && \
+    npm install -g pnpm@9 && \
     rm -rf /var/cache/apk/*
 
 ENV PUPPETEER_SKIP_DOWNLOAD=true
@@ -63,10 +67,11 @@ ENV NODE_OPTIONS=--max-old-space-size=8192
 
 WORKDIR /usr/src
 
-# Copy only necessary files from builder
-COPY --from=builder /usr/src/package.json /usr/src/pnpm-workspace.yaml ./
-COPY --from=builder /usr/src/packages ./packages
-COPY --from=builder /usr/src/node_modules ./node_modules
+# Copy only necessary files from pruned builder
+COPY --from=pruned /usr/src/package.json /usr/src/pnpm-workspace.yaml ./
+COPY --from=pruned /usr/src/packages ./packages
+COPY --from=pruned /usr/src/node_modules ./node_modules
+COPY --from=pruned /usr/src/sample-workflows ./sample-workflows
 
 EXPOSE 3000
 

@@ -1,0 +1,248 @@
+# Local development compose — simulates K8s studio namespace
+# Sandbox deploy can target a real cluster when studio-backend has a working
+# kubeconfig and any cluster-side dependencies it calls are reachable.
+# Run: docker compose -f docker-compose.local.yml up -d
+
+services:
+
+  studio-frontend:
+    build:
+      context: ../../studio-frontend
+      additional_contexts:
+        sample_workflows: ../../sample-workflows
+      target: builder
+      args:
+        http_proxy: ${http_proxy}
+        https_proxy: ${https_proxy}
+        no_proxy: ${no_proxy}
+    container_name: studio-frontend
+    ports:
+      - "3000:3000"
+      - "8088:8088"
+    volumes:
+      - ../../studio-frontend:/usr/src
+      - ./.env:/usr/src/packages/server/.env:ro
+      - ./.env:/usr/src/packages/ui/.env:ro
+      - ../../sample-workflows:/usr/src/sample-workflows:ro
+      - node_modules:/usr/src/node_modules
+      - pnpm-store:/usr/src/.pnpm-store
+      - /usr/src/packages/ui/build
+      - finetuning-output:/tmp/finetuning/output
+    command: ["sh", "/usr/src/docker-entrypoint.dev.sh"]
+    environment:
+      - http_proxy=${http_proxy}
+      - https_proxy=${https_proxy}
+      - no_proxy=${no_proxy},studio-backend,studio-eval,mysql,ollama,finetuning-server,local-nginx,.svc.cluster.local,.cluster.local
+      - STUDIO_SERVER_URL=${STUDIO_SERVER_URL:-http://studio-backend:5000}
+      - PREPARE_DOC_REDIS_PREP_DNS=${PREPARE_DOC_REDIS_PREP_DNS:-local-nginx}
+      - CHOKIDAR_USEPOLLING=1
+      - FINETUNING_SERVICE_DNS=${FINETUNING_SERVICE_DNS:-finetuning-server:8015}
+      - FINETUNING_RAY_DNS=${FINETUNING_RAY_DNS:-finetuning-server:8265}
+      - DATABASE_TYPE=mysql
+      - DATABASE_HOST=${MYSQL_HOST:-mysql}
+      - DATABASE_PORT=${MYSQL_PORT:-3306}
+      - DATABASE_NAME=${MYSQL_FLOWISE_DB:-flowise}
+      - DATABASE_USER=${MYSQL_USER:-root}
+      - DATABASE_PASSWORD=${MYSQL_PASSWORD:-root}
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+    stdin_open: true
+    tty: true
+    networks:
+      - studio-local
+    depends_on:
+      - studio-backend
+    restart: unless-stopped
+
+  studio-backend:
+    build:
+      context: ../../studio-backend
+      args:
+        http_proxy: ${http_proxy}
+        https_proxy: ${https_proxy}
+        no_proxy: ${no_proxy}
+    container_name: studio-backend
+    ports:
+      - "5001:5000"
+    volumes:
+      - ../../studio-backend/app:/usr/src/app
+      - ${HOME}/.kube:/root/.kube:ro
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "5000", "--reload"]
+    environment:
+      - STUDIO_EVAL_DNS=${STUDIO_EVAL_DNS:-studio-eval:8000}
+      - GRAFANA_DNS=${GRAFANA_DNS:-grafana:3000}
+      - DISABLE_GRAFANA_DASHBOARD_SYNC=${DISABLE_GRAFANA_DASHBOARD_SYNC:-true}
+      - CLICKHOUSE_DNS=${CLICKHOUSE_DNS:-clickhouse:9000}
+      - APP_FRONTEND_IMAGE=${APP_FRONTEND_IMAGE:-opea/app-frontend:latest}
+      - APP_BACKEND_IMAGE=${APP_BACKEND_IMAGE:-opea/app-backend:latest}
+      - SBX_HTTP_PROXY=${http_proxy}
+      - SBX_NO_PROXY=${no_proxy},studio-eval,mysql,ollama,studio-frontend,finetuning-server,grafana,clickhouse,.svc.cluster.local,.cluster.local
+      - http_proxy=${http_proxy}
+      - https_proxy=${https_proxy}
+      - no_proxy=${no_proxy},studio-eval,mysql,ollama,studio-frontend,finetuning-server,grafana,clickhouse,.svc.cluster.local,.cluster.local
+    networks:
+      - studio-local
+    depends_on:
+      mysql:
+        condition: service_healthy
+    restart: unless-stopped
+
+  studio-eval:
+    build:
+      context: ../../studio-eval
+      args:
+        http_proxy: ${http_proxy}
+        https_proxy: ${https_proxy}
+        no_proxy: ${no_proxy}
+    container_name: studio-eval
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../../studio-eval/app:/app/app
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    environment:
+      - OLLAMA_DNS=${OLLAMA_DNS:-ollama:11434}
+      - MYSQL_HOST=${MYSQL_HOST:-mysql}
+      - MYSQL_USER=${MYSQL_USER:-root}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD:-password}
+      - MYSQL_DB=${MYSQL_EVAL_DB:-eval}
+      - APP_BACKEND_URL_TEMPLATE=${APP_BACKEND_URL_TEMPLATE:-http://local-nginx/v1/app-backend?ns={sandbox_id}}
+      - http_proxy=${http_proxy}
+      - https_proxy=${https_proxy}
+      - no_proxy=${no_proxy},host.docker.internal,localhost,127.0.0.1,ollama,mysql,studio-backend,studio-frontend,finetuning-server,.svc.cluster.local,.cluster.local
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - studio-local
+    depends_on:
+      mysql:
+        condition: service_healthy
+      ollama:
+        condition: service_started
+    restart: unless-stopped
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-models:/root/.ollama
+    environment:
+      - http_proxy=${http_proxy}
+      - https_proxy=${https_proxy}
+      - no_proxy=${no_proxy},studio-eval,studio-backend,studio-frontend,mysql,finetuning-server
+      - HTTP_PROXY=${http_proxy}
+      - HTTPS_PROXY=${https_proxy}
+      - NO_PROXY=${no_proxy},studio-eval,studio-backend,studio-frontend,mysql,finetuning-server
+      - OLLAMA_INSECURE=true
+    networks:
+      - studio-local
+    # Pull models after startup (OLLAMA_HOST must be overridden for docker exec to work):
+    #   docker exec -e OLLAMA_HOST=http://127.0.0.1:11434 ollama ollama pull nomic-embed-text
+    #   docker exec -e OLLAMA_HOST=http://127.0.0.1:11434 ollama ollama pull qwen2.5:14b
+    restart: unless-stopped
+
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+    ports:
+      - "3306:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-password}
+      - MYSQL_DATABASE=${MYSQL_FLOWISE_DB:-flowise}
+    volumes:
+      - mysql-data:/var/lib/mysql
+    configs:
+      - source: mysql-init-sql
+        target: /docker-entrypoint-initdb.d/01-create-eval-db.sql
+    networks:
+      - studio-local
+    healthcheck:
+      test: ["CMD", "mysql", "-uroot", "-ppassword", "-e", "SELECT 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+    restart: unless-stopped
+
+  # Local equivalent of studio-nginx in studio-manifest.yaml.
+  # Routes /?ns=<sandbox-namespace> to app-frontend in the deployed K8s sandbox,
+  # and everything else to studio-frontend.
+  # Access the studio via http://localhost:30010 (not localhost:8088) so that
+  # the ?ns= routing works correctly when opening sandbox app-frontends.
+  local-nginx:
+    image: nginx:1.27.1
+    container_name: local-nginx
+    ports:
+      - "30010:80"
+    volumes:
+      - ./local-nginx/nginx.conf.template:/tmp/nginx.conf.template:ro
+    # Mirror the studio-manifest init-container approach: envsubst only *_DNS and
+    # K8S_DNS_RESOLVER so that nginx's own $namespace, $host, etc. are preserved.
+    command:
+      - /bin/sh
+      - -c
+      - >-
+        envsubst '$$STUDIO_FRONTEND_DNS $$APP_FRONTEND_DNS $$APP_BACKEND_DNS
+        $$GRAFANA_DNS $$APP_CHATHISTORY_DNS $$PREPARE_DOC_REDIS_PREP_DNS
+        $$STUDIO_BACKEND_DNS $$K8S_DNS_RESOLVER'
+        < /tmp/nginx.conf.template > /etc/nginx/conf.d/default.conf &&
+        nginx -g 'daemon off;'
+    environment:
+      # Local docker service names for studio-layer services
+      - STUDIO_FRONTEND_DNS=studio-frontend:8088
+      - STUDIO_BACKEND_DNS=studio-backend:5000
+      - GRAFANA_DNS=${GRAFANA_DNS:-grafana:3000}
+      # K8s cluster DNS names — $namespace is left as a literal nginx variable
+      # ($$namespace in compose becomes $namespace in the container, which
+      #  envsubst leaves untouched so nginx resolves it per-request)
+      - APP_FRONTEND_DNS=app-frontend.$$namespace.svc.cluster.local:5275
+      - APP_BACKEND_DNS=app-backend.$$namespace.svc.cluster.local:8899
+      - APP_CHATHISTORY_DNS=chathistory-mongo.$$namespace.svc.cluster.local:6012
+      - PREPARE_DOC_REDIS_PREP_DNS=opea-prepare-doc-redis-prep-0.$$namespace.svc.cluster.local:6007
+      # CoreDNS ClusterIP of your K8s cluster — required for nginx to resolve
+      # *.svc.cluster.local names at request time.
+      # Common values: 10.96.0.10 (kubeadm), 10.43.0.10 (k3s)
+      - K8S_DNS_RESOLVER=${K8S_DNS_RESOLVER:?K8S_DNS_RESOLVER must be set to the CoreDNS ClusterIP (e.g. 10.96.0.10)}
+    networks:
+      - studio-local
+    depends_on:
+      - studio-frontend
+    restart: unless-stopped
+
+  finetuning-server:
+    image: opea/finetuning:latest
+    container_name: finetuning-server
+    user: "0:0"
+    ipc: host
+    ports:
+      - "8015:8015"
+      - "8265:8265"
+    environment:
+      - http_proxy=${http_proxy}
+      - https_proxy=${https_proxy}
+      - NO_PROXY=${no_proxy}
+    volumes:
+      - finetuning-output:/home/user/comps/finetuning/src/output
+    networks:
+      - studio-local
+    restart: unless-stopped
+
+networks:
+  studio-local:
+    driver: bridge
+
+configs:
+  mysql-init-sql:
+    content: |
+      CREATE DATABASE IF NOT EXISTS ${MYSQL_EVAL_DB:-eval};
+
+volumes:
+  ollama-models:
+  mysql-data:
+  node_modules:
+  pnpm-store:
+  finetuning-output:

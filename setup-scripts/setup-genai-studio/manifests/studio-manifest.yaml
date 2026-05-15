@@ -305,7 +305,7 @@ metadata:
 rules:
 - apiGroups: [""] 
   resources: ["namespaces"] 
-  verbs: ["get", "create", "delete"]
+  verbs: ["get", "list", "watch", "create", "delete"]
 - apiGroups: [""] 
   resources: ["services"] 
   verbs: ["get", "create", "list"]
@@ -713,3 +713,70 @@ spec:
       - name: shared-output-volume
         persistentVolumeClaim:
           claimName: shared-finetuning-output
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: studio-eval
+  namespace: studio
+spec:
+  type: ClusterIP
+  ports:
+    - protocol: TCP
+      port: 8000
+      targetPort: 8000
+  selector:
+    app: studio-eval
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: studio-eval
+  namespace: studio
+  labels:
+    app: studio-eval
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: studio-eval
+  template:
+    metadata:
+      labels:
+        app: studio-eval
+    spec:
+      containers:
+      - name: studio-eval
+        image: "${REGISTRY}/studio-eval:${TAG}"
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8000
+        envFrom:
+        - configMapRef:
+            name: studio-config
+        env:
+        - name: MYSQL_DB
+          value: "eval"
+        - name: MYSQL_HOST
+          value: ${MYSQL_HOST}
+        - name: MYSQL_PORT
+          value: "3306"
+        - name: MYSQL_USER  
+          value: "studio"
+        - name: MYSQL_PASSWORD
+          value: "studio"
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "2"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3

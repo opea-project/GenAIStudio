@@ -10,11 +10,12 @@ import {
     IconVariable,
     IconFiles,
     IconApps,
-    IconBrain
+    IconBrain,
+    IconListCheck
 } from '@tabler/icons-react'
 
 // constant
-const icons = { IconUsersGroup, IconHierarchy, IconBuildingStore, IconKey, IconTool, IconLock, IconRobot, IconVariable, IconFiles, IconApps, IconBrain }
+const icons = { IconUsersGroup, IconHierarchy, IconBuildingStore, IconKey, IconTool, IconLock, IconRobot, IconVariable, IconFiles, IconApps, IconBrain, IconListCheck }
 
 // ==============================|| DASHBOARD MENU ITEMS ||============================== //
 
@@ -37,6 +38,14 @@ const dashboard = {
             type: 'item',
             url: '/finetuning',
             icon: icons.IconBrain,
+            breadcrumbs: true
+        },
+        {
+            id: 'evaluation',
+            title: 'Evaluation',
+            type: 'item',
+            url: '/evaluation',
+            icon: icons.IconListCheck,
             breadcrumbs: true
         }
         // {
