@@ -39,7 +39,7 @@
     "@mui/material": "^6.4.1",
     "@mui/styled-engine-sc": "^6.4.0",
     "@reduxjs/toolkit": "^2.5.0",
-    "axios": "^1.7.9",
+    "axios": "^1.16.0",
     "notistack": "^3.0.2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
